@@ -1,0 +1,43 @@
+// output
+.out/
+out/
+release/
+releases/
+build/
+builds/
+.build/
+.Build/
+
+// editor
+project.4coder
+.vs
+.vscode
+.cache
+*.swp
+
+// compiler artifacts
+*.pdb
+*.exp
+*.obj
+*.o
+*.exe
+yk
+*.lib
+!glfw3.lib
+*.spv
+*.ilk
+compile_commands.json
+
+// debugger artifacts
+*.rdi
+yk.dSYM/
+gdb_save
+
+// misc
+temp/
+art.txt
+scratch.c
+*.zip
+
+// macos
+.DS_Store
