@@ -48,6 +48,7 @@ main :: () {
 		
 		//print("%\n", delta);
 		
+		reset_temporary_storage();
 	}
 	
 	print("quit safely\n");
