@@ -90,7 +90,7 @@ free :: (ptr : *void, size : u64) {
 }
 
 get_page_size :: () -> u64 {
-	sysinfo :: SYSTEM_INFO;
+	sysinfo : SYSTEM_INFO;
 	GetSystemInfo(*sysinfo);
 	return sysinfo.dwPageSize;
 }

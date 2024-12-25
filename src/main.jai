@@ -1,18 +1,18 @@
 #import "Basic";
 #import "mizu_base";
 #import "Math";
+r_vk:: #import "render/render_vulkan";
 
-os:: #import "os";
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
 	print("Except for you, you can stay\n");
 	
-	vk_dll : os.Handle = os.vulkan_load_library();
-	assert(xx vk_dll.U64[0]);
-	
 	os.init();
 	win := os.open_window("winter steam game", 960, 540);
+	
+	r_vk.init(win);
+	
 	
 	quit : bool;
 	
