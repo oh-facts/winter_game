@@ -110,3 +110,13 @@ arena_push_impl :: (arena : *Arena, size : u64) -> *void {
 arena_push :: (arena : *Arena, type : Type, count : u64) -> *void #expand {
 	return arena_push_impl(arena, size_of(type) * count);
 }
+
+talloc_array :: (type : Type, count : s64) -> [] Type {
+	memory := talloc(count * size_of(Type));
+	
+	out : [] Type;
+	out.count = xx count;
+	out.data = memory;
+	
+	return out;
+}
