@@ -52,12 +52,17 @@ BatchList :: struct {
 	count : u32;
 };
 
-push_batch :: (list : *BatchList, cap : u32) -> Batch {
-	R_Batch *out = talloc(size_of(R_Batch));
+push_batch :: (list : *BatchList, cap : u32) -> *Batch {
+	out : *Batch = talloc(size_of(Batch));
+	<< out = .{};
+	
+	if !out {
+		i := 1;
+	};
 	
 	if !list.first {
 		list.last = out;
-        list.first = out;
+		list.first = out;
 	}
 	else {
 		list.last.next = out;
@@ -72,10 +77,10 @@ push_batch :: (list : *BatchList, cap : u32) -> Batch {
 }
 
 push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> Rect2 {	
-	R_Batch *batch = list.last;
+	batch := list.last;
 	
-	if(!batch || (batch.cap < batch.size + size_of(R_Rect2))) {
-		batch = push_batch(list, MB(32));
+	if !batch || (batch.cap < batch.size + size_of(Rect2)) {
+		batch = push_batch(list, 1024);
 		// set state params
 	}
 	
@@ -86,7 +91,7 @@ push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> Rect2 {
 	out.fade[Corner_01] = color;
 	out.fade[Corner_10] = color;
 	out.fade[Corner_11] = color;
-	out.tex_id = 0;
+	out.tex_id = get_white_square().U64[1];
 	
 	// NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0f
 	out.border_color = color;
@@ -94,7 +99,7 @@ push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> Rect2 {
 	out.border_thickness = 0;
 	
 	batch.count+=1;
-	batch.size += size_of(R_Rect2);
+	batch.size += size_of(Rect2);
 	
 	return out;
 }

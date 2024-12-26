@@ -1,5 +1,7 @@
 #import "mizu_base";
-#import "GL";
+
+#import "GL" (ENABLE_ALL_EXTENSIONS = true);
+
 os :: #import "os";
 #import "Basic";
 #import "SDL";
@@ -8,6 +10,13 @@ os :: #import "os";
 
 ui_vertex_shader := #run read_entire_file("shaders/ui.vert"); 
 ui_frag_shader := #run read_entire_file("shaders/ui.frag");
+
+SceneData :: struct {
+	proj : Matrix4;
+	view : Matrix4;
+	screen_size : Vector2;
+	pad : Vector2;
+};
 
 Image :: struct {
 	id : GLuint;
@@ -27,77 +36,106 @@ SHADER_PROG :: enum {
 };
 
 State :: struct {
-	arena : Arena;
+	arena : *Arena;
 	
+	scene_buffer : GLuint;
 	shader_prog : [SHADER_PROG.COUNT] GLuint;
 	inst_buffer : [INST_BUFFER.COUNT] GLuint;
+	white_square : Handle;
 };
 
 state : *State;
 
 using gl;
 
+get_white_square :: inline () -> Handle {
+	return state.white_square;
+}
+
 init :: () {
 	arena := arena_init();
 	state = arena_push(arena, State, 1);
 	state.arena = arena;
-
+	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
 	gl_load(*gl, SDL_GL_GetProcAddress);
-
+	
 	print ("GL Vendor = %\n", to_string(glGetString(GL_VENDOR)));
 	print ("GL Version = %\n", to_string(glGetString(GL_VERSION)));
-
+	
 	stupid_fucking_opengl : GLuint;
 	glCreateVertexArrays(1, *stupid_fucking_opengl);
 	glBindVertexArray(stupid_fucking_opengl);
-
+	
 	SDL_GL_SetSwapInterval(1);
-
+	
 	vert_files : []string = .[
-		ui_vertex_shader,
-	];
-
+														ui_vertex_shader,
+														];
+	
 	frag_files : []string = .[
-		ui_frag_shader,
-	];
-
-	for i : 0 .. SHADER_PROG.COUNT {		
+														ui_frag_shader,
+														];
+	
+	for i : 0 .. SHADER_PROG.COUNT - 1 {		
 		state.shader_prog[i] = make_shader_program(vert_files[i].data, frag_files[i].data);
-
+		
 		state.inst_buffer[i] = make_buffer(MB(8));
 	}
 	
+	state.scene_buffer = make_buffer(size_of(SceneData));
+	
+	data : []s64 = .[0xFFFFFFFF];
+	
+	bmp := Bitmap.{data.data, 1, 1, 4};
+	
+	state.white_square = image(bmp);
 }
 
 submit :: (win : os.Handle, ui_batches : BatchList, proj_view : Matrix4 = Matrix4_Identity) {
 	glViewport(0, 0, xx 960, xx 540);
-
+	
 	glClearColor(1., 0, 1., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);
-
+	
 	batch := ui_batches.first;
-
+	
 	win_size_float : Vector2 = .{960, 540};
-
+	
+	// scene buffer
+	{
+		scene_data : SceneData;
+		scene_data.proj = Matrix4_Identity;
+		scene_data.view = Matrix4_Identity;
+		scene_data.screen_size = .{960, 540};
+		
+		using state;
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
+		ssbo_data : *u8 = glMapNamedBufferRange(scene_buffer, 0, size_of(SceneData), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+		
+		memcpy(ssbo_data, *scene_data, size_of(SceneData));
+		
+		glUnmapNamedBuffer(scene_buffer);
+	}
+	
 	while batch	{
 		buffer := state.inst_buffer[INST_BUFFER.UI];
 		shader := state.shader_prog[SHADER_PROG.UI];
-
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, buffer);
+		
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
 		glUseProgram(shader);
-
+		
 		ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, size_of(Vector4) + size_of(Matrix4) + batch.count * size_of(Rect2), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 		
-		memcpy(ssbo_data, *win_size_float, size_of(Vector2));
-		memcpy(ssbo_data + size_of(Vector2), *proj_view, size_of(Matrix4));
-		memcpy(ssbo_data + size_of(Vector2) + size_of(Matrix4), batch.base, batch.count * size_of(Rect2));
+		memcpy(ssbo_data, batch.base, size_of(Rect2) * batch.count);
 		
 		glUnmapNamedBuffer(buffer);
 		
 		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+		
+		batch = batch.next;
 	}
-
+	
 	SDL_GL_SwapWindow(xx win.U64[0]);
 }
 
@@ -108,7 +146,7 @@ check_compile_errors :: (shader : GLuint, type : *u8) {
 	glGetShaderiv(shader, GL_COMPILE_STATUS, *success);
 	if !success {
 		glGetShaderInfoLog(shader, 1024, xx 0, xx infoLog.data);
-		print("% compilation error:\n%\n", type, infoLog);
+		print("% compilation error:\n%\n", to_string(type), to_string(infoLog.data));
 		assert(false);
 	}
 }
@@ -119,7 +157,7 @@ check_link_errors :: (shader : GLuint, type : *u8) {
 	glGetProgramiv(shader, GL_LINK_STATUS, *success);
 	if !success {
 		glGetProgramInfoLog(shader, 1024, xx 0, xx infoLog.data);
-		print("% linking error:\n%\n", type, infoLog);
+		print("% linking error:\n%\n", to_string(type), to_string(infoLog.data));
 		assert(false);
 	}
 }
@@ -158,23 +196,24 @@ make_buffer :: (size : u64) -> GLuint {
 }
 
 image :: (bmp : Bitmap) -> Handle {
-	out : *Image = arena_push(state.arena, Image, 1);
+	img : *Image = arena_push(state.arena, Image, 1);
 	
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
-	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, bmp.w, bmp.h);
-	glTextureSubImage2D(id, 0, 0, 0, bmp.w, bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
+	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, xx bmp.w, xx bmp.h);
+	glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
 	
 	resident := glGetTextureHandleARB(id);
 	glMakeTextureHandleResidentARB(resident);
 	
-	out.id = id;
-	out.resident = resident;
-	out.w = bmp.w;
-	out.h = bmp.h;
+	img.id = id;
+	img.resident = resident;
+	img.w = xx bmp.w;
+	img.h = xx bmp.h;
 	out : Handle;
-	out.U64[0] = out;
-
+	out.U64[0] = xx img;
+	out.U64[1] = xx resident;
+	
 	return out;
 }
 

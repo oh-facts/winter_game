@@ -23,7 +23,12 @@ main :: () {
 	mv : Vector2;
 	pos : Vector2;
 	
+	frames : u64;
+	
 	while !quit {
+		//print("%\n", frames);
+		frames += 1;
+		
 		time_since_last := time_elapsed;
 		
 		events := os.poll_events();
@@ -31,9 +36,10 @@ main :: () {
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
-
 		ui_batches : r.BatchList;
-
+		
+		r.push_rect2(*ui_batches, r.rectF32(0, 0, 30, 30), .{1, 1, 1, 1});
+		
 		r.submit(win, ui_batches);
 		
 		end := os.get_perf_counter();
@@ -42,14 +48,14 @@ main :: () {
 		
 		// poor man's vsync--------------------------------
 		ifx false {
-		time_left : float64 = (1 / 60.) - delta;
-		if (time_left > 0) 
-		{
-			os.sleep(xx (time_left * 1000));
-		}
+			time_left : float64 = (1 / 60.) - delta;
+			if (time_left > 0) 
+			{
+				os.sleep(xx (time_left * 1000));
+			}
 		}
 		// -------------------------------------------------
-		print("%\n", delta);
+		//print("%\n", delta);
 		
 		reset_temporary_storage();
 	}

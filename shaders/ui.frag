@@ -1,6 +1,5 @@
 #version 450
 #extension GL_ARB_bindless_texture : enable
-
 out vec4 out_color;
 
 in vec4 a_border_color;

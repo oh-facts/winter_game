@@ -3,7 +3,7 @@ os :: #import "os";
 #import "stb_image";
 
 u128 :: struct {
-	U64: [2]u64;
+	U64 : [2]u64;
 };
 
 operator == :: (a : u128, b : u128) -> bool {
@@ -133,7 +133,7 @@ bitmap :: (arena : *Arena, path : string) -> Bitmap {
 	out : Bitmap;
 	stbi_set_flip_vertically_on_load(1);
 	
-	w , h, n : s32;
+	w, h, n : s32;
 	
 	bytes := stbi_load(path.c, *w, *h, *n, STBI_rgb_alpha);
 	

@@ -73,6 +73,7 @@ push_event :: (list : *EventList) -> *Event {
 	list.count+=1;
 	
 	out : *Event = talloc(size_of(Event));
+	<< out = .{};
 	
 	if(!list.last) {
 		list.first = out;
@@ -123,6 +124,11 @@ event :: (list : *EventList, key : Key, kind : EventKind) -> *Event {
 
 init :: () {
 	SDL_Init(SDL_INIT_VIDEO);
+	
+#if OS == .WINDOWS {
+		Windows :: #import "Windows";
+		Windows.SetProcessDPIAware();
+	}
 }
 
 // NOTE(mizu): Will probably fail if string isn't a literal
@@ -134,7 +140,7 @@ open_window :: (title : string, w : s32, h : s32) -> Handle {
 	glContext := SDL_GL_CreateContext(sdl_win);
 	out.U64[0] = xx sdl_win;
 	out.U64[1] = xx glContext;
-
+	
 	return out;
 }
 
