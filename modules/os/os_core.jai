@@ -1,8 +1,8 @@
-#import "Windows";
 #import "SDL";
 #import "mizu_base";
 #import "Math";
 #import "Basic";
+#import "os/module";
 
 Handle :: struct {
 	U64 : [2]u64;
@@ -69,61 +69,6 @@ CursorMode :: enum {
 	Disabled;
 };
 
-reserve :: (size : u64) -> *void {
-	out := VirtualAlloc(xx 0, size, MEM_RESERVE, PAGE_READWRITE);
-	assert(xx out);
-	return xx out;
-}
-
-commit :: (ptr : *void, size : u64) -> bool {
-	out := VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
-	assert(xx out);
-	return xx out;
-}
-
-decommit :: (ptr : *void, size : u64) {
-	VirtualFree(ptr, size, MEM_DECOMMIT);
-}
-
-free :: (ptr : *void, size : u64) {
-	VirtualFree(ptr, 0, MEM_RELEASE);
-}
-
-get_page_size :: () -> u64 {
-	sysinfo : SYSTEM_INFO;
-	GetSystemInfo(*sysinfo);
-	return sysinfo.dwPageSize;
-}
-
-get_perf_counter :: () -> s64 {
-	counter : s64;
-	QueryPerformanceCounter(*counter);
-	return counter;
-}
-
-get_perf_freq :: () -> s64 {
-	frequency : s64;
-	QueryPerformanceFrequency(*frequency);
-	return frequency;
-}
-
-load_library :: (name : *u8) -> Handle {
-	out : Handle;
-	dll : HMODULE = LoadLibraryA(name);
-	out.U64[0] = xx dll;
-	return out;
-}
-
-load_function :: (handle : Handle, name : *u8) -> *void {
-	dll : HMODULE = handle.U64[0];
-	out := GetProcAddress(dll, name);
-	return out;
-}
-
-vulkan_load_library :: () -> Handle {
-	return load_library("vulkan-1.dll");
-}
-
 push_event :: (list : *EventList) -> *Event {
 	list.count+=1;
 	
@@ -185,9 +130,11 @@ init :: () {
 open_window :: (title : string, w : s32, h : s32) -> Handle {
 	out : Handle;
 	
-	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
+	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+	glContext := SDL_GL_CreateContext(sdl_win);
 	out.U64[0] = xx sdl_win;
-	
+	out.U64[1] = xx glContext;
+
 	return out;
 }
 
@@ -252,8 +199,4 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 	
 	
 	return out;
-}
-
-sleep :: (ms : s32) {
-	Sleep(ms);
 }

@@ -1,5 +1,6 @@
 os :: #import "os";
 #import "Basic";
+#import "stb_image";
 
 u128 :: struct {
 	U64: [2]u64;
@@ -117,6 +118,32 @@ talloc_array :: (type : Type, count : s64) -> [] Type {
 	out : [] Type;
 	out.count = xx count;
 	out.data = memory;
+	
+	return out;
+}
+
+Bitmap :: struct {
+	data : *void;
+	w : s32;
+	h : s32;
+	n : s32;
+}
+
+bitmap :: (arena : *Arena, path : string) -> Bitmap {
+	out : Bitmap;
+	stbi_set_flip_vertically_on_load(1);
+	
+	w , h, n : s32;
+	
+	bytes := stbi_load(path.c, *w, *h, *n, STBI_rgb_alpha);
+	
+	out.w = w;
+	out.h = h;
+	out.n = 4;
+	out.data = push_array(arena, u8, out.w * out.h * out.n);
+	memcpy(out.data, bytes, out.w * out.h * out.n);
+	
+	stbi_image_free(bytes);
 	
 	return out;
 }

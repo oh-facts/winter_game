@@ -1,8 +1,7 @@
 #import "Basic";
 #import "mizu_base";
 #import "Math";
-r_vk:: #import "render/render_vulkan";
-
+r :: #import "render";
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -11,8 +10,7 @@ main :: () {
 	os.init();
 	win := os.open_window("winter steam game", 960, 540);
 	
-	r_vk.init(win);
-	
+	r.init();
 	
 	quit : bool;
 	
@@ -33,20 +31,25 @@ main :: () {
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
+
+		ui_batches : r.BatchList;
+
+		r.submit(win, ui_batches);
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
 		delta = time_elapsed - time_since_last;
 		
 		// poor man's vsync--------------------------------
+		ifx false {
 		time_left : float64 = (1 / 60.) - delta;
 		if (time_left > 0) 
 		{
 			os.sleep(xx (time_left * 1000));
 		}
+		}
 		// -------------------------------------------------
-		
-		//print("%\n", delta);
+		print("%\n", delta);
 		
 		reset_temporary_storage();
 	}

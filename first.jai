@@ -1,4 +1,5 @@
-#import "Windows";
+#if OS == .WINDOWS #import "Windows";
+
 #import "Basic";
 #import "Compiler";
 #import "File";
@@ -16,7 +17,9 @@ build :: () {
 		set_build_options(target_options, w);
 		
 		add_build_file("src/main.jai", w);
-		file_link(".build/SDL2.dll", "bin/SDL2.dll");
+
+		#if OS == .WINDOWS
+			file_link(".build/SDL2.dll", "bin/SDL2.dll");
 	}
 	
 	for args {
