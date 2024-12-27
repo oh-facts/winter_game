@@ -4,6 +4,20 @@
 r :: #import "render";
 ui :: #import "ui";
 
+draw_children :: (root : *ui.Widget) {
+	
+	print("%\n", root.pref_size);
+	
+	{
+		child :=  root.first;
+		while child {
+			draw_children(child);
+			child = child.next;
+		}
+		
+	}
+}
+
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
 	print("Except for you, you can stay\n");
@@ -40,10 +54,17 @@ main :: () {
 			quit = true;
 		}
 		
+		ui.begin(ui_cxt);
 		ui.label(ui_cxt, "hello");
 		ui.label(ui_cxt, "hello");
 		ui.label(ui_cxt, "hello");
 		
+		ui.layout(ui_cxt.root);
+		
+		print("----\n");
+		draw_children(ui_cxt.root);
+		print("----\n");
+		ui.end(ui_cxt);
 		ui_batches : r.BatchList;
 		
 		r.push_rect2(*ui_batches, rectF32(0, 0, 30, 30), .{1, 1, 1, 1});

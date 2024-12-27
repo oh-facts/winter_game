@@ -47,6 +47,25 @@ Signal :: struct {
 	toggle : bool;
 }
 
+ParentNode :: struct {
+	next : *ParentNode;
+	v : *Widget;
+}
+
+push_parent_node :: (state : *State, parent : *Widget) {
+	
+	node : *ParentNode = xx tpush_struct(ParentNode);
+	node.v = parent;
+	
+	state.parent_stack.top.next = node;
+	state.parent_stack.top = node;
+}
+
+pop_parent_node :: (state : *State) {
+	
+	state.parent_stack.top = state.parent_stack.top.next;
+}
+
 Widget :: struct {
 	// tree
 	first : *Widget;
@@ -61,7 +80,7 @@ Widget :: struct {
 	// cache info
 	hash_next : *Widget;
 	key : u64;
-	last_frame_touched : u64;
+	last_frame_touched_index : u64;
 	
 	// debug
 	id : u32;
@@ -70,6 +89,7 @@ Widget :: struct {
 	color : Vector4;
 	border_thickness : float32;
 	radius : float32;
+	pref_size : [Axis2.COUNT]Size;
 	
 	// calculated after hierearchy pass
 	computed_rel_position : [Axis2.COUNT]float32;
@@ -93,6 +113,14 @@ State :: struct {
 	frame_index : u64;
 	free : *Widget;
 	count : u32;
+	
+	parent_stack : struct {
+		top : *ParentNode;
+		free : *ParentNode;
+		auto_pop : bool;
+	};
+	
+	root : *Widget;
 }
 
 init :: () -> *State {
@@ -101,6 +129,12 @@ init :: () -> *State {
 	state.arena = arena;
 	
 	state.slots = cast, force([]Slot) push_array(arena, Slot, 1024);
+	
+	widget : *Widget = push_struct(arena, Widget);
+	widget_node : *ParentNode = push_struct(arena, ParentNode);
+	widget_node.v = widget;
+	state.parent_stack.top = widget_node;
+	state.root = widget;
 	
 	return state; 
 }
@@ -159,6 +193,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 			}
 			else {
 				state.free = state.free.next;
+				<<out = .{};
 			}
 			
 			// add to cache
@@ -178,7 +213,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 	else
 	{
 		// duplicate, allocate new from frame arena
-		if(out.last_frame_touched == state.frame_index)
+		if(out.last_frame_touched_index == state.frame_index)
 		{
 			out = tzpush_struct(Widget);
 		}
@@ -189,7 +224,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 		out.prev = xx 0;
 		out.last = xx 0;
 		out.next = xx 0;
-		out.last_frame_touched = state.frame_index;
+		out.last_frame_touched_index = state.frame_index;
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
 		
@@ -198,7 +233,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 	}
 	
 	// tree links
-	/*
+	
 	{
 		parent := state.parent_stack.top.v;
 		parent.child_count += 1;
@@ -206,15 +241,18 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 		
 		if(!parent.last)
 		{
-			parent.last = parent.first = out;
+			parent.first = out;
+			parent.last = out;
 		}
 		else
 		{
 			out.prev = parent.last;
-			parent.last = parent.last.next = out;
+			parent.last.next = out;
+			parent.last = out;
 		}
 	}
-	*/
+	
+	
 	// styling
 	{
 		//out.color = state.color_stack.top.v;
@@ -222,6 +260,9 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 		//out.border_thickness = state.border_thickness_stack.top.v;
 		//out.radius = state.radius_stack.top.v;
 	}
+	
+	out.pref_size[0].value = 60;
+	out.pref_size[1].value = 30;
 	
 	//RectF32 extent = rectFromString(out->text, out->scale);
 	
@@ -245,4 +286,170 @@ label :: (state : *State, text : string) -> Signal {
 	out := signal(widget);
 	
 	return out;
+}
+
+layout_fixed_size :: (root : *Widget, axis : Axis2) {
+	
+	{
+		child := root.first;
+		while child {
+			layout_fixed_size(child, axis);
+			
+			child = child.next;
+		}
+	}
+	
+	if root.pref_size[axis].kind == {
+		case ;
+		case .Null;
+		case .TextContent;
+		case .Pixels;
+		root.computed_size[axis] = root.pref_size[axis].value;
+	}
+	
+	//root.computed_size[axis] += root.padding[axis];
+}
+
+/*
+function void ui_layout_upward_dependent(UI_Widget *root, Axis2 axis)
+{
+	if(root->pref_size[axis].kind == UI_SizeKind_PercentOfParent)
+	{
+		if(root->parent->pref_size[axis].kind != UI_SizeKind_ChildrenSum)
+		{
+			
+		}
+		
+	}
+	
+	for(UI_Widget *child = root->first; child; child = child->next)
+	{
+		ui_layout_upward_dependent(child, axis);
+	}
+}
+
+function void ui_layout_downward_dependent(UI_Widget *root, Axis2 axis)
+{
+	for(UI_Widget *child = root->first; child; child = child->next)
+	{
+		ui_layout_downward_dependent(child, axis);
+	}
+	
+	if(root->pref_size[axis].kind == UI_SizeKind_ChildrenSum)
+	{
+		f32 size = 0;
+		for(UI_Widget *child = root->first; child; child = child->next)
+		{
+			if(child->flags & UI_Flags_is_floating)
+			{
+				child->computed_size[1] += 10;
+				continue;
+			}
+			if(root->child_layout_axis == axis)
+			{
+				size += child->computed_size[axis];
+			}
+			else
+			{
+				size = Max(size, child->computed_size[axis]);
+			}
+		}
+		root->computed_size[axis] += size;
+	}
+}
+
+function void ui_layout_pos(UI_Widget *root)
+{
+	f32 layout_pos = 0;
+	
+	for(UI_Widget *child = root->first; child; child = child->next)
+	{
+		child->computed_rel_position[0] += root->computed_rel_position[0];
+		child->computed_rel_position[1] += root->computed_rel_position[1];
+		
+		child->computed_rel_position[0] += child->padding[0];
+		child->computed_rel_position[1] += child->padding[1];
+		
+		if(!(child->flags & UI_Flags_is_floating))
+		{
+			Axis2 axis = root->child_layout_axis;
+			child->computed_rel_position[axis] += layout_pos;
+			
+			layout_pos += child->computed_size[axis];
+		}
+		
+		v2f pos = {{child->computed_rel_position[0], child->computed_rel_position[1]}};
+		v2f size = {{child->computed_size[0], child->computed_size[1]}};
+		
+		child->dst = rect(pos, size);
+	}
+	
+	for (UI_Widget *child = root->first; child; child = child->next)
+	{
+		ui_layout_pos(child);
+	}
+}
+*/
+
+layout :: (root : *Widget) {
+	for axis : 0 .. Axis2.COUNT - 1 {
+		layout_fixed_size(root, axis);
+		//ui_layout_upward_dependent(root, axis);
+		//ui_layout_downward_dependent(root, axis);
+	}
+	
+	//ui_layout_pos(root);
+	//ui_print_nodes_pre_order(root, 0);
+	//printf("\n");
+}
+
+begin :: (state : *State) {
+	//cxt->win = win;
+	
+	state.frame_index+=1;
+}
+
+end :: (state : *State) {
+	//ui_pop_parent(state);
+	
+	for i : 0 .. state.slots.count - 1 {
+		first_hash := (state.slots.data + i).first;
+		if !first_hash {
+			continue;
+		}
+		if first_hash {
+			cur := first_hash;
+			prev : *Widget;
+			
+			while cur {
+				if cur.last_frame_touched_index != state.frame_index {
+					//printf("pruned %.*s\n", str8_varg(cur->text));
+					
+					if prev {
+						prev.hash_next = cur.hash_next;
+						if !cur.hash_next {
+							(state.slots.data + i).last = prev;
+						}
+					}
+					else {
+						(state.slots.data + i).first = cur.hash_next;
+						if (!cur.hash_next) {
+							(state.slots.data + i).last = xx 0;
+						}
+					}
+					
+					to_free := cur;
+					cur = cur.hash_next;
+					
+					to_free.next = state.free;
+					state.free = to_free;
+				}
+				else {
+					prev = cur;
+					cur = cur.hash_next;
+				}
+			}
+		}
+	}
+	//printf("\n");
 }
