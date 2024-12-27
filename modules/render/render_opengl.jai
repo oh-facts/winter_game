@@ -94,6 +94,8 @@ init :: () {
 
 submit :: (win : os.Handle, ui_batches : BatchList, proj_view : Matrix4 = Matrix4_Identity) {
 	glViewport(0, 0, xx 960, xx 540);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
 	
 	glClearColor(1., 0, 1., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);

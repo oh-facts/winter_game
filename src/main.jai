@@ -1,9 +1,12 @@
+#import "System";
+#import "String";
 #import "Basic";
 #import "mizu_base";
 #import "Math";
+#import "File";
 r :: #import "render";
 ui :: #import "ui";
-
+#import "Random";
 draw_children :: (root : *ui.Widget) {
 	
 	print("%\n", root.pref_size);
@@ -42,10 +45,29 @@ main :: () {
 	
 	frames : u64;
 	
+	arena := arena_init();
+	
+	base_path := path_strip_filename(get_path_of_running_executable());
+	data_folder := join(base_path, "../data");
+	
+	font : *r.Font;
+	
+	{
+		filename := tprint("%/%", data_folder, "fonts/font.data");
+		data := read_entire_file(filename);
+		font = xx data.data;
+	}
+	
+	{
+		filename := tprint("%/%", data_folder, "fonts/font.png");
+		font.bmp = bitmap(arena, filename);
+	}
+	
+	font.img = r.image(font.bmp);
+	
 	while !quit {
 		//print("%\n", frames);
 		frames += 1;
-		
 		time_since_last := time_elapsed;
 		
 		events := os.poll_events();
@@ -61,13 +83,16 @@ main :: () {
 		
 		ui.layout(ui_cxt.root);
 		
-		print("----\n");
-		draw_children(ui_cxt.root);
-		print("----\n");
+		//print("----\n");
+		//draw_children(ui_cxt.root);
+		//print("----\n");
 		ui.end(ui_cxt);
 		ui_batches : r.BatchList;
 		
 		r.push_rect2(*ui_batches, rectF32(0, 0, 30, 30), .{1, 1, 1, 1});
+		
+		r.push_text(*ui_batches, font,"do not enter is written on the doorway", .{0, 120}, 1);
+		r.push_text(*ui_batches, font,"do not enter is written on the doorway", .{0, 240}, 2);
 		
 		r.submit(win, ui_batches);
 		

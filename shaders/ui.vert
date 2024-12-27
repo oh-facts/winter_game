@@ -26,7 +26,7 @@ struct R_Rect2
 	vec4 border_color;
 	vec4 fade[Corner_COUNT];
 	uvec2 tex_id;
-	uint pad[3];
+	uint pad[2];
 	float border_thickness;
 	float radius;
 	float pad2[2];

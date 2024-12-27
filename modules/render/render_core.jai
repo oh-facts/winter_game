@@ -59,7 +59,7 @@ push_batch :: (list : *BatchList, cap : u32) -> *Batch {
 	return out;
 }
 
-push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> Rect2 {	
+push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> *Rect2 {	
 	batch := list.last;
 	
 	if !batch || (batch.cap < batch.size + size_of(Rect2)) {
@@ -85,4 +85,52 @@ push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> Rect2 {
 	batch.size += size_of(Rect2);
 	
 	return out;
+}
+
+Glyph :: struct {
+	uv : Vector2;
+	size : Vector2;
+	offset : Vector2;
+	advance : Vector2;
+};
+
+Font :: struct {
+	size : int;
+	glyphs : [128]Glyph;
+	img : Handle;
+	line_height : s32;
+	
+	using bmp : Bitmap;
+	bmp.w = 512;
+	bmp.h = 512;
+	bmp.n = 4;
+};
+
+push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, size : float32) {
+	
+	pos := _pos;
+	origin := pos;
+	
+	for c : text {
+		
+		glyph := font.glyphs[xx c];
+		
+		dst : RectF32;
+		dst.min.x = pos.x + glyph.offset.x * size;
+		dst.min.y = pos.y - glyph.offset.y * size;
+		dst.max.x = dst.min.x + glyph.size.x * size;
+		dst.max.y = dst.min.y + glyph.size.y * size;
+		
+		src : RectF32;
+		src.min.x = glyph.uv.x / font.bmp.w;
+		src.max.y = glyph.uv.y / font.bmp.h;
+		src.max.x = src.min.x + glyph.size.x / font.bmp.w;
+		src.min.y = src.max.y + glyph.size.y / font.bmp.h;
+		
+		rect2 := push_rect2(list, dst, .{0, 1, 0, 1});
+		rect2.tex_id = font.img.U64[1];
+		rect2.src = src;
+		
+		pos.x += glyph.advance.x * size;
+	}
 }

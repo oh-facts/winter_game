@@ -21,6 +21,10 @@ void main()
 {
 	vec4 tex_col = texture(sampler2D(a_tex_id), a_uv);
 	
+	if(tex_col.a < 0.01) {
+		discard;
+	}
+	
 	vec2 pos = a_half_size * 2 * a_norm_uv;
 	
 	float fDist = RectSDF(pos - a_half_size, a_half_size - a_border_thickness/2.0, a_radius);

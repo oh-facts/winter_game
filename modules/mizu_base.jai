@@ -173,12 +173,12 @@ bitmap :: (arena : *Arena, path : string) -> Bitmap {
 	
 	w, h, n : s32;
 	
-	bytes := stbi_load(path.c, *w, *h, *n, STBI_rgb_alpha);
+	bytes := stbi_load(path.data, *w, *h, *n, 4);
 	
 	out.w = w;
 	out.h = h;
 	out.n = 4;
-	out.data = push_array(arena, u8, out.w * out.h * out.n);
+	out.data = push_array(arena, u8, xx (out.w * out.h * out.n)).data;
 	memcpy(out.data, bytes, out.w * out.h * out.n);
 	
 	stbi_image_free(bytes);
