@@ -1,10 +1,28 @@
 os :: #import "os";
 #import "Basic";
 #import "stb_image";
+#import "Math";
 
 u128 :: struct {
 	U64 : [2]u64;
 };
+
+RectF32 :: struct {
+	min : Vector2;
+	max : Vector2;
+};
+
+rectF32 :: (min_x : float32, min_y : float32, max_x : float32, max_y : float32) -> RectF32 {
+	out : RectF32;
+	
+	out.min.x = min_x;
+	out.min.y = min_y;
+	
+	out.max.x = max_x;
+	out.max.y = max_y;
+	
+	return out;
+}
 
 operator == :: (a : u128, b : u128) -> bool {
 	return ((a.U64[0] == b.U64[0]) && (a.U64[1] == b.U64[1]));
@@ -108,14 +126,34 @@ arena_push_impl :: (arena : *Arena, size : u64) -> *void {
 	return memory;
 }
 
-arena_push :: (arena : *Arena, type : Type, count : u64) -> *void #expand {
-	return arena_push_impl(arena, size_of(type) * count);
+push_struct :: (arena : *Arena, type : Type) -> *void #expand{
+	return arena_push_impl(arena, size_of(type));
 }
 
-talloc_array :: (type : Type, count : s64) -> [] Type {
-	memory := talloc(count * size_of(Type));
+push_array :: (arena : *Arena, type : Type, count : u64) -> [] Any #expand {
+	memory := arena_push_impl(arena, size_of(type) * count);
+	out : [] Any;
+	out.count = xx count;
+	out.data = memory;
+	return out;
+}
+
+// Isn't zeroed!
+tpush_struct :: (type : Type) -> *Type #expand {
+	return talloc(size_of(type));
+}
+
+tzpush_struct :: (type : Type) -> *void #expand{
+	out := tpush_struct(type);
+	memset(out, 0, size_of(type));
+	return out;
+}
+
+// Isn't zeroed!
+tpush_array :: (type : Type, count : s64) -> [] Any {
+	memory := talloc(count * size_of(type));
 	
-	out : [] Type;
+	out : [] Any;
 	out.count = xx count;
 	out.data = memory;
 	

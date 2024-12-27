@@ -2,6 +2,7 @@
 #import "mizu_base";
 #import "Math";
 r :: #import "render";
+ui :: #import "ui";
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -11,6 +12,8 @@ main :: () {
 	win := os.open_window("winter steam game", 960, 540);
 	
 	r.init();
+	
+	ui_cxt := ui.init();
 	
 	quit : bool;
 	
@@ -36,9 +39,14 @@ main :: () {
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
+		
+		ui.label(ui_cxt, "hello");
+		ui.label(ui_cxt, "hello");
+		ui.label(ui_cxt, "hello");
+		
 		ui_batches : r.BatchList;
 		
-		r.push_rect2(*ui_batches, r.rectF32(0, 0, 30, 30), .{1, 1, 1, 1});
+		r.push_rect2(*ui_batches, rectF32(0, 0, 30, 30), .{1, 1, 1, 1});
 		
 		r.submit(win, ui_batches);
 		

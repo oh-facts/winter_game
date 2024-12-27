@@ -9,23 +9,6 @@ Handle :: struct {
 	U64 : [2]u64;
 };
 
-RectF32 :: struct {
-	min : Vector2;
-	max : Vector2;
-};
-
-rectF32 :: (min_x : float32, min_y : float32, max_x : float32, max_y : float32) -> RectF32 {
-	out : RectF32;
-	
-	out.min.x = min_x;
-	out.min.y = min_y;
-	
-	out.max.x = max_x;
-	out.max.y = max_y;
-	
-	return out;
-}
-
 Rect2 :: struct {
 	src : RectF32;
 	dst : RectF32;

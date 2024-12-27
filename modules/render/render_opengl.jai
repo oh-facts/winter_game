@@ -54,7 +54,7 @@ get_white_square :: inline () -> Handle {
 
 init :: () {
 	arena := arena_init();
-	state = arena_push(arena, State, 1);
+	state = push_struct(arena, State);
 	state.arena = arena;
 	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
@@ -196,7 +196,7 @@ make_buffer :: (size : u64) -> GLuint {
 }
 
 image :: (bmp : Bitmap) -> Handle {
-	img : *Image = arena_push(state.arena, Image, 1);
+	img : *Image = push_struct(state.arena, Image);
 	
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
