@@ -92,6 +92,8 @@ Glyph :: struct {
 	size : Vector2;
 	offset : Vector2;
 	advance : Vector2;
+	ascent : s32;
+	descent : s32;
 };
 
 Font :: struct {
@@ -107,7 +109,6 @@ Font :: struct {
 };
 
 push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, size : float32) {
-	
 	pos := _pos;
 	origin := pos;
 	
@@ -127,18 +128,20 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 		dst : RectF32;
 		dst.min.x = pos.x + glyph.offset.x * size;
 		dst.min.y = pos.y - glyph.offset.y * size;
+		
 		dst.max.x = dst.min.x + glyph.size.x * size;
 		dst.max.y = dst.min.y + glyph.size.y * size;
 		
+		//print("%\n", glyph);
+		
 		if(index == 0) {
 			ext.min.x = dst.min.x;
-			ext.min.y = dst.min.y;
+			ext.min.y = dst.min.y;// + glyph.size.y + glyph.descent;
 		}
 		
-		ext.min.x = min(ext.min.x, dst.min.x);
 		ext.min.y = min(ext.min.y, dst.min.y);
+		ext.min.x = min(ext.min.x, dst.min.x);
 		ext.max.y = max(ext.max.y, dst.max.y);
-		
 		ext.max.x = dst.max.x;
 		
 		src : RectF32;
@@ -155,6 +158,45 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 		pos.x += glyph.advance.x * size;
 		
 	}
-	print("%\n", ext);
+	
 	push_rect2(list, ext, .{1, 0, 0, 0.7});
+}
+
+get_text_rect:: (font : Font, text : string, _pos : Vector2, size : float32) -> RectF32{
+	pos := _pos;
+	origin := pos;
+	
+	ext : RectF32;
+	
+	index := 0;
+	for c : text {
+		defer index += 1;
+		
+		glyph := font.glyphs[xx c];
+		
+		dst : RectF32;
+		dst.min.x = pos.x + glyph.offset.x * size;
+		dst.min.y = pos.y - glyph.offset.y * size;
+		dst.max.x = dst.min.x + glyph.size.x * size;
+		dst.max.y = dst.min.y + glyph.size.y * size;
+		
+		if(index == 0) {
+			ext.min.x = dst.min.x;
+			ext.min.y = dst.min.y;// + glyph.size.y + glyph.descent;
+		}
+		
+		ext.min.y = min(ext.min.y, dst.min.y);
+		ext.max.y = max(ext.max.y, dst.max.y);
+		
+		ext.min.x = min(ext.min.x, dst.min.x);
+		ext.max.x = dst.max.x;
+		
+		pos.x += glyph.advance.x * size;
+		
+		
+		print("% %\n", ext, glyph);
+	}
+	
+	
+	return ext;
 }

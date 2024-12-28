@@ -94,6 +94,8 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 		glyph.advance.y = xx face.glyph.advance.y >> 6;
 		glyph.offset.x = xx face.glyph.bitmap_left;
 		glyph.offset.y = xx face.glyph.bitmap_top;
+		glyph.ascent = face.size.metrics.ascender >> 6;
+		glyph.descent = face.size.metrics.descender >> 6;
 		
 		col += face.glyph.bitmap.width + padding;
 	}
