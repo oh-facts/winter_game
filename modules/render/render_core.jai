@@ -4,6 +4,18 @@ Corner_10 :: 2;
 Corner_11 :: 3;
 Corner_COUNT :: 4;
 
+COLOR_WHITE :: Vector4.{1, 1, 1, 1};
+COLOR_BLACK :: Vector4.{0, 0, 0, 1};
+
+COLOR_RED :: Vector4.{1, 0, 0, 1};
+COLOR_GREEN :: Vector4.{0, 1, 0, 1};
+COLOR_BLUE :: Vector4.{0, 0, 1, 1};
+COLOR_YELLOW :: Vector4.{1, 1, 0, 1};
+COLOR_CYAN :: Vector4.{0, 1, 1, 1};
+COLOR_MAGENTA :: Vector4.{1, 0, 1, 1};
+
+COLOR_ORANGE :: Vector4.{0.79, 0.33, 0, 1};
+
 TexParams :: enum {
 	LINEAR;
 	NEAREST;
@@ -170,10 +182,9 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 		rect2.tex_id = font.img.U64[1];
 		rect2.src = src;
 	}
-	
 	// text rect 
 	ifx 0 {
-		push_rect2(list, ext, .{1, 0, 0, 0.7});
+		push_rect2(list, ext, .{0, 0, 0, 0.7});
 	}
 }
 
@@ -184,10 +195,16 @@ get_text_rect:: (font : Font, text : string, _pos : Vector2, size : float32) -> 
 	origin := pos;
 	
 	ext : RectF32;
-	
+	max_width : float32;
 	index := 0;
 	for c : text {
 		defer index += 1;
+		
+		if c == #char "\n" {
+			pos.x = origin.x;
+			pos.y += font.line_height * size;
+			continue;
+		}
 		
 		glyph := font.glyphs[xx c];
 		
@@ -207,9 +224,13 @@ get_text_rect:: (font : Font, text : string, _pos : Vector2, size : float32) -> 
 		
 		ext.min.x = min(ext.min.x, dst.min.x);
 		ext.max.x = dst.max.x;
+		max_width = max(max_width, ext.max.x);
 		
 		pos.x += glyph.advance.x * size;
+		
 	}
+	
+	ext.max.x = max_width;
 	
 	return ext;
 }

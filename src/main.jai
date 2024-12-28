@@ -108,13 +108,29 @@ main :: () {
 		
 		ui_batches : r.BatchList;
 		
-		text := tprint("do not enter is written on the doorway,\nwhy can't everyone just go away.\n%\n%", delta, 1. / delta);
-		text_pos : Vector2 = .{0, 0};
-		text_size := 0.6;
-		
-		r.push_text(*ui_batches, font, text, text_pos, text_size);
-		test := r.push_rect2(*ui_batches, rectF32(0, 400, 80, 480), .{1, 1, 1, 1});
-		test.tex_id = ell.U64[1];
+		// tilemap
+		{
+			for y: 0 .. 64 {
+				for x: 0 .. 64 {
+					dst : RectF32;
+					dst.min.x = xx (x * 32);
+					dst.min.y = xx (y * 32);
+					dst.max.x = dst.min.x + 32;
+					dst.max.y = dst.min.y + 32;
+					
+					colors := Vector4.[r.COLOR_BLACK,
+														 r.COLOR_RED,
+														 r.COLOR_GREEN,
+														 r.COLOR_BLUE,
+														 r.COLOR_YELLOW,
+														 r.COLOR_CYAN,
+														 r.COLOR_MAGENTA,];
+					
+					r.push_rect2(*ui_batches, dst, colors[(x + y) % colors.count]);
+				}
+			}
+			
+		}
 		
 		// player
 		{
@@ -176,6 +192,18 @@ main :: () {
 			py_rect.src = rectF32(index * width, 0, index * width + width, 1);
 		}
 		
+		// debug text
+		
+		text := tprint("do not enter is written on the doorway,\nwhy can't everyone just go away");
+		text_pos : Vector2 = .{0, 0};
+		text_size := 0.6;
+		
+		ext := r.get_text_rect(font, text, text_pos, text_size);
+		r.push_rect2(*ui_batches, ext, .{0, 0, 0, 0.9});
+		
+		r.push_text(*ui_batches, font, text, text_pos, text_size, r.COLOR_ORANGE);
+		test := r.push_rect2(*ui_batches, rectF32(0, 400, 80, 480), .{1, 1, 1, 1});
+		test.tex_id = ell.U64[1];
 		
 		r.submit(win, ui_batches);
 		
