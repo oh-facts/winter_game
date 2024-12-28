@@ -40,9 +40,6 @@ main :: () {
 	time_elapsed : float64;
 	delta : float64;
 	
-	mv : Vector2;
-	pos : Vector2;
-	
 	frames : u64;
 	
 	arena := arena_init();
@@ -65,6 +62,25 @@ main :: () {
 	
 	font.img = r.image(font.bmp);
 	
+	ell_bmp : Bitmap;
+	{
+		filename := tprint("%/%", data_folder, "art/ell.png");
+		ell_bmp = bitmap(arena, filename);;
+	}
+	
+	ell := r.image(ell_bmp);
+	
+	impolo_bmp : Bitmap;
+	{
+		filename := tprint("%/%", data_folder, "art/impolo-east.png");
+		impolo_bmp = bitmap(arena, filename);;
+	}
+	
+	impolo_art := r.image(impolo_bmp, .NEAREST);
+	py_pos : Vector2;
+	counter : float32;
+	mv : Vector2;
+	
 	while !quit {
 		//print("%\n", frames);
 		frames += 1;
@@ -76,6 +92,7 @@ main :: () {
 			quit = true;
 		}
 		
+		/*
 		ui.begin(ui_cxt);
 		ui.label(ui_cxt, "hello");
 		ui.label(ui_cxt, "hello");
@@ -83,20 +100,82 @@ main :: () {
 		
 		ui.layout(ui_cxt.root);
 		
-		//print("----\n");
-		//draw_children(ui_cxt.root);
-		//print("----\n");
+		print("----\n");
+		draw_children(ui_cxt.root);
+		print("----\n");
 		ui.end(ui_cxt);
+		*/
+		
 		ui_batches : r.BatchList;
 		
-		text := "do not enter is written on the doorway";
-		text_pos : Vector2 = .{0, 300};
+		text := tprint("do not enter is written on the doorway,\nwhy can't everyone just go away.\n%\n%", delta, 1. / delta);
+		text_pos : Vector2 = .{0, 0};
 		text_size := 0.6;
 		
-		ext := r.get_text_rect(font, text, text_pos, text_size);
-		r.push_rect2(*ui_batches, ext, .{1, 0, 0, 0.7});
-		
 		r.push_text(*ui_batches, font, text, text_pos, text_size);
+		test := r.push_rect2(*ui_batches, rectF32(0, 400, 80, 480), .{1, 1, 1, 1});
+		test.tex_id = ell.U64[1];
+		
+		// player
+		{
+			if(os.event(*events, .W, .Pressed))
+			{
+				mv.y += -1;
+			}
+			else if(os.event(*events, .W, .Released))
+			{
+				mv.y -= -1;
+			}
+			
+			if(os.event(*events, .A, .Pressed))
+			{
+				mv.x += -1;
+			}
+			else if(os.event(*events, .A, .Released))
+			{
+				mv.x -= -1;
+			}
+			
+			if(os.event(*events, .D, .Pressed))
+			{
+				mv.x += 1;
+			}
+			else if(os.event(*events, .D, .Released))
+			{
+				mv.x -= 1;
+			}
+			
+			if(os.event(*events, .S, .Pressed))
+			{
+				mv.y += 1;
+			}
+			else if(os.event(*events, .S, .Released))
+			{
+				mv.y -= 1;
+			}
+			
+			py_speed :: 300.;
+			py_pos.x += mv.x * xx delta * py_speed;
+			py_pos.y += mv.y * xx delta * py_speed;
+			
+			counter += xx delta;
+			
+			width := 1.0 / 8.0;
+			index := (xx (counter * 10)) % 8;
+			
+			py_size := Vector2.{128, 128};
+			
+			py_dst : RectF32;
+			py_dst.min.x = py_pos.x;
+			py_dst.min.y = py_pos.y;
+			py_dst.max.x = py_dst.min.x + py_size.x;
+			py_dst.max.y = py_dst.min.y + py_size.y;
+			
+			py_rect := r.push_rect2(*ui_batches, py_dst, .{1, 1, 1, 1});
+			py_rect.tex_id = impolo_art.U64[1];
+			py_rect.src = rectF32(index * width, 0, index * width + width, 1);
+		}
+		
 		
 		r.submit(win, ui_batches);
 		

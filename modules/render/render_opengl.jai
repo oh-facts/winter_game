@@ -58,6 +58,10 @@ init :: () {
 	state.arena = arena;
 	
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
+	
+	glEnable(GL_FRAMEBUFFER_SRGB);
+	
 	gl_load(*gl, SDL_GL_GetProcAddress);
 	
 	print ("GL Vendor = %\n", to_string(glGetString(GL_VENDOR)));
@@ -197,14 +201,20 @@ make_buffer :: (size : u64) -> GLuint {
 	return ssbo;
 }
 
-image :: (bmp : Bitmap) -> Handle {
+image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 	img : *Image = push_struct(state.arena, Image);
 	
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
 	
-	glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if params == .LINEAR {
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else {
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 	
 	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, xx bmp.w, xx bmp.h);
 	glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);

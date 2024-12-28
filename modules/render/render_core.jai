@@ -4,10 +4,15 @@ Corner_10 :: 2;
 Corner_11 :: 3;
 Corner_COUNT :: 4;
 
+TexParams :: enum {
+	LINEAR;
+	NEAREST;
+}
+
 Handle :: struct {
 	U32 : [2]u32;
 	U64 : [2]u64;
-};
+}
 
 Rect2 :: struct {
 	src : RectF32;

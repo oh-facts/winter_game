@@ -156,9 +156,12 @@ poll_events :: () -> EventList {
 			event.kind = .CloseRequested;
 		}
 		else if (sdl_event.type == SDL_KEYDOWN) {
-			event := push_event(*out);
-			event.key = key_from_sym(sdl_event.key.keysym.sym);
-			event.kind = .Pressed;
+			if sdl_event.key.repeat == 0 {
+				
+				event := push_event(*out);
+				event.key = key_from_sym(sdl_event.key.keysym.sym);
+				event.kind = .Pressed;
+			}
 		}
 		else if (sdl_event.type == SDL_KEYUP) {
 			event := push_event(*out);
