@@ -111,7 +111,16 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 	pos := _pos;
 	origin := pos;
 	
+	ext : RectF32;
+	
+	index := 0;
 	for c : text {
+		defer index += 1;
+		if c == #char "\n" {
+			pos.x = origin.x;
+			pos.y += font.line_height * size;
+			continue;
+		}
 		
 		glyph := font.glyphs[xx c];
 		
@@ -121,16 +130,31 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 		dst.max.x = dst.min.x + glyph.size.x * size;
 		dst.max.y = dst.min.y + glyph.size.y * size;
 		
+		if(index == 0) {
+			ext.min.x = dst.min.x;
+			ext.min.y = dst.min.y;
+		}
+		
+		ext.min.x = min(ext.min.x, dst.min.x);
+		ext.min.y = min(ext.min.y, dst.min.y);
+		ext.max.y = max(ext.max.y, dst.max.y);
+		
+		ext.max.x = dst.max.x;
+		
 		src : RectF32;
 		src.min.x = glyph.uv.x / font.bmp.w;
 		src.max.y = glyph.uv.y / font.bmp.h;
 		src.max.x = src.min.x + glyph.size.x / font.bmp.w;
 		src.min.y = src.max.y + glyph.size.y / font.bmp.h;
 		
+		push_rect2(list, dst, .{0, 0, 1, 1});
 		rect2 := push_rect2(list, dst, .{0, 1, 0, 1});
 		rect2.tex_id = font.img.U64[1];
 		rect2.src = src;
 		
 		pos.x += glyph.advance.x * size;
+		
 	}
+	print("%\n", ext);
+	push_rect2(list, ext, .{1, 0, 0, 0.7});
 }

@@ -202,6 +202,10 @@ image :: (bmp : Bitmap) -> Handle {
 	
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
+	
+	glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
 	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, xx bmp.w, xx bmp.h);
 	glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
 	

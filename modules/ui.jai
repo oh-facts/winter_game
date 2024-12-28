@@ -90,6 +90,7 @@ Widget :: struct {
 	border_thickness : float32;
 	radius : float32;
 	pref_size : [Axis2.COUNT]Size;
+	text : string;
 	
 	// calculated after hierearchy pass
 	computed_rel_position : [Axis2.COUNT]float32;
@@ -282,7 +283,7 @@ label :: (state : *State, text : string) -> Signal {
 	key := key_from_string(text);
 	widget := widget_from_key(state, key);
 	widget.flags |= .Text;
-	
+	widget.text = text;
 	out := signal(widget);
 	
 	return out;

@@ -89,10 +89,12 @@ main :: () {
 		ui.end(ui_cxt);
 		ui_batches : r.BatchList;
 		
-		r.push_rect2(*ui_batches, rectF32(0, 0, 30, 30), .{1, 1, 1, 1});
+		text := "do not enter is written on the doorway";
 		
-		r.push_text(*ui_batches, font,"do not enter is written on the doorway", .{0, 120}, 1);
-		r.push_text(*ui_batches, font,"do not enter is written on the doorway", .{0, 240}, 2);
+		text_pos : Vector2 = .{0, 300};
+		text_size := 0.6;
+		
+		r.push_text(*ui_batches, font, text, text_pos, text_size);
 		
 		r.submit(win, ui_batches);
 		
