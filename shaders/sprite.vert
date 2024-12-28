@@ -89,7 +89,9 @@ void main()
 	a_radius = obj.radius;
 	a_uv = vertex.uv;
 	
-	vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
+	vec2 shifted_pos = vertex.pos - screen_offset + screen_size / 2;
+	
+	vec2 norm_pos = shifted_pos / screen_size.xy * 2.0 - 1.0;
 	norm_pos.y = -norm_pos.y;
 	gl_Position = vec4(norm_pos, 0, 1);
 }

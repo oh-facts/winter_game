@@ -11,11 +11,12 @@ os :: #import "os";
 ui_vertex_shader := #run read_entire_file("shaders/ui.vert"); 
 ui_frag_shader := #run read_entire_file("shaders/ui.frag");
 
+sprite_vertex_shader := #run read_entire_file("shaders/sprite.vert"); 
+sprite_frag_shader := #run read_entire_file("shaders/sprite.frag");
+
 SceneData :: struct {
-	proj : Matrix4;
-	view : Matrix4;
 	screen_size : Vector2;
-	pad : Vector2;
+	screen_offset : Vector2;
 };
 
 Image :: struct {
@@ -27,11 +28,13 @@ Image :: struct {
 
 INST_BUFFER :: enum {
 	UI;
+	SPRITE;
 	COUNT;
 };
 
 SHADER_PROG :: enum {
 	UI;
+	SPRITE;
 	COUNT;
 };
 
@@ -75,10 +78,12 @@ init :: () {
 	
 	vert_files : []string = .[
 														ui_vertex_shader,
+														sprite_vertex_shader,
 														];
 	
 	frag_files : []string = .[
 														ui_frag_shader,
+														sprite_frag_shader,
 														];
 	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
@@ -96,7 +101,7 @@ init :: () {
 	state.white_square = image(bmp);
 }
 
-submit :: (win : os.Handle, ui_batches : BatchList, proj_view : Matrix4 = Matrix4_Identity) {
+submit :: (win : os.Handle, ui_batches : BatchList, sprite_batches : BatchList, screen_offset := Vector2.{0, 0}) {
 	glViewport(0, 0, xx 960, xx 540);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
@@ -104,16 +109,13 @@ submit :: (win : os.Handle, ui_batches : BatchList, proj_view : Matrix4 = Matrix
 	glClearColor(1., 0, 1., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
-	batch := ui_batches.first;
-	
 	win_size_float : Vector2 = .{960, 540};
 	
 	// scene buffer
 	{
 		scene_data : SceneData;
-		scene_data.proj = Matrix4_Identity;
-		scene_data.view = Matrix4_Identity;
 		scene_data.screen_size = .{960, 540};
+		scene_data.screen_offset = screen_offset;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
@@ -124,22 +126,48 @@ submit :: (win : os.Handle, ui_batches : BatchList, proj_view : Matrix4 = Matrix
 		glUnmapNamedBuffer(scene_buffer);
 	}
 	
-	while batch	{
-		buffer := state.inst_buffer[INST_BUFFER.UI];
-		shader := state.shader_prog[SHADER_PROG.UI];
-		
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-		glUseProgram(shader);
-		
-		ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, size_of(Vector4) + size_of(Matrix4) + batch.count * size_of(Rect2), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-		
-		memcpy(ssbo_data, batch.base, size_of(Rect2) * batch.count);
-		
-		glUnmapNamedBuffer(buffer);
-		
-		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
-		
-		batch = batch.next;
+	// sprite pass
+	{
+		batch := sprite_batches.first;
+		while batch	{
+			buffer := state.inst_buffer[INST_BUFFER.SPRITE];
+			shader := state.shader_prog[SHADER_PROG.SPRITE];
+			
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+			glUseProgram(shader);
+			
+			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+			
+			memcpy(ssbo_data, batch.base, batch.size);
+			
+			glUnmapNamedBuffer(buffer);
+			
+			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+			
+			batch = batch.next;
+		}
+	}
+	
+	// ui pass
+	{
+		batch := ui_batches.first;
+		while batch	{
+			buffer := state.inst_buffer[INST_BUFFER.UI];
+			shader := state.shader_prog[SHADER_PROG.UI];
+			
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+			glUseProgram(shader);
+			
+			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+			
+			memcpy(ssbo_data, batch.base, batch.size);
+			
+			glUnmapNamedBuffer(buffer);
+			
+			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+			
+			batch = batch.next;
+		}
 	}
 	
 	SDL_GL_SwapWindow(xx win.U64[0]);
@@ -238,33 +266,3 @@ free_image :: (handle : Handle) {
 	glMakeTextureHandleNonResidentARB(image.resident);
 	glDeleteTextures(1, *image.id);
 }
-
-/*
-function void r_submit(OS_Handle win, R_BatchList *ui_batches, M4F proj_view)
-{
-	V2S win_size = os_getWindowSize(win);
-	V2F win_size_float = {win_size.x, win_size.y};
-	f32 color[3] = {0,0,1};
-	glClearNamedFramebufferfv(0, GL_COLOR, 0, color);
-	
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_BLEND);
-	glViewport(0, 0, win_size_float.x, win_size_float.y);
-	
-	for(R_Batch *batch = ui_batches->first; batch; batch = batch->next)
-	{
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-		glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
-
-		void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(V4F) + sizeof(M4F) + batch->count * sizeof(R_Rect2), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-		
-		memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
-		memcpy((u8*)ssbo_data + sizeof(win_size_float), &proj_view, sizeof(M4F));
-		memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(M4F), batch->base, batch->count * sizeof(R_Rect2));
-		
-		glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-		
-		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch->count);
-	}
-}
-*/

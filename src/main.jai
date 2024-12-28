@@ -107,6 +107,7 @@ main :: () {
 		*/
 		
 		ui_batches : r.BatchList;
+		sprite_batches : r.BatchList;
 		
 		// tilemap
 		{
@@ -126,7 +127,12 @@ main :: () {
 														 r.COLOR_CYAN,
 														 r.COLOR_MAGENTA,];
 					
-					r.push_rect2(*ui_batches, dst, colors[(x + y) % colors.count]);
+					color := colors[(x + y) % colors.count];
+					
+					tile_rect := r.push_rect2(*sprite_batches, dst, color);
+					tile_rect.radius = 16;
+					//tile_rect.border_thickness = 4;
+					//tile_rect.border_color = .{1 - color.x, 1 - color.y, 1 - color.z, 1};
 				}
 			}
 			
@@ -187,7 +193,7 @@ main :: () {
 			py_dst.max.x = py_dst.min.x + py_size.x;
 			py_dst.max.y = py_dst.min.y + py_size.y;
 			
-			py_rect := r.push_rect2(*ui_batches, py_dst, .{1, 1, 1, 1});
+			py_rect := r.push_rect2(*sprite_batches, py_dst, .{1, 1, 1, 1});
 			py_rect.tex_id = impolo_art.U64[1];
 			py_rect.src = rectF32(index * width, 0, index * width + width, 1);
 		}
@@ -205,7 +211,7 @@ main :: () {
 		test := r.push_rect2(*ui_batches, rectF32(0, 400, 80, 480), .{1, 1, 1, 1});
 		test.tex_id = ell.U64[1];
 		
-		r.submit(win, ui_batches);
+		r.submit(win, ui_batches, sprite_batches, py_pos);
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
