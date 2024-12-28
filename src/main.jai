@@ -90,15 +90,12 @@ main :: () {
 		ui_batches : r.BatchList;
 		
 		text := "do not enter is written on the doorway";
-		text_pos : Vector2 = .{0, -17};
+		text_pos : Vector2 = .{0, 300};
 		text_size := 0.6;
 		
 		ext := r.get_text_rect(font, text, text_pos, text_size);
-		text_pos.y += (ext.max.y - ext.min.y);
+		r.push_rect2(*ui_batches, ext, .{1, 0, 0, 0.7});
 		
-		//ext = r.get_text_rect(font, text, text_pos, text_size);
-		
-		//r.push_rect2(*ui_batches, ext, .{1, 0, 0, 0.7});
 		r.push_text(*ui_batches, font, text, text_pos, text_size);
 		
 		r.submit(win, ui_batches);

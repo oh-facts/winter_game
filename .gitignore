@@ -41,3 +41,6 @@ scratch.c
 
 // macos
 .DS_Store
+
+// winter
+*.data

@@ -58,6 +58,10 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 	FT_New_Memory_Face(library, font_file_data.data, xx font_file_data.count, 0, *face);
 	FT_Set_Pixel_Sizes(face, 0, font_size);
 	
+	out.ascent = face.size.metrics.ascender >> 6;
+	out.descent = face.size.metrics.descender >> 6;
+	out.line_height = (face.size.metrics.ascender - face.size.metrics.descender) >> 6;
+	
 	padding : int;
 	row : int;
 	col := padding;
@@ -73,8 +77,6 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 			col = padding;
 			row += font_size;
 		}
-		
-		out.line_height = max((face.size.metrics.ascender - face.size.metrics.descender) >> 6, out.line_height);
 		
 		// copy to buffer
 		
@@ -94,8 +96,6 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 		glyph.advance.y = xx face.glyph.advance.y >> 6;
 		glyph.offset.x = xx face.glyph.bitmap_left;
 		glyph.offset.y = xx face.glyph.bitmap_top;
-		glyph.ascent = face.size.metrics.ascender >> 6;
-		glyph.descent = face.size.metrics.descender >> 6;
 		
 		col += face.glyph.bitmap.width + padding;
 	}
