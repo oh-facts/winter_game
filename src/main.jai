@@ -155,7 +155,6 @@ main :: () {
 			map_outline.border_color = r.COLOR_BLACK;
 			map_outline.border_thickness = 4;
 			
-			
 			mb_event := os.event(*events, .LMB, .Pressed);
 			mclick : bool;
 			
@@ -361,11 +360,32 @@ main :: () {
 						tile_rect.src = src;
 						
 						
-						print("%\n", bitmask);
+						//print("%\n", bitmask);
 						
 					}
 				}
 			}
+			
+			// grid outline
+			
+			for y: 1 .. tilemap.row - 1 - 1 {
+				for x: 1 .. tilemap.col - 1 - 1 {
+					
+					tile := tilemap.tiles[x * tilemap.col + y];
+					
+					dst : RectF32;
+					dst.min.x = xx (x * 32);
+					dst.min.y = xx (y * 32);
+					dst.max.x = dst.min.x + 32;
+					dst.max.y = dst.min.y + 32;
+					
+					tile_rect := r.push_rect2(*sprite_batches, dst, .{});
+					tile_rect.border_thickness = 4;
+					tile_rect.border_color = r.COLOR_BLACK;
+					
+				}
+			}
+			
 		}
 		
 		// player
@@ -429,18 +449,25 @@ main :: () {
 		}
 		
 		// @debug text
-		text := tprint("%\n%\n%", mpos, tile_pos, wmpos);
+		text := tprint("mpos: %\nwmpos:{% %}\ntpos:%", mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
 		
 		text_pos : Vector2 = .{0, 0};
-		text_size := 0.6;
+		text_size := 0.4;
 		
 		ext := r.get_text_rect(font, text, text_pos, text_size);
 		r.push_rect2(*ui_batches, ext, .{0, 0, 0, 0.9});
 		
 		r.push_text(*ui_batches, font, text, text_pos, text_size, r.COLOR_ORANGE);
-		test := r.push_rect2(*ui_batches, rectF32(0, 400, 80, 480), .{1, 1, 1, 1});
-		test.tex_id = ell.U64[1];
 		
+		text_pos.y += ext.max.y - ext.min.y;
+		ell_rect : RectF32;
+		ell_rect.min.x = 0;
+		ell_rect.max.x = 80;
+		ell_rect.min.y = text_pos.y;
+		ell_rect.max.y = ell_rect.min.y + 80;
+		test := r.push_rect2(*ui_batches, ell_rect, .{1, 1, 1, 1});
+		test.tex_id = ell.U64[1];
+		test.radius = 40;
 		r.submit(win, ui_batches, sprite_batches, py_pos);
 		
 		end := os.get_perf_counter();
