@@ -150,33 +150,37 @@ poll_events :: () -> EventList {
 	sdl_event : SDL_Event;
 	
 	while SDL_PollEvent(*sdl_event) {
-		if sdl_event.type == SDL_QUIT {
+		if sdl_event.type == {
+			case SDL_QUIT;
 			event := push_event(*out);
-			event.key = .NULL;
 			event.kind = .CloseRequested;
-		}
-		else if (sdl_event.type == SDL_KEYDOWN) {
+			event.key = .NULL;
+			
+			case SDL_KEYDOWN;
 			if sdl_event.key.repeat == 0 {
-				
 				event := push_event(*out);
-				event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 				event.kind = .Pressed;
+				event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 			}
-		}
-		else if (sdl_event.type == SDL_KEYUP) {
+			
+			case SDL_KEYUP;
 			event := push_event(*out);
-			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 			event.kind = .Released;
-		}
-		else if sdl_event.type == SDL_MOUSEBUTTONDOWN {
+			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
+			
+			case SDL_MOUSEBUTTONDOWN;
 			event := push_event(*out);
-			event.key = key_from_sym(xx sdl_event.button.button);
 			event.kind = .Pressed;
+			event.key = key_from_sym(xx sdl_event.button.button);
 			event.mpos.x = xx sdl_event.button.x;
 			event.mpos.y = xx sdl_event.button.y;
+			
+			case SDL_MOUSEMOTION;
+			event := push_event(*out);
+			event.kind = .MouseMove;
+			event.mpos.x = xx sdl_event.motion.x;
+			event.mpos.y = xx sdl_event.motion.y;
 		}
-		
-		
 	}
 	
 	return out;

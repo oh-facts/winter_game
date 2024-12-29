@@ -156,18 +156,22 @@ main :: () {
 			map_outline.border_thickness = 4;
 			
 			mb_event := os.event(*events, .LMB, .Pressed);
+			mm_event := os.event(*events, .NULL, .MouseMove);
+			
 			mclick : bool;
 			
 			if mb_event {
-				mpos = mb_event.mpos;
+				mclick = true; 
+			}
+			
+			if mm_event {
+				mpos = mm_event.mpos;
 				
 				wmpos.x = mpos.x + py_pos.x - 480;
 				wmpos.y = mpos.y + py_pos.y - 270;
 				
 				tile_pos.x = xx ((wmpos.x) / 32);
 				tile_pos.y = xx ((wmpos.y) / 32);
-				
-				mclick = true; 
 			}
 			
 			if mclick {
