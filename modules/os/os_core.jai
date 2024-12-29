@@ -150,7 +150,7 @@ poll_events :: () -> EventList {
 	sdl_event : SDL_Event;
 	
 	while SDL_PollEvent(*sdl_event) {
-		if (sdl_event.type == SDL_QUIT) {
+		if sdl_event.type == SDL_QUIT {
 			event := push_event(*out);
 			event.key = .NULL;
 			event.kind = .CloseRequested;
@@ -159,15 +159,24 @@ poll_events :: () -> EventList {
 			if sdl_event.key.repeat == 0 {
 				
 				event := push_event(*out);
-				event.key = key_from_sym(sdl_event.key.keysym.sym);
+				event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 				event.kind = .Pressed;
 			}
 		}
 		else if (sdl_event.type == SDL_KEYUP) {
 			event := push_event(*out);
-			event.key = key_from_sym(sdl_event.key.keysym.sym);
+			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 			event.kind = .Released;
 		}
+		else if sdl_event.type == SDL_MOUSEBUTTONDOWN {
+			event := push_event(*out);
+			event.key = key_from_sym(xx sdl_event.button.button);
+			event.kind = .Pressed;
+			event.mpos.x = xx sdl_event.button.x;
+			event.mpos.y = xx sdl_event.button.y;
+		}
+		
+		
 	}
 	
 	return out;
@@ -203,6 +212,9 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 	else if sym == SDLK_x out = .X;
 	else if sym == SDLK_y out = .Y;
 	else if sym == SDLK_z out = .Z;
+	
+	else if sym == SDL_BUTTON_LEFT out = .LMB;
+	else if sym == SDL_BUTTON_RIGHT out = .RMB;
 	
 	else if sym == SDLK_SPACE out = .SPACE;
 	
