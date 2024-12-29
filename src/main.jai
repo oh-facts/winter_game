@@ -10,6 +10,8 @@ ui :: #import "ui";
 // @debug
 mpos : Vector2;
 wmpos : Vector2;
+lmbheld : bool;
+rmbheld : bool;
 
 tile_pos : Vector2i;
 
@@ -151,17 +153,33 @@ main :: () {
 				disco_tilemap(*sprite_batches);
 			}
 			
-			map_outline := r.push_rect2(*sprite_batches, rectF32(32, 32, (tilemap.col - 1)* 32, (tilemap.row - 1) * 32), .{0, 0, 0, 0});
-			map_outline.border_color = r.COLOR_BLACK;
-			map_outline.border_thickness = 4;
+			lmbdown_event := os.event(*events, .LMB, .Pressed);
+			rmbdown_event := os.event(*events, .RMB, .Pressed);
 			
-			mb_event := os.event(*events, .LMB, .Pressed);
+			lmbup_event := os.event(*events, .LMB, .Released);
+			rmbup_event := os.event(*events, .RMB, .Released);
+			
 			mm_event := os.event(*events, .NULL, .MouseMove);
 			
-			mclick : bool;
+			lmbclick : bool;
+			rmbclick : bool;
 			
-			if mb_event {
-				mclick = true; 
+			if lmbdown_event {
+				lmbclick = true; 
+				lmbheld = true;
+			}
+			
+			if lmbup_event {
+				lmbheld = false;
+			}
+			
+			if rmbdown_event {
+				rmbclick = true; 
+				rmbheld = true;
+			}
+			
+			if rmbup_event {
+				rmbheld = false;
 			}
 			
 			if mm_event {
@@ -174,8 +192,12 @@ main :: () {
 				tile_pos.y = xx ((wmpos.y) / 32);
 			}
 			
-			if mclick {
+			if lmbheld {
 				tilemap.tiles[tile_pos.x * tilemap.col + tile_pos.y].alpha = true;
+			}
+			
+			else if rmbheld {
+				tilemap.tiles[tile_pos.x * tilemap.col + tile_pos.y].alpha = false;
 			}
 			
 			for y: 0 .. tilemap.row - 1{
@@ -389,6 +411,11 @@ main :: () {
 					
 				}
 			}
+			
+			map_outline := r.push_rect2(*sprite_batches, rectF32(32, 32, (tilemap.col - 1)* 32, (tilemap.row - 1) * 32), .{0, 0, 0, 0});
+			map_outline.border_color = r.COLOR_ORANGE;
+			map_outline.border_thickness = 4;
+			
 			
 		}
 		

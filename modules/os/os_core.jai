@@ -175,6 +175,13 @@ poll_events :: () -> EventList {
 			event.mpos.x = xx sdl_event.button.x;
 			event.mpos.y = xx sdl_event.button.y;
 			
+			case SDL_MOUSEBUTTONUP;
+			event := push_event(*out);
+			event.kind = .Released;
+			event.key = key_from_sym(xx sdl_event.button.button);
+			event.mpos.x = xx sdl_event.button.x;
+			event.mpos.y = xx sdl_event.button.y;
+			
 			case SDL_MOUSEMOTION;
 			event := push_event(*out);
 			event.kind = .MouseMove;
