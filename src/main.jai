@@ -5,7 +5,6 @@
 #import "Math";
 #import "File";
 r :: #import "render";
-ui :: #import "ui";
 
 // @debug
 mpos : Vector2;
@@ -26,8 +25,8 @@ Tile :: struct {
 };
 
 Tilemap :: struct {
-	row :: 10;
-	col :: 10;
+	row :: 50;
+	col :: 50;
 	tiles : [col * row]Tile;
 	image : r.Handle;
 	uv_col :: 8;
@@ -37,19 +36,6 @@ Tilemap :: struct {
 tilemap : Tilemap;
 
 #import "Random";
-draw_children :: (root : *ui.Widget) {
-	
-	print("%\n", root.pref_size);
-	
-	{
-		child :=  root.first;
-		while child {
-			draw_children(child);
-			child = child.next;
-		}
-		
-	}
-}
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -59,8 +45,6 @@ main :: () {
 	win := os.open_window("winter steam game", 960, 540);
 	
 	r.init();
-	
-	ui_cxt := ui.init();
 	
 	quit : bool;
 	
@@ -129,20 +113,6 @@ main :: () {
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
-		
-		/*
-		ui.begin(ui_cxt);
-		ui.label(ui_cxt, "hello");
-		ui.label(ui_cxt, "hello");
-		ui.label(ui_cxt, "hello");
-		
-		ui.layout(ui_cxt.root);
-		
-		print("----\n");
-		draw_children(ui_cxt.root);
-		print("----\n");
-		ui.end(ui_cxt);
-		*/
 		
 		ui_batches : r.BatchList;
 		sprite_batches : r.BatchList;
@@ -480,7 +450,7 @@ main :: () {
 		}
 		
 		// @debug text
-		text := tprint("mpos: %\nwmpos:{% %}\ntpos:%", mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
+		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
 		
 		text_pos : Vector2 = .{0, 0};
 		text_size := 0.4;
@@ -545,5 +515,20 @@ disco_tilemap :: (sprite_batches : *r.BatchList) {
 			tile_rect := r.push_rect2(sprite_batches, dst, color);
 			tile_rect.radius = 16;
 		}
+	}
+}
+
+ui :: #import "ui";
+draw_children :: (root : *ui.Widget) {
+	
+	print("%\n", root.pref_size);
+	
+	{
+		child :=  root.first;
+		while child {
+			draw_children(child);
+			child = child.next;
+		}
+		
 	}
 }

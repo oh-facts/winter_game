@@ -41,8 +41,8 @@ Rect2 :: struct {
 Batch :: struct {
 	base : *u8;
 	count : u32;
-	size : u32;
-	cap : u32;
+	size : s64;
+	cap : s64;
 	next : *Batch;
 };
 
@@ -52,7 +52,7 @@ BatchList :: struct {
 	count : u32;
 };
 
-push_batch :: (list : *BatchList, cap : u32) -> *Batch {
+push_batch :: (list : *BatchList, cap : s64) -> *Batch {
 	out : *Batch = talloc(size_of(Batch));
 	<< out = .{};
 	
@@ -80,7 +80,7 @@ push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> *Rect2 {
 	batch := list.last;
 	
 	if !batch || (batch.cap < batch.size + size_of(Rect2)) {
-		batch = push_batch(list, 1024);
+		batch = push_batch(list, xx MB(1));
 		// set state params
 	}
 	
