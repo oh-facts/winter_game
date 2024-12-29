@@ -151,6 +151,11 @@ main :: () {
 				disco_tilemap(*sprite_batches);
 			}
 			
+			map_outline := r.push_rect2(*sprite_batches, rectF32(32, 32, (tilemap.col - 1)* 32, (tilemap.row - 1) * 32), .{0, 0, 0, 0});
+			map_outline.border_color = r.COLOR_BLACK;
+			map_outline.border_thickness = 4;
+			
+			
 			mb_event := os.event(*events, .LMB, .Pressed);
 			mclick : bool;
 			
@@ -236,6 +241,8 @@ main :: () {
 							out : Vector2i;
 							
 							if bitmask == {
+								
+								// common 16 =========
 								case 28; out = .{0, 0};
 								case 31; out = .{0, 1};
 								case 7; out = .{0, 2};
@@ -248,7 +255,76 @@ main :: () {
 								case 241; out = .{2, 1};
 								case 193; out = .{2, 2};
 								
+								// =========== common 9
+								case 16; out = .{3, 0};
+								case 17; out = .{3, 1};
+								case 1; out = .{3, 2};
 								
+								case 4; out = .{0, 3};
+								case 68; out = .{1, 3};
+								case 64; out = .{2, 3};
+								
+								case 0; out = .{3, 3};
+								
+								// ========== common 16
+								
+								// 2 adj sides + opp corner
+								case 20; out = .{4, 0}; 
+								case 80; out = .{5, 0};
+								case 5; out = .{4, 1};
+								case 65; out = .{5, 1};
+								// ===================
+								
+								// 1 side + 2 corners
+								case 84; out = .{6, 0};
+								case 69; out = .{7, 0};
+								case 21; out = .{6, 1};
+								case 81; out = .{7, 1};
+								// ==================
+								
+								// 1 corner
+								case 247; out = .{4, 2};
+								case 223; out = .{5, 2};
+								case 253; out = .{4, 3};
+								case 127; out = .{5, 3};
+								// =========
+								
+								// 2 corner
+								case 215; out = .{6, 2};
+								case 125; out = .{7, 2};
+								case 245; out = .{6, 3};
+								case 95; out = .{7, 3};
+								// ========
+								
+								// l/r side + 1 corner
+								case 29; out = .{0, 4};
+								case 113; out = .{1, 4};
+								case 23; out = .{0, 5};
+								case 209; out = .{1, 5};
+								// ====
+								
+								//t/d side + 1 corner 
+								case 92; out = .{2, 4};
+								case 116; out = .{3, 4};
+								case 71; out = .{2, 5};
+								case 197; out = .{3, 5};
+								// =====
+								
+								// 3 corners ==========
+								case 93; out = .{4, 4};
+								case 117; out = .{5, 4};
+								case 87; out = .{4, 5};
+								case 213; out = .{5, 5};
+								// ===
+								
+								// opposite corners ====
+								case 221; out = .{6, 4};
+								case 119; out = .{6, 5};
+								// ====
+								
+								// 4 corners ====
+								case 85; out = .{7, 4};
+								// ====
 								
 								case; out = .{1, 1};
 							}
@@ -285,12 +361,11 @@ main :: () {
 						tile_rect.src = src;
 						
 						
-						//print("%\n", bitmask);
+						print("%\n", bitmask);
 						
 					}
 				}
 			}
-			
 		}
 		
 		// player
