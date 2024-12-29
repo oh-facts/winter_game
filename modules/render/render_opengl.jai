@@ -101,20 +101,20 @@ init :: () {
 	state.white_square = image(bmp);
 }
 
-submit :: (win : os.Handle, ui_batches : BatchList, sprite_batches : BatchList, screen_offset := Vector2.{0, 0}) {
-	glViewport(0, 0, xx 960, xx 540);
+submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprite_batches : BatchList, screen_offset := Vector2.{0, 0}) {
+	
+	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
 	glClearColor(1., 0, 1., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
-	win_size_float : Vector2 = .{960, 540};
 	
 	// scene buffer
 	{
 		scene_data : SceneData;
-		scene_data.screen_size = .{960, 540};
+		scene_data.screen_size = .{screen_size.x, screen_size.y};
 		scene_data.screen_offset = screen_offset;
 		
 		using state;

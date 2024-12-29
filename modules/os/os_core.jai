@@ -136,7 +136,7 @@ init :: () {
 open_window :: (title : string, w : s32, h : s32) -> Handle {
 	out : Handle;
 	
-	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	glContext := SDL_GL_CreateContext(sdl_win);
 	out.U64[0] = xx sdl_win;
 	out.U64[1] = xx glContext;
@@ -196,39 +196,53 @@ poll_events :: () -> EventList {
 key_from_sym :: (sym : SDL_Keycode) -> Key{
 	out : Key = .NULL;
 	
-	if sym == SDLK_ESCAPE out = .ESC;
-	else if sym == SDLK_a out = .A;
-	else if sym == SDLK_b out = .B;
-	else if sym == SDLK_c out = .C;
-	else if sym == SDLK_d out = .D;
-	else if sym == SDLK_e out = .E;
-	else if sym == SDLK_f out = .F;
-	else if sym == SDLK_g out = .G;
-	else if sym == SDLK_h out = .H;
-	else if sym == SDLK_i out = .I;
-	else if sym == SDLK_j out = .J;
-	else if sym == SDLK_k out = .K;
-	else if sym == SDLK_l out = .L;
-	else if sym == SDLK_m out = .M;
-	else if sym == SDLK_n out = .N;
-	else if sym == SDLK_o out = .O;
-	else if sym == SDLK_p out = .P;
-	else if sym == SDLK_q out = .Q;
-	else if sym == SDLK_r out = .R;
-	else if sym == SDLK_s out = .S;
-	else if sym == SDLK_t out = .T;
-	else if sym == SDLK_u out = .U;
-	else if sym == SDLK_v out = .V;
-	else if sym == SDLK_w out = .W;
-	else if sym == SDLK_x out = .X;
-	else if sym == SDLK_y out = .Y;
-	else if sym == SDLK_z out = .Z;
+	if sym == {
+		case SDLK_ESCAPE; out = .ESC;
+		case SDLK_a; out = .A;
+		case SDLK_b; out = .B;
+		case SDLK_c; out = .C;
+		case SDLK_d; out = .D;
+		case SDLK_e; out = .E;
+		case SDLK_f; out = .F;
+		case SDLK_g; out = .G;
+		case SDLK_h; out = .H;
+		case SDLK_i; out = .I;
+		case SDLK_j; out = .J;
+		case SDLK_k; out = .K;
+		case SDLK_l; out = .L;
+		case SDLK_m; out = .M;
+		case SDLK_n; out = .N;
+		case SDLK_o; out = .O;
+		case SDLK_p; out = .P;
+		case SDLK_q; out = .Q;
+		case SDLK_r; out = .R;
+		case SDLK_s; out = .S;
+		case SDLK_t; out = .T;
+		case SDLK_u; out = .U;
+		case SDLK_v; out = .V;
+		case SDLK_w; out = .W;
+		case SDLK_x; out = .X;
+		case SDLK_y; out = .Y;
+		case SDLK_z; out = .Z;
+		
+		case SDL_BUTTON_LEFT; out = .LMB;
+		case SDL_BUTTON_RIGHT; out = .RMB;
+		
+		case SDLK_SPACE; out = .SPACE;
+		case SDLK_LCTRL; out = .LCTRL;
+		case SDLK_TAB; out = .TAB;
+	}
 	
-	else if sym == SDL_BUTTON_LEFT out = .LMB;
-	else if sym == SDL_BUTTON_RIGHT out = .RMB;
+	return out;
+}
+
+get_window_size :: (win : Handle) -> Vector2 {
+	sdl_win : *SDL_Window = xx win.U64[0];
 	
-	else if sym == SDLK_SPACE out = .SPACE;
+	w : s32;
+	h : s32;
+	SDL_GetWindowSize(sdl_win, xx *w, xx *h);
 	
-	
+	out : Vector2 = .{xx w, xx h};
 	return out;
 }

@@ -9,10 +9,12 @@ r :: #import "render";
 // @debug
 mpos : Vector2;
 wmpos : Vector2;
-lmbheld : bool;
-rmbheld : bool;
-
+lmb_held : bool;
+rmb_held : bool;
+lctrl_held : bool;
 tile_pos : Vector2i;
+brush_size : float32 = 1;
+grid_toggle : bool = true;
 
 Vector2i :: struct {
 	x : s32;
@@ -109,6 +111,7 @@ main :: () {
 		time_since_last := time_elapsed;
 		
 		events := os.poll_events();
+		win_size := os.get_window_size(win);
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
@@ -117,7 +120,7 @@ main :: () {
 		ui_batches : r.BatchList;
 		sprite_batches : r.BatchList;
 		
-		// tilemap
+		// map editor
 		{
 			ifx 0 {
 				disco_tilemap(*sprite_batches);
@@ -125,48 +128,58 @@ main :: () {
 			
 			lmbdown_event := os.event(*events, .LMB, .Pressed);
 			rmbdown_event := os.event(*events, .RMB, .Pressed);
+			lctrlup_event := os.event(*events, .LCTRL, .Pressed);
 			
 			lmbup_event := os.event(*events, .LMB, .Released);
 			rmbup_event := os.event(*events, .RMB, .Released);
+			lctrldown_event := os.event(*events, .LCTRL, .Released);
 			
 			mm_event := os.event(*events, .NULL, .MouseMove);
 			
-			lmbclick : bool;
-			rmbclick : bool;
+			lmb_click : bool;
+			rmb_click : bool;
 			
 			if lmbdown_event {
-				lmbclick = true; 
-				lmbheld = true;
+				lmb_click = true; 
+				lmb_held = true;
 			}
 			
 			if lmbup_event {
-				lmbheld = false;
+				lmb_held = false;
+			}
+			
+			if lctrlup_event {
+				lctrl_held = true;
 			}
 			
 			if rmbdown_event {
-				rmbclick = true; 
-				rmbheld = true;
+				rmb_click = true; 
+				rmb_held = true;
 			}
 			
 			if rmbup_event {
-				rmbheld = false;
+				rmb_held = false;
+			}
+			
+			if lctrldown_event {
+				lctrl_held = false;
 			}
 			
 			if mm_event {
 				mpos = mm_event.mpos;
-				
-				wmpos.x = mpos.x + py_pos.x - 480;
-				wmpos.y = mpos.y + py_pos.y - 270;
-				
-				tile_pos.x = xx ((wmpos.x) / 32);
-				tile_pos.y = xx ((wmpos.y) / 32);
 			}
 			
-			if lmbheld {
+			wmpos.x = mpos.x + py_pos.x - win_size.x / 2.;
+			wmpos.y = mpos.y + py_pos.y - win_size.y / 2.;
+			
+			tile_pos.x = xx ((wmpos.x) / 32);
+			tile_pos.y = xx ((wmpos.y) / 32);
+			
+			// draw tile
+			if lmb_held {
 				tilemap.tiles[tile_pos.x * tilemap.col + tile_pos.y].alpha = true;
 			}
-			
-			else if rmbheld {
+			else if rmb_held{
 				tilemap.tiles[tile_pos.x * tilemap.col + tile_pos.y].alpha = false;
 			}
 			
@@ -355,37 +368,42 @@ main :: () {
 						tile_rect.tex_id = tilemap.image.U64[1];
 						tile_rect.src = src;
 						
-						
 						//print("%\n", bitmask);
-						
 					}
 				}
 			}
 			
 			// grid outline
 			
-			for y: 1 .. tilemap.row - 1 - 1 {
-				for x: 1 .. tilemap.col - 1 - 1 {
-					
-					tile := tilemap.tiles[x * tilemap.col + y];
-					
-					dst : RectF32;
-					dst.min.x = xx (x * 32);
-					dst.min.y = xx (y * 32);
-					dst.max.x = dst.min.x + 32;
-					dst.max.y = dst.min.y + 32;
-					
-					tile_rect := r.push_rect2(*sprite_batches, dst, .{});
-					tile_rect.border_thickness = 4;
-					tile_rect.border_color = r.COLOR_BLACK;
-					
+			if os.event(*events, .TAB, .Pressed) {
+				grid_toggle = !grid_toggle;
+			}
+			
+			if grid_toggle {
+				for y: 1 .. tilemap.row - 1 - 1 {
+					for x: 1 .. tilemap.col - 1 - 1 {
+						tile := tilemap.tiles[x * tilemap.col + y];
+						
+						dst : RectF32;
+						dst.min.x = xx (x * 32);
+						dst.min.y = xx (y * 32);
+						dst.max.x = dst.min.x + 32;
+						dst.max.y = dst.min.y + 32;
+						
+						tile_rect := r.push_rect2(*sprite_batches, dst, .{});
+						tile_rect.border_thickness = 4;
+						tile_rect.border_color = r.COLOR_BLACK;
+					}
 				}
 			}
 			
+			// map outline
 			map_outline := r.push_rect2(*sprite_batches, rectF32(32, 32, (tilemap.col - 1)* 32, (tilemap.row - 1) * 32), .{0, 0, 0, 0});
 			map_outline.border_color = r.COLOR_ORANGE;
 			map_outline.border_thickness = 4;
 			
+			// preview draw tile
+			r.push_rect2(*sprite_batches, rectF32(tile_pos.x * 32., tile_pos.y * 32., tile_pos.x * 32. + 32., tile_pos.y * 32. + 32.), .{0, 0, 0, 1});
 			
 		}
 		
@@ -469,7 +487,7 @@ main :: () {
 		test := r.push_rect2(*ui_batches, ell_rect, .{1, 1, 1, 1});
 		test.tex_id = ell.U64[1];
 		test.radius = 40;
-		r.submit(win, ui_batches, sprite_batches, py_pos);
+		r.submit(win, win_size, ui_batches, sprite_batches, py_pos);
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
