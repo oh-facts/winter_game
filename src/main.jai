@@ -9,6 +9,7 @@ r :: #import "render";
 ell : r.Handle;
 font : *r.Font;
 
+#import "Random";
 #load "map_editor.jai";
 
 Vector2i :: struct {
@@ -16,35 +17,11 @@ Vector2i :: struct {
 	y : s32;
 }
 
-TileKind :: enum {
-	Debug1;
-	Debug2;
-	Debug3;
-	Debug4;
-	Debug5;
-	COUNT;
-};
-
-tile_kind_names : [TileKind.COUNT]string = .[ "debug 1", "grass on dirt", "dirt on grass", "dirt", "grass"]; 
-
-Tile :: struct {
-	//uv : Vector2i = .{1, 1};
-	image_index : s32;
-	alpha : bool;
-};
-
-Tilemap :: struct {
-	row :: 50;
-	col :: 50;
-	tiles : [col * row]Tile;
-	images : [5]r.Handle;
-	uv_col :: 8;
-	uv_row :: 6;
-};
-
-tilemap : Tilemap;
-
-#import "Random";
+Vector3i :: struct {
+	x : s32;
+	y : s32;
+	z: s32;
+}
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -102,8 +79,8 @@ main :: () {
 	counter : float32;
 	mv : Vector2;
 	
-	tilemap_paths : [5]string = .["art/tilemap-template.png", "art/tilemap-template2.png", "art/tilemap-test.png", "art/tilemap_test2.png", "art/tilemap_test3.png"];
-	tilemap_bmp : [5]Bitmap;
+	tilemap_paths : [4]string = .["art/tilemap-template16.png", "art/grass16.png", "art/props.png", "art/Tileset.png"];
+	tilemap_bmp : [4]Bitmap;
 	{
 		for tilemap_paths {
 			filename := tprint("%/%", data_folder, it);
@@ -180,7 +157,7 @@ main :: () {
 			width := 1.0 / 8.0;
 			index := (xx (counter * 10)) % 8;
 			
-			py_size := Vector2.{128, 128};
+			py_size := Vector2.{64, 64};
 			
 			py_dst : RectF32;
 			py_dst.min.x = py_pos.x;
@@ -218,13 +195,14 @@ main :: () {
 
 // @debug
 disco_tilemap :: (sprite_batches : *r.BatchList) {
+	tile_size :: 64;
 	for y: 0 .. 64 {
 		for x: 0 .. 64 {
 			dst : RectF32;
-			dst.min.x = xx (x * 32);
-			dst.min.y = xx (y * 32);
-			dst.max.x = dst.min.x + 32;
-			dst.max.y = dst.min.y + 32;
+			dst.min.x = xx (x * tile_size);
+			dst.min.y = xx (y * tile_size);
+			dst.max.x = dst.min.x + tile_size;
+			dst.max.y = dst.min.y + tile_size;
 			
 			colors := Vector4.[r.COLOR_BLACK,
 												 r.COLOR_RED,
@@ -237,7 +215,7 @@ disco_tilemap :: (sprite_batches : *r.BatchList) {
 			color := colors[(x + y) % colors.count];
 			
 			tile_rect := r.push_rect2(sprite_batches, dst, color);
-			tile_rect.radius = 16;
+			//tile_rect.radius = 16;
 		}
 	}
 }

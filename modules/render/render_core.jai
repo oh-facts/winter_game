@@ -188,7 +188,7 @@ push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, siz
 	}
 }
 
-get_text_rect:: (font : Font, text : string, _pos : Vector2, size : float32) -> RectF32{
+get_text_rect :: (font : Font, text : string, _pos : Vector2, size : float32) -> RectF32{
 	pos := _pos;
 	pos.y += (font.ascent + font.descent) * size;
 	

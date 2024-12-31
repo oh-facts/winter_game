@@ -46,6 +46,7 @@ EventKind :: enum {
 	Pressed;
 	Released;
 	MouseMove;
+	Scroll;
 	CloseRequested;
 };
 
@@ -56,6 +57,7 @@ Event :: struct {
 	kind : EventKind;
 	win : Handle;
 	mpos : Vector2;
+	wheel : int;
 };
 
 EventList :: struct {
@@ -187,6 +189,11 @@ poll_events :: () -> EventList {
 			event.kind = .MouseMove;
 			event.mpos.x = xx sdl_event.motion.x;
 			event.mpos.y = xx sdl_event.motion.y;
+			
+			case SDL_MOUSEWHEEL;
+			event := push_event(*out);
+			event.kind = .Scroll;
+			event.wheel = sdl_event.wheel.y;
 		}
 	}
 	

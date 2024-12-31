@@ -110,7 +110,6 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 	glClearColor(1., 0, 1., 1.);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
-	
 	// scene buffer
 	{
 		scene_data : SceneData;
