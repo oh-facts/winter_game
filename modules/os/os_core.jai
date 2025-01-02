@@ -37,6 +37,7 @@ Key :: enum {
 	CAPS;
 	ENTER;
 	SPACE;
+	DEL;
 	
 	ESC;
 };
@@ -238,6 +239,7 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 		case SDLK_SPACE; out = .SPACE;
 		case SDLK_LCTRL; out = .LCTRL;
 		case SDLK_TAB; out = .TAB;
+		case SDLK_DELETE; out = .DEL;
 	}
 	
 	return out;

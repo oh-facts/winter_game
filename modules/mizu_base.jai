@@ -3,6 +3,17 @@ os :: #import "os";
 #import "stb_image";
 #import "Math";
 
+Vector2i :: struct {
+	x : s32;
+	y : s32;
+}
+
+Vector3i :: struct {
+	x : s32;
+	y : s32;
+	z: s32;
+}
+
 u128 :: struct {
 	U64 : [2]u64;
 };
@@ -10,6 +21,11 @@ u128 :: struct {
 RectF32 :: struct {
 	min : Vector2;
 	max : Vector2;
+};
+
+RectS32 :: struct {
+	min : Vector2i;
+	max : Vector2i;
 };
 
 rectF32 :: (min_x : float32, min_y : float32, max_x : float32, max_y : float32) -> RectF32 {

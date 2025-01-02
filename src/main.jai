@@ -12,16 +12,10 @@ font : *r.Font;
 #import "Random";
 #load "map_editor.jai";
 
-Vector2i :: struct {
-	x : s32;
-	y : s32;
-}
-
-Vector3i :: struct {
-	x : s32;
-	y : s32;
-	z: s32;
-}
+cam_wheld : bool;
+cam_aheld : bool;
+cam_sheld : bool;
+cam_dheld : bool;
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -77,7 +71,6 @@ main :: () {
 	impolo_art := r.image(impolo_bmp, .NEAREST);
 	py_pos : Vector2;
 	counter : float32;
-	mv : Vector2;
 	
 	tilemap_paths : [4]string = .["art/tilemap-template16.png", "art/grass16.png", "art/props.png", "art/Tileset.png"];
 	tilemap_bmp : [4]Bitmap;
@@ -112,40 +105,57 @@ main :: () {
 		
 		// player
 		{
+			mv : Vector2;
 			if(os.event(*events, .W, .Pressed))
 			{
-				mv.y += -1;
+				cam_wheld = true;
 			}
 			else if(os.event(*events, .W, .Released))
 			{
-				mv.y -= -1;
+				cam_wheld = false;
 			}
 			
 			if(os.event(*events, .A, .Pressed))
 			{
-				mv.x += -1;
+				cam_aheld = true;
 			}
 			else if(os.event(*events, .A, .Released))
 			{
-				mv.x -= -1;
+				cam_aheld = false;
 			}
 			
 			if(os.event(*events, .D, .Pressed))
 			{
-				mv.x += 1;
+				cam_dheld = true;
 			}
 			else if(os.event(*events, .D, .Released))
 			{
-				mv.x -= 1;
+				cam_dheld = false;
 			}
 			
 			if(os.event(*events, .S, .Pressed))
 			{
-				mv.y += 1;
+				cam_sheld = true;
 			}
 			else if(os.event(*events, .S, .Released))
 			{
+				cam_sheld = false;
+			}
+			
+			if cam_wheld {
 				mv.y -= 1;
+			}
+			
+			if cam_aheld {
+				mv.x -= 1;
+			}
+			
+			if cam_sheld {
+				mv.y += 1;
+			}
+			
+			if cam_dheld {
+				mv.x += 1;
 			}
 			
 			py_speed :: 300.;
