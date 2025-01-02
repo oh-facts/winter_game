@@ -1,6 +1,7 @@
 ToolKind :: enum {
 	Select;
 	Paint;
+	Move;
 }
 
 Tool :: struct {
@@ -8,7 +9,7 @@ Tool :: struct {
 	name : string;
 };
 
-tools : [2]Tool : .[.{kind = .Select, name = "select"}, .{kind = .Paint, name = "paint"}];
+tools : [3]Tool : .[.{kind = .Select, name = "select"}, .{kind = .Paint, name = "paint"}, .{kind = .Move, name = "move"}];
 
 Tile :: struct {
 	paint_index : s32;
@@ -77,11 +78,10 @@ tilemap_rect : RectF32;
 
 tile_select_range : RectS32;
 selection_yes := false;
-
-move_wheld : bool;
-move_aheld : bool;
-move_sheld : bool;
-move_dheld : bool;
+move_start : Vector3i;
+move_end : Vector3i;
+moving_started := false;
+moving_yes := false;
 
 editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, cam_size : Vector2, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	
@@ -396,135 +396,132 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 			tile_rect.src = src;
 			
 		}
-	}
-	
-	// preview selection
-	if selection_yes {
-		for y : tile_select_range.min.y .. tile_select_range.max.y {
-			for x : tile_select_range.min.x .. tile_select_range.max.x {
-				
-				tile := tile_from_index(x, y, 0);
-				
-				if tile.alpha {
-					dst : RectF32;
-					dst.min.x = xx (x * tilemap.tile_size);
-					dst.min.y = xx (y * tilemap.tile_size);
-					dst.max.x = dst.min.x + tilemap.tile_size;
-					dst.max.y = dst.min.y + tilemap.tile_size;
-					
-					r.push_rect2(sprite_batches, dst, .{0, 0, 1, 0.3});
-				}
-			}
-		}
 		
-		// delete selection
-		if os.event(events, .DEL, .Pressed) {
+		// preview selection
+		if selection_yes {
 			for y : tile_select_range.min.y .. tile_select_range.max.y {
 				for x : tile_select_range.min.x .. tile_select_range.max.x {
 					
 					tile := tile_from_index(x, y, 0);
-					tile.alpha = false;
-				}
-			}
-			selection_yes = false;
-		}
-		
-		// move selection
-		move_wheld : bool;
-		move_aheld : bool;
-		move_sheld : bool;
-		move_dheld : bool;
-		
-		if(os.event(events, .W, .Pressed))
-		{
-			move_wheld = true;
-		}
-		else if(os.event(events, .W, .Released))
-		{
-			move_wheld = false;
-		}
-		
-		if(os.event(events, .A, .Pressed))
-		{
-			move_aheld = true;
-		}
-		else if(os.event(events, .A, .Released))
-		{
-			move_aheld = false;
-		}
-		
-		if(os.event(events, .D, .Pressed))
-		{
-			move_dheld = true;
-		}
-		else if(os.event(events, .D, .Released))
-		{
-			move_dheld = false;
-		}
-		
-		if(os.event(events, .S, .Pressed))
-		{
-			move_sheld = true;
-		}
-		else if(os.event(events, .S, .Released))
-		{
-			move_sheld = false;
-		}
-		
-		mv : Vector2i;
-		
-		if move_wheld {
-			mv.y -= 1;
-		}
-		
-		if move_aheld {
-			mv.x -= 1;
-		}
-		
-		if move_sheld {
-			mv.y += 1;
-		}
-		
-		if move_dheld {
-			mv.x += 1;
-		}
-		
-		//selection_yes = false;
-		if mv.x != 0 || mv.y != 0 {
-			
-			if mv.x > 0 || mv.y > 0 {
-				for #v2 < y : tile_select_range.min.y + mv.y .. tile_select_range.max.y + mv.y {
-					for #v2 < x : tile_select_range.min.x + mv.x.. tile_select_range.max.x + mv.x {
+					
+					if tile.alpha {
+						dst : RectF32;
+						dst.min.x = xx (x * tilemap.tile_size);
+						dst.min.y = xx (y * tilemap.tile_size);
+						dst.max.x = dst.min.x + tilemap.tile_size;
+						dst.max.y = dst.min.y + tilemap.tile_size;
 						
-						tile1 := tile_from_index(x - mv.x, y - mv.y, 0);
-						tile2 := tile_from_index(x, y, 0);
-						
-						<< tile2 = << tile1;
-						<< tile1 = .{};
-					}
-				}
-			}
-			else if mv.x < 0 || mv.y < 0 {
-				for y : tile_select_range.min.y + mv.y .. tile_select_range.max.y + mv.y {
-					for x : tile_select_range.min.x + mv.x.. tile_select_range.max.x + mv.x {
-						
-						tile1 := tile_from_index(x - mv.x, y - mv.y, 0);
-						tile2 := tile_from_index(x, y, 0);
-						
-						<< tile2 = << tile1;
-						<< tile1 = .{};
+						r.push_rect2(sprite_batches, dst, .{0, 0, 1, 0.3});
 					}
 				}
 			}
 			
-			tile_select_range.min.x += mv.x;
-			tile_select_range.min.y += mv.y;
-			tile_select_range.max.x += mv.x;
-			tile_select_range.max.y += mv.y;
-		}
-		
-		if os.event(events, .RMB, .Pressed) {
-			selection_yes = false;
+			// delete selection
+			if os.event(events, .DEL, .Pressed) {
+				for y : tile_select_range.min.y .. tile_select_range.max.y {
+					for x : tile_select_range.min.x .. tile_select_range.max.x {
+						
+						tile := tile_from_index(x, y, 0);
+						tile.alpha = false;
+					}
+				}
+				selection_yes = false;
+			}
+			
+			if active_tool_index == xx ToolKind.Move {
+				if lmb_down {
+					move_start = tile_pos;
+					moving_started = true;
+				}
+				
+				if lmb_up {
+					move_end = tile_pos;
+					moving_yes = true;
+					moving_started = false;
+				}
+			}
+			
+			if moving_started {
+				mv := tile_pos - move_start;
+				
+				for y : tile_select_range.min.y .. tile_select_range.max.y {
+					for x : tile_select_range.min.x .. tile_select_range.max.x {
+						
+						tile1 := tile_from_index(x, y, 0);
+						tile2 := tile_from_index(x + mv.x, y + mv.y, 0);
+						
+						if tile1.alpha {
+							dst := tile_rect_from_index(x + mv.x, y + mv.y, 0);
+							r.push_rect2(sprite_batches, dst, r.COLOR_ORANGE);
+						}
+					}
+				}
+			}
+			
+			if moving_yes && active_tool_index == xx ToolKind.Move{
+				mv := move_end - move_start;
+				
+				for y : tile_select_range.min.y .. tile_select_range.max.y {
+					for x : tile_select_range.min.x .. tile_select_range.max.x {
+						
+						tile1 := tile_from_index(x, y, 0);
+						
+						if tile1.alpha {
+							tile2 := tile_from_index(x + mv.x, y + mv.y, 0);
+							
+							<< tile2 = << tile1;
+							<< tile1 = .{};
+						}
+					}
+				}
+				
+				tile_select_range.min.x += mv.x;
+				tile_select_range.min.y += mv.y;
+				tile_select_range.max.x += mv.x;
+				tile_select_range.max.y += mv.y;
+				
+				moving_yes = false;
+			}
+			
+			/*
+			//selection_yes = false;
+			if mv.x != 0 || mv.y != 0 {
+				
+				if mv.x > 0 || mv.y > 0 {
+					for #v2 < y : tile_select_range.min.y + mv.y .. tile_select_range.max.y + mv.y {
+						for #v2 < x : tile_select_range.min.x + mv.x.. tile_select_range.max.x + mv.x {
+							
+							tile1 := tile_from_index(x - mv.x, y - mv.y, 0);
+							tile2 := tile_from_index(x, y, 0);
+							
+							<< tile2 = << tile1;
+							<< tile1 = .{};
+						}
+					}
+				}
+				else if mv.x < 0 || mv.y < 0 {
+					for y : tile_select_range.min.y + mv.y .. tile_select_range.max.y + mv.y {
+						for x : tile_select_range.min.x + mv.x.. tile_select_range.max.x + mv.x {
+							
+							tile1 := tile_from_index(x - mv.x, y - mv.y, 0);
+							tile2 := tile_from_index(x, y, 0);
+							
+							<< tile2 = << tile1;
+							<< tile1 = .{};
+						}
+					}
+				}
+				
+				tile_select_range.min.x += mv.x;
+				tile_select_range.min.y += mv.y;
+				tile_select_range.max.x += mv.x;
+				tile_select_range.max.y += mv.y;
+			}
+			*/
+			if os.event(events, .RMB, .Pressed) {
+				selection_yes = false;
+			}
+			
 		}
 		
 	}
@@ -576,6 +573,8 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	text = tprint("%", tile_select_range);
 	ui_label(.{0, 0, 3}, text);
 	
+	text = tprint("% %", move_start, move_end);
+	ui_label(.{0, 0, 4}, text);
 	
 }
 
@@ -915,6 +914,12 @@ ui_label :: (id : UI_ID, text : string, text_size := 0.4) -> Signal {
 
 tile_rect_from_index :: (pos : Vector3i) -> RectF32{
 	out := rectF32(cast(float32) pos.x * tilemap.tile_size, cast(float32) pos.y * tilemap.tile_size, cast(float32) pos.x * tilemap.tile_size + tilemap.tile_size, cast(float32) pos.y * tilemap.tile_size + tilemap.tile_size);
+	
+	return out;
+}
+
+tile_rect_from_index :: (x : s32, y : s32, z : s32) -> RectF32{
+	out := rectF32(cast(float32) x * tilemap.tile_size, cast(float32) y * tilemap.tile_size, cast(float32) x * tilemap.tile_size + tilemap.tile_size, cast(float32) y * tilemap.tile_size + tilemap.tile_size);
 	
 	return out;
 }

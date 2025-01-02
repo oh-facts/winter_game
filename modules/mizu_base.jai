@@ -14,6 +14,14 @@ Vector3i :: struct {
 	z: s32;
 }
 
+operator - :: (a : Vector3i, b : Vector3i) -> Vector3i {
+	out : Vector3i;
+	out.x = a.x - b.x;
+	out.y = a.y - b.y;
+	out.z = a.z - b.z;
+	return out;
+}
+
 u128 :: struct {
 	U64 : [2]u64;
 };
