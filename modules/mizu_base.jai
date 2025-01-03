@@ -14,6 +14,14 @@ Vector3i :: struct {
 	z: s32;
 }
 
+operator + :: (a : Vector3i, b : Vector3i) -> Vector3i {
+	out : Vector3i;
+	out.x = a.x + b.x;
+	out.y = a.y + b.y;
+	out.z = a.z + b.z;
+	return out;
+}
+
 operator - :: (a : Vector3i, b : Vector3i) -> Vector3i {
 	out : Vector3i;
 	out.x = a.x - b.x;
@@ -44,6 +52,16 @@ rectF32 :: (min_x : float32, min_y : float32, max_x : float32, max_y : float32) 
 	
 	out.max.x = max_x;
 	out.max.y = max_y;
+	
+	return out;
+}
+
+point_in_rect :: (point : Vector2, rect : RectF32) -> bool{
+	out : bool;
+	
+	if (point.x > rect.min.x) && (point.y > rect.min.y) && (point.x < rect.max.x) && (point.y < rect.max.y) {
+		out = true;
+	}
 	
 	return out;
 }
@@ -154,12 +172,8 @@ push_struct :: (arena : *Arena, type : Type) -> *void #expand{
 	return arena_push_impl(arena, size_of(type));
 }
 
-push_array :: (arena : *Arena, type : Type, count : u64) -> [] Any #expand {
-	memory := arena_push_impl(arena, size_of(type) * count);
-	out : [] Any;
-	out.count = xx count;
-	out.data = memory;
-	return out;
+push_array :: (arena : *Arena, type : Type, count : u64) -> *void #expand{
+	return arena_push_impl(arena, size_of(type) * count);
 }
 
 // Isn't zeroed!
@@ -170,17 +184,6 @@ tpush_struct :: (type : Type) -> *Type #expand {
 tzpush_struct :: (type : Type) -> *void #expand{
 	out := tpush_struct(type);
 	memset(out, 0, size_of(type));
-	return out;
-}
-
-// Isn't zeroed!
-tpush_array :: (type : Type, count : s64) -> [] Any {
-	memory := talloc(count * size_of(type));
-	
-	out : [] Any;
-	out.count = xx count;
-	out.data = memory;
-	
 	return out;
 }
 
@@ -202,7 +205,7 @@ bitmap :: (arena : *Arena, path : string) -> Bitmap {
 	out.w = w;
 	out.h = h;
 	out.n = 4;
-	out.data = push_array(arena, u8, xx (out.w * out.h * out.n)).data;
+	out.data = push_array(arena, u8, xx (out.w * out.h * out.n));
 	memcpy(out.data, bytes, out.w * out.h * out.n);
 	
 	stbi_image_free(bytes);

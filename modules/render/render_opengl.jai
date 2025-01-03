@@ -26,6 +26,16 @@ Image :: struct {
 	h : u32;
 };
 
+size_from_image :: (h : Handle) -> Vector2i {
+	img := h.U64[0];
+	
+	out : Vector2i;
+	out.x = img.w;
+	out.y = img.h;
+	
+	return out;
+}
+
 INST_BUFFER :: enum {
 	UI;
 	SPRITE;

@@ -8,8 +8,10 @@ r :: #import "render";
 
 ell : r.Handle;
 font : *r.Font;
+data_folder : string;
 
 #import "Random";
+#load "ui.jai";
 #load "map_editor.jai";
 
 cam_wheld : bool;
@@ -39,7 +41,7 @@ main :: () {
 	arena := arena_init();
 	
 	base_path := path_strip_filename(get_path_of_running_executable());
-	data_folder := join(base_path, "../data");
+	data_folder = join(base_path, "../data");
 	
 	{
 		filename := tprint("%/%", data_folder, "fonts/font.data");
@@ -71,16 +73,6 @@ main :: () {
 	impolo_art := r.image(impolo_bmp, .NEAREST);
 	py_pos : Vector2;
 	counter : float32;
-	
-	tilemap_paths : [4]string = .["art/tilemap-template16.png", "art/grass16.png", "art/props.png", "art/Tileset.png"];
-	tilemap_bmp : [4]Bitmap;
-	{
-		for tilemap_paths {
-			filename := tprint("%/%", data_folder, it);
-			tilemap_bmp[it_index] = bitmap(arena, filename);
-			tilemap.images[it_index] = r.image(tilemap_bmp[it_index], .NEAREST);
-		}
-	}
 	
 	while !quit {
 		//print("%\n", frames);
