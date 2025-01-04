@@ -411,7 +411,7 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 			default_text_color = r.COLOR_ORANGE;
 		}
 		
-		signal := ui_label(.{0, it_index, 1}, text);
+		signal := ui_button(.{0, it_index, 1}, text);
 		
 		default_text_color = r.COLOR_WHITE;
 		
@@ -428,7 +428,7 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 					default_text_color = r.COLOR_ORANGE;
 				}
 				
-				if(ui_label(.{0, it_index, 2}, text).active) {
+				if(ui_button(.{0, it_index, 2}, text).active) {
 					active_paint_index = xx it_index;
 				}
 				
@@ -446,12 +446,12 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	ui_label(.{0, 0, 4}, text);
 	
 	text = tprint("save");
-	if ui_label(.{0, 0, 5}, text).active {
+	if ui_button(.{0, 0, 5}, text).active {
 		save_tilemap();
 	}
 	
 	text = tprint("load");
-	if ui_label(.{0, 0, 6}, text).active {
+	if ui_button(.{0, 0, 6}, text).active {
 		load_tilemap();
 	}
 }
