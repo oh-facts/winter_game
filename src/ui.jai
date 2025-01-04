@@ -83,6 +83,18 @@ UI_Signal :: struct {
 	toggle : bool;
 };
 
+UI_Axis :: enum {
+	Y;
+	X;
+}
+
+UI_Layout :: struct {
+	text_pos : Vector2;
+	origin : Vector2;
+	rect_max : Vector2;
+	axis : UI_Axis; 
+};
+
 ui_cxt : struct {
 	hot : UI_ID = .{-1, -1, -1};
 	active : UI_ID = .{-1, -1, -1};
@@ -93,16 +105,12 @@ ui_cxt : struct {
 	x_layout :: 10;
 	cache : UI_Widget_Cache;
 	
-	origin : Vector2;
-	rect_max : Vector2;
-	
-	text_pos : Vector2;
-	
-	// titlebar
-	grabbed : bool;
-	titlebar_height :: 32;
-	last_mpos : Vector2;
+	using layout : *UI_Layout;
 };
+
+ui_select_layout :: (layout : *UI_Layout) {
+	ui_cxt.layout = layout;
+}
 
 ui_begin :: (batches : *r.BatchList, mouse_down : bool, mouse_up : bool) {
 	
@@ -111,60 +119,6 @@ ui_begin :: (batches : *r.BatchList, mouse_down : bool, mouse_up : bool) {
 	ui_cxt.mouse_up = mouse_up;
 	ui_cxt.hot = .{-1, -1, -1};
 	default_text_color = Vector4.{1, 1, 1, 1};
-	
-	// panel
-	{
-		ui_rect : RectF32;
-		ui_rect.min = ui_cxt.origin;
-		ui_rect.max = ui_cxt.rect_max + .{0, 4};
-		
-		bg := r.push_rect2(batches, ui_rect, .{0, 0, 0, 0.9});
-		bg.border_color = r.COLOR_WHITE;
-		bg.radius = 4;
-		bg.border_thickness = 2;
-	}
-	
-	ui_cxt.text_pos = ui_cxt.origin + .{4, 4};
-	
-	// titlebar
-	{
-		ui_rect : RectF32;
-		ui_rect.min = ui_cxt.origin;
-		ui_rect.max.x = ui_cxt.rect_max.x;
-		ui_rect.max.y = ui_rect.min.y + ui_cxt.titlebar_height;
-		
-		tb := r.push_rect2(batches, ui_rect, .{});
-		tb.border_color = r.COLOR_WHITE;
-		tb.radius = 4;
-		tb.border_thickness = 2;
-		
-		r.push_text(batches, font, "Map Editor", ui_cxt.text_pos, text_size);
-	}
-	
-	ui_cxt.text_pos += .{0, ui_cxt.titlebar_height};
-	
-	{
-		ui_rect : RectF32;
-		ui_rect.min = ui_cxt.origin;
-		ui_rect.max.x = ui_rect.min.x + ui_cxt.rect_max.x;
-		ui_rect.max.y = ui_rect.min.y + ui_cxt.titlebar_height;
-		if ui_cxt.mouse_down && point_in_rect(mpos, ui_rect) {
-			ui_cxt.grabbed = true;
-		}
-		
-		if ui_cxt.grabbed {
-			ui_cxt.origin += mpos - ui_cxt.last_mpos;
-			
-			if ui_cxt.mouse_up {
-				ui_cxt.grabbed = false;
-			}
-		}
-		
-	}
-	
-	ui_cxt.last_mpos = mpos;
-	ui_cxt.rect_max = .{};
-	
 }
 
 ui_begin_parent :: () {
@@ -235,22 +189,21 @@ ui_impl :: (id : UI_ID, text : string, flags : UI_WidgetFlags) -> UI_Signal {
 	
 	if flags & .Click {
 		bg := r.push_rect2(ui_cxt.batches, ext, .{});
-		bg.border_color = r.COLOR_BLACK;
+		bg.border_color = r.COLOR_WHITE;
 		bg.radius = 4;
-		bg.border_thickness = 4;
+		bg.border_thickness = 2;
 		text_pos.x += 16;
 	}
 	
 	r.push_text(ui_cxt.batches, font, text, text_pos, text_size, text_color);
 	
-	ui_cxt.text_pos.y = ext.max.y;
+	
+	if ui_cxt.axis == {
+		case .X;
+		ui_cxt.text_pos.x = ext.max.x;
+		case .Y;
+		ui_cxt.text_pos.y = ext.max.y;
+	}
 	
 	return out;
-}
-
-ui_panel_in_focus :: () -> bool {
-	ui_rect : RectF32;
-	ui_rect.min = ui_cxt.origin;
-	ui_rect.max = ui_cxt.rect_max;
-	return point_in_rect(mpos, ui_rect);
 }

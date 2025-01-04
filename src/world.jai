@@ -35,7 +35,9 @@ entity_alloc :: (flags : EntityFlags) -> *Entity {
 	return out;
 }
 
-world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList) {
+entity_window : *Editor_Window;
+
+world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	if !world_initialized {
 		world_initialized = true;
 		entity_store.arena = arena_init();
@@ -65,6 +67,8 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 			tree.frame_n = 0;
 			tree.origin = .{256, 380};
 		}
+		
+		entity_window = editor_init_window("entity inspector");
 	}
 	
 	// control
@@ -204,6 +208,12 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
+	editor_window_begin(ui_batches, entity_window);
+	
+	if !entity_window.hide {
+		text := tprint("Hello sailor");
+		ui_label(.{1, 0, 0}, text);
+	}
 }
 
 // @debug

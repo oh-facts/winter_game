@@ -59,10 +59,6 @@ load_tilemap :: () {
 	free (data);
 }
 
-mpos : Vector2;
-lmb_held : bool;
-rmb_held : bool;
-
 wmpos : Vector2;
 tile_pos : Vector3i;
 
@@ -95,6 +91,8 @@ moving_yes := false;
 ed_arena : *Arena;
 ed_initialized : bool;
 
+map_editor_window : *Editor_Window;
+
 editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, cam_size : Vector2, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	
 	if !ed_initialized {
@@ -108,6 +106,9 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 			tilemap.tiles.data = push_array(ed_arena, Tile, xx (count));
 			tilemap.tiles.count = count;
 		}
+		
+		map_editor_window = editor_init_window("map editor");
+		editor_set_window_pos(map_editor_window, .{800, 0});
 	}
 	
 	// draw tilemap
@@ -189,32 +190,10 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	}
 	
 	// TODO(mizu): i don't want events to be shared like this.
-	lmbdown_event := os.event(events, .LMB, .Pressed);
-	lmbup_event := os.event(events, .LMB, .Released);
-	
-	mm_event := os.event(events, .NULL, .MouseMove);
-	scroll_event := os.event(events, .NULL, .Scroll);
-	
 	if os.event(events, .TAB, .Pressed) {
 		grid_toggle = !grid_toggle;
 	}
-	
-	lmb_down : bool;
-	lmb_up : bool;
-	
-	if lmbdown_event {
-		lmb_held = true;
-		lmb_down = true;
-	}
-	
-	if lmbup_event {
-		lmb_held = false;
-		lmb_up = true;
-	}
-	
-	if mm_event {
-		mpos = mm_event.mpos;
-	}
+	scroll_event := os.event(events, .NULL, .Scroll);
 	
 	if scroll_event {
 		
@@ -236,7 +215,7 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	tile_pos.x = xx ((wmpos.x) / tilemap.tile_size);
 	tile_pos.y = xx ((wmpos.y) / tilemap.tile_size);
 	
-	tilemap_in_focus := !ui_panel_in_focus() && point_in_rect(wmpos, tilemap_rect);
+	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(wmpos, tilemap_rect);
 	
 	if tilemap_in_focus {
 		
@@ -399,60 +378,62 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	}
 	
 	// @panel
-	text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
+	editor_window_begin(ui_batches, map_editor_window);
 	
-	ui_begin(ui_batches, lmb_down, lmb_up);
-	ui_label(.{0, 0, 0}, text);
-	
-	for tools {
-		text = tprint("%", it.name);
+	if !map_editor_window.hide {
+		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
+		ui_label(.{0, 0, 0}, text);
 		
-		if(active_tool_index == xx it_index) {
-			default_text_color = r.COLOR_ORANGE;
-		}
-		
-		signal := ui_button(.{0, it_index, 1}, text);
-		
-		default_text_color = r.COLOR_WHITE;
-		
-		if(signal.active) {
-			active_tool_index = xx it_index;
-		}
-		
-		if(active_tool_index == xx ToolKind.Paint && (signal.id == .{0, xx ToolKind.Paint, 1})) {
-			ui_begin_parent();
-			for paints {
-				text = tprint("%", it.name);
-				
-				if(active_paint_index == xx it_index) {
-					default_text_color = r.COLOR_ORANGE;
-				}
-				
-				if(ui_button(.{0, it_index, 2}, text).active) {
-					active_paint_index = xx it_index;
-				}
-				
-				default_text_color = r.COLOR_WHITE;
-				
+		for tools {
+			text = tprint("%", it.name);
+			
+			if(active_tool_index == xx it_index) {
+				default_text_color = r.COLOR_ORANGE;
 			}
-			ui_end_parent();
+			
+			signal := ui_button(.{0, it_index, 1}, text);
+			
+			default_text_color = r.COLOR_WHITE;
+			
+			if(signal.active) {
+				active_tool_index = xx it_index;
+			}
+			
+			if(active_tool_index == xx ToolKind.Paint && (signal.id == .{0, xx ToolKind.Paint, 1})) {
+				ui_begin_parent();
+				for paints {
+					text = tprint("%", it.name);
+					
+					if(active_paint_index == xx it_index) {
+						default_text_color = r.COLOR_ORANGE;
+					}
+					
+					if(ui_button(.{0, it_index, 2}, text).active) {
+						active_paint_index = xx it_index;
+					}
+					
+					default_text_color = r.COLOR_WHITE;
+					
+				}
+				ui_end_parent();
+			}
 		}
-	}
-	
-	text = tprint("%", selection_buffer.count);
-	ui_label(.{0, 0, 3}, text);
-	
-	text = tprint("% %", move_start, move_end);
-	ui_label(.{0, 0, 4}, text);
-	
-	text = tprint("save");
-	if ui_button(.{0, 0, 5}, text).active {
-		save_tilemap();
-	}
-	
-	text = tprint("load");
-	if ui_button(.{0, 0, 6}, text).active {
-		load_tilemap();
+		
+		text = tprint("%", selection_buffer.count);
+		ui_label(.{0, 0, 3}, text);
+		
+		text = tprint("% %", move_start, move_end);
+		ui_label(.{0, 0, 4}, text);
+		
+		text = tprint("save");
+		if ui_button(.{0, 0, 5}, text).active {
+			save_tilemap();
+		}
+		
+		text = tprint("load");
+		if ui_button(.{0, 0, 6}, text).active {
+			load_tilemap();
+		}
 	}
 }
 

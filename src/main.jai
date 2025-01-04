@@ -28,8 +28,15 @@ pos_from_camera :: () -> Vector2 {
 	return out;
 }
 
+mpos : Vector2;
+lmb_held : bool;
+rmb_held : bool;
+lmb_down : bool;
+lmb_up : bool;
+
 #load "asset.jai";
 #load "ui.jai";
+#load "editor.jai";
 #load "map_editor.jai";
 #load "world.jai";
 
@@ -73,9 +80,33 @@ main :: () {
 		
 		cam_pos := pos_from_camera();
 		
+		lmbdown_event := os.event(*events, .LMB, .Pressed);
+		lmbup_event := os.event(*events, .LMB, .Released);
+		
+		mm_event := os.event(*events, .NULL, .MouseMove);
+		
+		lmb_down = false;
+		lmb_up = false;
+		
+		if lmbdown_event {
+			lmb_held = true;
+			lmb_down = true;
+		}
+		
+		if lmbup_event {
+			lmb_held = false;
+			lmb_up = true;
+		}
+		
+		if mm_event {
+			mpos = mm_event.mpos;
+		}
+		
+		ui_begin(*ui_batches, lmb_down, lmb_up);
+		
 		editor_update(xx delta, *events, cam_pos, win_size, *sprite_batches, *ui_batches);
 		
-		world_update(xx delta, *events, *sprite_batches);
+		world_update(xx delta, *events, *sprite_batches, *ui_batches);
 		
 		r.submit(win, win_size, ui_batches, sprite_batches, cam_pos);
 		
