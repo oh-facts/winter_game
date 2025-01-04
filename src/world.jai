@@ -1,6 +1,3 @@
-entry_start := 0;
-entry_count :: 5;
-
 EntityFlags :: enum_flags u64 {
 	Control;
 	Animated;
@@ -218,37 +215,41 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	
 	if !entity_window.hide {
 		
-		if scroll_up {
-			entry_start -= 1;
-		}
-		
-		else if scroll_down {
-			entry_start += 1;
-		}
-		
-		
 		builder: String_Builder;
 		builder.allocator = __temporary_allocator;
 		
 		ti := type_info(Entity);
-		for 0 .. entity_store.count - 1 {
-			entity := entity_store.first + it;
+		for i : 0 .. entity_store.count - 1 {
+			entity := entity_store.first + i;
 			//print("%", << entity);
 			
-			if (ui_button(.{1, it, 0}, entity.name).toggle) {
+			if (ui_button(.{1, i, 0}, entity.name).toggle) {
 				
 				ui_begin_parent();
 				
+				count := ti.members.count;
+				
+				scroll := *entity_window.entity_scrolls[i];
+				
+				if point_in_rect(mpos, scroll.rect) {
+					if scroll_up {
+						scroll.entry_start -= 1;
+					}
+					
+					else if scroll_down {
+						scroll.entry_start += 1;
+					}
+				}
+				
+				scroll.entry_start = max(scroll.entry_start, 0);
+				scroll.entry_start = min(scroll.entry_start, count - entry_count - 1);
+				
+				start := scroll.entry_start;
+				end := start + entry_count;
+				
+				scroll.rect.min = entity_window.layout.text_pos;
+				
 				for ti.members {
-					
-					count := ti.members.count;
-					
-					entry_start = max(entry_start, 0);
-					entry_start = min(entry_start, count - entry_count - 1);
-					
-					start := entry_start;
-					end := entry_start + entry_count;
-					
 					if it_index >= start && it_index <= end {
 						any: Any = ---;
 						any.type = it.type;
@@ -262,6 +263,8 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 						ui_label(.{1, 0, 0}, text);
 					}
 				}
+				
+				scroll.rect.max = entity_window.layout.rect_max;
 				ui_end_parent();
 				
 			}

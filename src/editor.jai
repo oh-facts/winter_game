@@ -1,6 +1,13 @@
 editor_windows : [2]Editor_Window;
 editor_windows_count : s32;
 
+entry_count :: 5;
+
+Editor_Scroll :: struct {
+	entry_start : int;
+	rect : RectF32;
+}
+
 Editor_Window :: struct {
 	layout : UI_Layout;
 	hide : bool;
@@ -10,6 +17,8 @@ Editor_Window :: struct {
 	titlebar_height :: 32;
 	last_mpos : Vector2;
 	id : s32;
+	
+	entity_scrolls : [2]Editor_Scroll;
 }
 
 editor_in_focus :: (window : Editor_Window) -> bool {
