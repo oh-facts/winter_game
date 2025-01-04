@@ -193,19 +193,16 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	if os.event(events, .TAB, .Pressed) {
 		grid_toggle = !grid_toggle;
 	}
-	scroll_event := os.event(events, .NULL, .Scroll);
 	
-	if scroll_event {
-		
-		if scroll_event.wheel > 0 {
-			tile_pos.z += 1;
-		}
-		
-		else if scroll_event.wheel < 0 {
-			tile_pos.z -= 1;
-		}
-		tile_pos.z = clamp(tile_pos.z, 0, 1);
+	
+	if scroll_up {
+		tile_pos.z += 1;
 	}
+	else if scroll_down {
+		tile_pos.z -= 1;
+	}
+	
+	tile_pos.z = clamp(tile_pos.z, 0, 1);
 	
 	// mouse coords -> world space coords
 	wmpos.x = mpos.x + cam_pos.x - cam_size.x / 2.;

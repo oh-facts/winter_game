@@ -1,3 +1,7 @@
+// TODO(mizu): I am thinking ui layer has keys instead of ids.
+// the editor layer can make use of owner, index, item, window id, etc. to make produce different keys. The question is, how do i resolve collisions? Since the ui layer wont know how the keys are produced? A) callback to resolve collisions. B) opaque ids?
+// so UI_ID becomes u32[6] for eg. and high level layers can adjust as they see fit. I like this idea more.
+
 text_size := 0.4;
 
 UI_WidgetFlags :: enum_flags u64 {

@@ -1,9 +1,13 @@
+entry_start := 0;
+entry_count :: 5;
+
 EntityFlags :: enum_flags u64 {
 	Control;
 	Animated;
 }
 
 Entity :: struct {
+	name : string;
 	flags : EntityFlags;
 	anim_counter : float32;
 	art_id : ArtId;
@@ -46,6 +50,7 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		// player
 		{
 			py := entity_alloc(.Control | .Animated);
+			py.name = "Player";
 			py.art_id = .Impolo;
 			py.speed = 300.;
 			py.size = .{64, 64};
@@ -59,6 +64,7 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		// tree
 		{
 			tree := entity_alloc(0);
+			tree.name = "tree";
 			tree.art_id = .Tree;
 			tree.speed = 300.;
 			tree.size = .{512, 512};
@@ -211,8 +217,55 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	editor_window_begin(ui_batches, entity_window);
 	
 	if !entity_window.hide {
-		text := tprint("Hello sailor");
-		ui_label(.{1, 0, 0}, text);
+		
+		if scroll_up {
+			entry_start -= 1;
+		}
+		
+		else if scroll_down {
+			entry_start += 1;
+		}
+		
+		
+		builder: String_Builder;
+		builder.allocator = __temporary_allocator;
+		
+		ti := type_info(Entity);
+		for 0 .. entity_store.count - 1 {
+			entity := entity_store.first + it;
+			//print("%", << entity);
+			
+			if (ui_button(.{1, it, 0}, entity.name).toggle) {
+				
+				ui_begin_parent();
+				
+				for ti.members {
+					
+					count := ti.members.count;
+					
+					entry_start = max(entry_start, 0);
+					entry_start = min(entry_start, count - entry_count - 1);
+					
+					start := entry_start;
+					end := entry_start + entry_count;
+					
+					if it_index >= start && it_index <= end {
+						any: Any = ---;
+						any.type = it.type;
+						any.value_pointer = cast(*u8)entity + it.offset_in_bytes;
+						
+						print_item_to_builder(*builder, any);
+						
+						field_name := builder_to_string(*builder,, allocator = __temporary_allocator);
+						
+						text := tprint("%: %", it.name, field_name);
+						ui_label(.{1, 0, 0}, text);
+					}
+				}
+				ui_end_parent();
+				
+			}
+		}
 	}
 }
 

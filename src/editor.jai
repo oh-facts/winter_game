@@ -89,6 +89,8 @@ editor_window_begin :: (batches : *r.BatchList, window : *Editor_Window) {
 	
 	// titlebar
 	
+	// SLOPPY(mizu) : Use some kind of layout stack so you can push and pop them and adjust their values accordingly
+	
 	layout : UI_Layout;
 	layout.text_pos = ly.text_pos;
 	layout.axis = .X;

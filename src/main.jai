@@ -33,6 +33,8 @@ lmb_held : bool;
 rmb_held : bool;
 lmb_down : bool;
 lmb_up : bool;
+scroll_up : bool;
+scroll_down : bool;
 
 #load "asset.jai";
 #load "ui.jai";
@@ -84,9 +86,12 @@ main :: () {
 		lmbup_event := os.event(*events, .LMB, .Released);
 		
 		mm_event := os.event(*events, .NULL, .MouseMove);
+		scroll_event := os.event(*events, .NULL, .Scroll);
 		
 		lmb_down = false;
 		lmb_up = false;
+		scroll_up = false;
+		scroll_down = false;
 		
 		if lmbdown_event {
 			lmb_held = true;
@@ -100,6 +105,18 @@ main :: () {
 		
 		if mm_event {
 			mpos = mm_event.mpos;
+		}
+		
+		if scroll_event {
+			
+			if scroll_event.wheel > 0 {
+				scroll_up = true;
+			}
+			
+			else if scroll_event.wheel < 0 {
+				scroll_down = true;
+			}
+			
 		}
 		
 		ui_begin(*ui_batches, lmb_down, lmb_up);
