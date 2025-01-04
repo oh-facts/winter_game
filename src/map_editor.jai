@@ -1,23 +1,3 @@
-ArtKind :: enum {
-	TerrainTemplate;
-	TerrainGrass;
-	PropsForest;
-	TilesForest;
-}
-
-Art :: struct {
-	kind : ArtKind;
-	name : string;
-	path : string;
-	tex : r.Handle;
-	bmp : Bitmap;
-}
-
-arts : [4]Art = .[.{kind = .TerrainTemplate, name = "terrain template", path = "art/terrain_template.png"}, 
-									.{kind = .TerrainGrass, name = "terrain grass", path = "art/terrain_grass.png"},
-									.{kind = .PropsForest, name = "forest props", path = "art/forest_props.png"},
-									.{kind = .TilesForest, name = "forest tiles", path = "art/forest_tileset.png"}];
-
 ToolKind :: enum {
 	Select;
 	Paint;
@@ -41,7 +21,7 @@ Tile :: struct {
 Paint :: struct {
 	name : string;
 	auto : bool;
-	art_id : ArtKind;
+	art_id : ArtId;
 	offset : Vector2i;
 };
 
@@ -120,13 +100,6 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	if !ed_initialized {
 		ed_initialized = true;
 		ed_arena = arena_init();
-		
-		// load map editor resources
-		for *arts {
-			filename := tprint("%/%", data_folder, it.path);
-			it.bmp = bitmap(ed_arena, filename);
-			it.tex = r.image(it.bmp, .NEAREST);
-		}
 		
 		// alloc tilemap memory
 		{
@@ -641,7 +614,7 @@ tile_from_index :: (index : Vector3i) -> *Tile {
 	return *tilemap.tiles[index.z * tilemap.row * tilemap.col + index.y * tilemap.col + index.x];
 }
 
-tile_rect_from_index :: (pos : Vector3i) -> RectF32{
+tile_rect_from_index :: (pos : Vector3i) -> RectF32 {
 	out := rectF32(cast(float32) pos.x * tilemap.tile_size, cast(float32) pos.y * tilemap.tile_size, cast(float32) pos.x * tilemap.tile_size + tilemap.tile_size, cast(float32) pos.y * tilemap.tile_size + tilemap.tile_size);
 	
 	return out;
