@@ -1,17 +1,17 @@
-EntityType :: enum {
+Entity_Type :: enum {
 	Player;
 	Tree;
 }
 
-EntityFlags :: enum_flags u64 {
+Entity_Flags :: enum_flags u64 {
 	Control;
 	Animated;
 }
 
 Entity :: struct {
 	name : string;
-	type : EntityType;
-	flags : EntityFlags;
+	type : Entity_Type;
+	flags : Entity_Flags;
 	anim_counter : float32;
 	art_id : ArtId;
 	speed : float32;
@@ -22,6 +22,7 @@ Entity :: struct {
 	frame_x : s32;
 	frame_y : s32;
 	frame_n : s32;
+	eaten : bool;
 };
 
 entity_templates : [2]Entity : .[.{type = .Player, art_id = .Impolo, size = .{64, 64}, origin = .{32, 64}, frame_x = 8, frame_y = 1, speed = 300.},
@@ -32,14 +33,15 @@ EntityStore :: struct {
 	first : *Entity;
 	count : u32;
 	sort_list : [..]*Entity;
+	apples : [..]*Entity;
 }
 
 entity_store : EntityStore;
 world_initialized := false;
 
-entity_alloc :: (flags : EntityFlags) -> *Entity {
+entity_alloc :: (flags : Entity_Flags) -> *Entity {
 	out : *Entity;
-	out = entity_store.first + entity_store.count;
+	out = push_struct(entity_store.arena, Entity);
 	entity_store.count += 1;
 	out.flags = flags;
 	
@@ -47,8 +49,99 @@ entity_alloc :: (flags : EntityFlags) -> *Entity {
 }
 
 entity_window : *Editor_Window;
+world_window : *Editor_Window;
 
 py : *Entity;
+
+Scene_Tile :: struct {
+	src : RectF32;
+	art_id : ArtId;
+}
+
+Scene :: struct {
+	row :: 50;
+	col :: 50;
+	depth :: 2;
+	
+	tiles : []Scene_Tile;
+}
+
+scene : Scene;
+
+scene_data_from_map_data :: () {
+	
+	count := scene.row * scene.col * tilemap.depth;
+	
+	scene.tiles.data = push_array(arena, Scene_Tile, xx (count));
+	scene.tiles.count = count;
+	
+	for z: 0 .. tilemap.depth - 1 {
+		for y: 0 .. tilemap.row - 1 {
+			for x: 0 .. tilemap.col - 1 {
+				
+				tile := tile_from_index(x, y, z);
+				paint := paints[tile.paint_index];
+				
+				if !paint.empty {
+					if paint.prop {
+						
+						e : *Entity;
+						
+						if paint.kind == .Player {
+							e = entity_alloc(.Control | .Animated);
+							py = e;
+							py.speed = 300;
+						}
+						else if paint.kind == .Tree {
+							e = entity_alloc(0);
+						}
+						else if paint.kind == .Ball {
+							e = entity_alloc(0);
+							array_add(*entity_store.apples, e);
+						}
+						
+						if e {
+							e.name = paint.name;
+							e.art_id = paint.art_id;
+							
+							e.origin = paint.origin;
+							e.size = paint.size;
+							e.frame_x = paint.frame_x;
+							e.frame_y = paint.frame_y;
+							e.frame_n = paint.frame_n;
+							e.pos = .{x * 32. + 16, y * 32. + 16};
+						}
+						
+					}
+					else {
+						
+						scene_tile := scene_tile_from_index(x, y, z);
+						
+						neighbours := get_neighbours(x, y, z, tile.paint_index);
+						bitmask := tile_bitmask(neighbours);
+						//print("%\n", bitmask);
+						
+						uv := uv_from_bitmask(bitmask);
+						
+						src : RectF32;
+						src.min.x = (cast(float32)uv.x / tilemap.auto_col);
+						src.max.y = (cast(float32)uv.y / tilemap.auto_row);
+						src.max.x = src.min.x + 1. / tilemap.auto_col;
+						src.min.y = src.max.y + 1. / tilemap.auto_row;
+						
+						src.min.y = 1 - src.min.y;
+						src.max.y = 1 - src.max.y;
+						//print("%\n", src);
+						
+						scene_tile.src = src;
+						scene_tile.art_id = paint.art_id;
+					}
+				}
+			}
+		}
+	}
+	
+}
 
 world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	if !world_initialized {
@@ -56,36 +149,52 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		entity_store.arena = arena_init();
 		entity_store.first = push_struct(entity_store.arena, void);
 		
-		// player
-		{
-			py = entity_alloc(.Control | .Animated);
-			py.name = "Player";
-			py.art_id = .Impolo;
-			py.speed = 300.;
-			py.size = .{64, 64};
-			py.origin = .{32, 64};
-			py.frame_x = 8;
-			py.frame_y = 1;
-		}
-		
-		// tree
-		{
-			tree := entity_alloc(0);
-			tree.name = "tree";
-			tree.art_id = .Tree;
-			tree.speed = 300.;
-			tree.size = .{512, 512};
-			tree.frame_x = 3;
-			tree.frame_y = 1;
-			tree.frame_n = 0;
-			tree.origin = .{256, 380};
-		}
-		
 		entity_window = editor_init_window("entity inspector");
+		world_window = editor_init_window("world inspector");
+		
+		editor_set_window_pos(world_window, .{1600, 0});
 	}
+	
+	editor_window_begin(ui_batches, world_window);
+	
+	if !world_window.hide {
+		text := "start";
+		if ui_button(.{200, 0, 0}, text).active {
+			scene_data_from_map_data();
+			started = true;
+		}
+	}
+	
+	if started {
+		tick(events, sprite_batches, ui_batches, delta);
+	}
+	
+}
+
+started := false;
+
+tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList, delta : float32) {
 	
 	set_camera_pos(py.pos);
 	
+	for z: 0 .. scene.depth {
+		for y: 0 .. scene.row - 1 {
+			for x: 0 .. scene.col - 1 {
+				
+				scene_tile := scene_tile_from_index(x, y, z);
+				
+				dst : RectF32;
+				dst.min.x = xx (x * tilemap.tile_size);
+				dst.min.y = xx (y * tilemap.tile_size);
+				dst.max.x = dst.min.x + tilemap.tile_size;
+				dst.max.y = dst.min.y + tilemap.tile_size;
+				
+				tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+				tile_rect.src = scene_tile.src;
+				tile_rect.tex_id = arts[scene_tile.art_id].tex.U64[1];
+			}
+		}
+	}
 	// control
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -146,6 +255,17 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 			
 			entity.pos.x += mv.x * xx delta * entity.speed;
 			entity.pos.y += mv.y * xx delta * entity.speed;
+			
+			if os.event(events, .E, .Pressed) {
+				
+				for entity_store.apples {
+					if distance(it.pos, entity.pos) < 15 {
+						it.eaten = true;
+					}
+				}
+				
+			}
+			
 		}
 	}
 	
@@ -172,6 +292,10 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	// draw
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
+		
+		if entity.eaten {
+			continue;
+		}
 		
 		// draw occupied tile
 		{
@@ -201,8 +325,8 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	}
 	
 	sort_entitties :: (a : *Entity, b : *Entity) -> int {
-		pos_a := a.pos + a.origin;
-		pos_b := b.pos + b.origin;
+		pos_a := a.pos;
+		pos_b := b.pos;
 		
 		out : int = 1;
 		if pos_a.y < pos_b.y {
@@ -317,4 +441,8 @@ disco_tilemap :: (sprite_batches : *r.BatchList) {
 			//tile_rect.radius = 16;
 		}
 	}
+}
+
+scene_tile_from_index :: (x : int, y : int, z : int) -> *Scene_Tile {
+	return *scene.tiles[z * scene.row * scene.col + y * scene.col + x];
 }

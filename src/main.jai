@@ -7,7 +7,6 @@
 
 #import "mizu_base";
 r :: #import "render";
-
 #import "Random";
 
 // hee haw camera
@@ -59,7 +58,8 @@ Mode :: enum {
 	COUNT;
 }
 
-current_mode : Mode = .Game;
+current_mode : Mode = .Tile_Editor;
+
 arena : *Arena;
 
 main :: () {
@@ -140,11 +140,11 @@ main :: () {
 			
 		}
 		
+		ui_begin(*ui_batches, lmb_down, lmb_up);
+		
 		if os.event(*events, .TAB, .Pressed) {
 			current_mode = (current_mode + 1) % .COUNT;
 		}
-		
-		ui_begin(*ui_batches, lmb_down, lmb_up);
 		
 		if current_mode == {
 			case .Game;

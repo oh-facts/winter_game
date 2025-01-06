@@ -10,6 +10,7 @@ ArtId :: enum {
 	Impolo;
 	Ell;
 	Tree;
+	Ball;
 }
 
 Art :: struct {
@@ -20,13 +21,14 @@ Art :: struct {
 	bmp : Bitmap;
 }
 
-arts : [7]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [8]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									.{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									.{id = .PropsForest, path = "art/forest_props.png"},
 									.{id = .TilesForest, path = "art/forest_tileset.png"},
 									.{id = .Impolo, path = "art/impolo-east.png"},
 									.{id = .Ell, path = "art/ell.png"},
-									.{id = .Tree, path = "art/tree.png"}];
+									.{id = .Tree, path = "art/tree.png"},
+									.{id = .Ball, path = "art/ball.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());

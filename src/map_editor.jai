@@ -1,53 +1,72 @@
+Tile_Kind :: enum {
+	Grass;
+	Dirt;
+	Player;
+	Tree;
+	Ball;
+}
+
 map_editor_camera_pos : Vector2;
 
-ToolKind :: enum {
+Tool_Kind :: enum {
 	Select;
 	Paint;
 	Move;
-	Place;
+	Fill;
 }
 
 Tool :: struct {
-	kind : ToolKind;
+	kind : Tool_Kind;
 	name : string;
 };
 
 tools : [4]Tool : .[.{kind = .Select, name = "select"},
 										.{kind = .Paint, name = "paint"},
 										.{kind = .Move, name = "move"},
-										.{kind = .Place, name = "place"}];
+										.{kind = .Fill, name = "fill"}
+										];
 
 Tile :: struct {
 	paint_index : s32;
-	alpha : bool;
-};
-
-Entity_Tile :: struct {
-	template_index : s32;
-	alpha : bool;
 };
 
 Paint :: struct {
-	name : string;
 	auto : bool;
+	prop : bool;
+	empty : bool;
+	kind : Tile_Kind;
+	name : string;
 	art_id : ArtId;
-	offset : Vector2i;
+	
+	// i was thinking of using this as an offset into an image. So imagine a massive image with .. I don't feel like writing the rest I am particularly sad.
+	src : RectF32;
+	
+	frame_x : s32;
+	frame_y : s32;
+	frame_n : s32;
+	
+	// used by props
+	size : Vector2i;
+	origin : Vector2;
 };
 
-paints : [4]Paint : .[.{auto = true, art_id = .TerrainTemplate, name = "template 1"},
-											.{auto = true, art_id = .TerrainGrass, name = "auto grass"},
-											.{auto = false, art_id = .TilesForest, name = "grass", offset = .{1, 1}},
-											.{auto = false, art_id = .TilesForest, name = "dirt", offset = .{6, 0}}];
+paints : [8]Paint : .[.{empty = true},
+											.{auto = true, art_id = .TerrainTemplate, name = "template 1"},
+											.{auto = true, art_id = .TerrainGrass, name = "auto grass", kind = .Grass},
+											.{auto = false, art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9, kind = .Grass},
+											.{auto = false, art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6, kind = .Dirt},
+											.{auto = false, art_id = .Impolo, name = "player", kind = .Player, size = .{64, 64}, origin = .{32, 64}, src = .{.{0, 0}, .{1, 1}}, frame_x = 8, frame_y = 1, prop = true, kind = .Player},
+											.{auto = false, art_id = .Tree, name = "tree", kind = .Tree, size = .{512, 512}, src = .{.{0, 0}, .{1, 1}}, frame_x = 3, frame_y = 1, frame_n = 0, origin = .{256, 380}, prop = true},
+											.{art_id = .Ball, name = "Ball", size = .{32, 32}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{16, 32}, prop = true, kind = .Ball}];
 
 Tilemap :: struct {
 	row :: 50;
 	col :: 50;
-	depth :: 2;
+	depth :: 3;
 	tile_size :: 32;
 	tiles : []Tile;
-	entity_tiles : []Entity_Tile;
-	uv_col :: 8;
-	uv_row :: 6;
+	auto_col :: 8;
+	auto_row :: 6;
 };
 
 tilemap : Tilemap;
@@ -58,13 +77,19 @@ save_tilemap :: () {
 	count := size_of(Tile) * tilemap.tiles.count;
 	data := talloc(count);
 	memcpy(data, tilemap.tiles.data, count);
-	write_entire_file("map_data", data, count);
+	
+	filename := tprint("%/%", data_folder, "map_data");
+	
+	write_entire_file(filename, data, count);
 	
 	print("ended saving\n");
 }
 
 load_tilemap :: () {
-	data := read_entire_file("map_data");
+	
+	filename := tprint("%/%", data_folder, "map_data");
+	
+	data := read_entire_file(filename);
 	memcpy(tilemap.tiles.data, data.data, data.count);
 	free (data);
 }
@@ -108,13 +133,6 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		ed_initialized = true;
 		
 		// alloc tilemap memory
-		{
-			count := tilemap.row * tilemap.col;
-			
-			tilemap.entity_tiles.data = push_array(arena, Entity_Tile, xx (count));
-			tilemap.entity_tiles.count = count;
-		}
-		
 		{
 			count := tilemap.row * tilemap.col * tilemap.depth;
 			
@@ -194,7 +212,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				
 				tile := tile_from_index(x, y, z);
 				
-				if tile.alpha {
+				if tile.paint_index {
 					
 					paint := paints[tile.paint_index];
 					
@@ -214,66 +232,48 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 						
 						uv := uv_from_bitmask(bitmask);
 						
-						src.min.x = (cast(float32)uv.x / tilemap.uv_col);
-						src.max.y = (cast(float32)uv.y / tilemap.uv_row);
-						src.max.x = src.min.x + 1. / tilemap.uv_col;
-						src.min.y = src.max.y + 1. / tilemap.uv_row;
+						src.min.x = (cast(float32)uv.x / tilemap.auto_col);
+						src.max.y = (cast(float32)uv.y / tilemap.auto_row);
+						src.max.x = src.min.x + 1. / tilemap.auto_col;
+						src.min.y = src.max.y + 1. / tilemap.auto_row;
+						
+						src.min.y = 1 - src.min.y;
+						src.max.y = 1 - src.max.y;
+						//print("%\n", src);
+						
+						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+						tile_rect.src = src;
+					}
+					else if paint.prop {
+						dst : RectF32;
+						dst.min.x = xx (x * tilemap.tile_size - paint.origin.x + 16);
+						dst.min.y = xx (y * tilemap.tile_size - paint.origin.y + 16);
+						dst.max.x = dst.min.x + paint.size.x;
+						dst.max.y = dst.min.y + paint.size.y;
+						
+						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+						
+						width := 1. / paint.frame_x;
+						
+						tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
 					}
 					else {
-						src.min.x = (cast(float32)paint.offset.x / 8.);
-						src.max.y = (cast(float32)paint.offset.y / 15.);
-						src.max.x = src.min.x + 1. / 8.;
-						src.min.y = src.max.y + 1. / 15.;
+						src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
+						src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
+						src.max.x = src.min.x + 1. / paint.frame_x;
+						src.min.y = src.max.y + 1. / paint.frame_y;
+						
+						src.min.y = 1 - src.min.y;
+						src.max.y = 1 - src.max.y;
+						//print("%\n", src);
+						
+						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+						tile_rect.src = src;
 					}
-					
-					src.min.y = 1 - src.min.y;
-					src.max.y = 1 - src.max.y;
-					//print("%\n", src);
-					
-					tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-					tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-					tile_rect.src = src;
 				}
-			}
-		}
-	}
-	
-	// draw entity
-	for y: 0 .. tilemap.row - 1{
-		for x: 0 .. tilemap.col - 1 {
-			
-			entity_tile := entity_tile_from_index(x, y);
-			if entity_tile.alpha {
-				
-				et := entity_templates[entity_tile.template_index];
-				
-				{
-					dst : RectF32;
-					dst.min.x = xx (x * tilemap.tile_size);
-					dst.min.y = xx (y * tilemap.tile_size);
-					dst.max.x = dst.min.x + tilemap.tile_size;
-					dst.max.y = dst.min.y + tilemap.tile_size;
-					
-					tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-				}
-				
-				{
-					dst : RectF32;
-					dst.min.x = xx (x * tilemap.tile_size - et.origin.x + 16);
-					dst.min.y = xx (y * tilemap.tile_size - et.origin.y + 16);
-					dst.max.x = dst.min.x + et.size.x;
-					dst.max.y = dst.min.y + et.size.y;
-					
-					tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-					tile_rect.tex_id = arts[et.art_id].tex.U64[1];
-					
-					width := 1. / et.frame_x;
-					
-					tile_rect.src = rectF32(et.frame_n * width, 0, width * (et.frame_n + 1), 1);
-				}
-				
-				
-				
 			}
 		}
 	}
@@ -314,7 +314,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		tile_pos.z -= 1;
 	}
 	
-	tile_pos.z = clamp(tile_pos.z, 0, 1);
+	tile_pos.z = clamp(tile_pos.z, 0, 2);
 	
 	// world space coords -> tile pos
 	tile_pos.x = xx ((wmpos.x) / tilemap.tile_size);
@@ -344,13 +344,67 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 			
 			// paint
 			if lmb_held {
-				tile_from_index(tile_pos).alpha = true;
 				tile_from_index(tile_pos).paint_index = xx active_paint_index;
 			}
 			// erase
 			else if rmb_held{
-				tile_from_index(tile_pos).alpha = false;
+				tile_from_index(tile_pos).paint_index = 0;
 			}
+		}
+		else if tool.kind == .Fill {
+			
+			// selection started
+			if (lmb_held || rmb_held) && !selection_started {
+				selection_started = true;
+				selection_tile_start = tile_pos;
+			}
+			
+			if selection_started {
+				tile_select_range : RectS32;
+				
+				// tile selection range
+				tile_select_range.min.x = min(selection_tile_start.x, selection_tile_end.x);
+				tile_select_range.min.y = min(selection_tile_start.y, selection_tile_end.y);
+				
+				tile_select_range.max.x = max(selection_tile_start.x, selection_tile_end.x);
+				tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
+				
+				// selection in progress
+				if (lmb_held || rmb_held) {
+					//print("selectioning ...\n");
+					
+					selection_tile_end = tile_pos;
+					
+					// draw selection outline
+					dst : RectF32;
+					dst.min.x = tile_select_range.min.x * 32.;
+					dst.min.y = tile_select_range.min.y * 32.;
+					dst.max.x = (tile_select_range.max.x + 1) * 32.;
+					dst.max.y = (tile_select_range.max.y + 1) * 32.;
+					
+					r.push_rect2(sprite_batches, dst, r.COLOR_CYAN);
+				}
+				// selection ended
+				else {
+					//print("selection ended\n");
+					
+					selection_started = false;
+					selection_yes = true;
+					
+					
+					for y : tile_select_range.min.y .. tile_select_range.max.y {
+						
+						for x : tile_select_range.min.x .. tile_select_range.max.x {
+							tile_from_index(x, y, tile_pos.z).paint_index = xx active_paint_index;
+							
+						}
+					}
+					
+					
+				}
+			}
+			
+			
 		}
 		else if tool.kind == .Select {
 			
@@ -397,7 +451,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 							
 							tile := tile_from_index(x, y, tile_pos.z);
 							
-							if tile.alpha {
+							if tile.paint_index {
 								select_tile : SelectionTile;
 								select_tile.tile = << tile;
 								select_tile.pos = .{x, y, tile_pos.z};
@@ -436,7 +490,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				
 				for *selection_buffer {
 					tile1 := tile_from_index(it.pos);
-					tile1.alpha = false;
+					tile1.paint_index = 0;
 					
 					tile := tile_from_index(mv + it.pos);
 					<< tile = it.tile;
@@ -444,12 +498,6 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				}
 				
 				moving_yes = false;
-			}
-		}
-		else if tool.kind == .Place {
-			if lmb_held {
-				entity_tile_from_index(tile_pos.x, tile_pos.y).alpha = true;
-				entity_tile_from_index(tile_pos.x, tile_pos.y).template_index = xx active_entity_index;
 			}
 		}
 		
@@ -475,7 +523,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 					// empty buffer
 					for selection_buffer {
 						tile := tile_from_index(it.pos);
-						tile.alpha = false;
+						tile.paint_index = 0;
 					}
 					
 					array_reset_keeping_memory(*selection_buffer);
@@ -510,35 +558,23 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				active_tool_index = xx it_index;
 			}
 			
-			if(active_tool_index == xx ToolKind.Paint && (signal.id == .{0, xx ToolKind.Paint, 1})) {
+			if(active_tool_index == xx Tool_Kind.Paint && (signal.id == .{0, xx Tool_Kind.Paint, 1})) {
 				ui_begin_parent();
-				for paints {
-					text = tprint("%", it.name);
+				for 1 .. paints.count - 1{
+					paint := paints[it];
+					text = tprint("%", paint.name);
 					
-					if(active_paint_index == xx it_index) {
+					if(active_paint_index == xx it) {
 						default_text_color = r.COLOR_ORANGE;
 					}
 					
-					if(ui_button(.{0, it_index, 2}, text).active) {
-						active_paint_index = xx it_index;
+					if(ui_button(.{0, it, 2}, text).active) {
+						active_paint_index = xx it;
 					}
 					
 					default_text_color = r.COLOR_WHITE;
 					
 				}
-				ui_end_parent();
-			}
-			
-			else if(active_tool_index == xx ToolKind.Place && (signal.id == .{0, xx ToolKind.Place, 1})) {
-				ui_begin_parent();
-				
-				for entity_templates {
-					text = tprint("% +", it.type);
-					if ui_button(.{0, it_index, 3}, text).active {
-						active_entity_index = it_index;
-					}
-				}
-				
 				ui_end_parent();
 			}
 			
@@ -563,6 +599,13 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		if ui_button(.{0, 0, 9}, text).active {
 			load_tilemap();
 		}
+		
+		text = tprint("play");
+		
+		if ui_button(.{0, 0, 10}, text).toggle {
+			world_update(delta, events, sprite_batches, ui_batches);
+		}
+		
 	}
 }
 
@@ -582,7 +625,7 @@ get_neighbours :: (x : int, y : int, z : int, paint_index : s32) -> TileNeighbou
 	using out;
 	
 	tile_present :: (x : int, y : int, z : int,  _paint_index : s32) -> bool {
-		return tile_from_index(x, y, z).alpha && (tile_from_index(x, y, z).paint_index == _paint_index);
+		return tile_from_index(x, y, z).paint_index && (tile_from_index(x, y, z).paint_index == _paint_index);
 	}
 	
 	t  = tile_present(x, y - 1, z, paint_index); 
@@ -722,14 +765,6 @@ tile_from_index :: (x : int, y : int, z : int) -> *Tile {
 
 tile_from_index :: (index : Vector3i) -> *Tile {
 	return *tilemap.tiles[index.z * tilemap.row * tilemap.col + index.y * tilemap.col + index.x];
-}
-
-entity_tile_from_index :: (x : int, y : int) -> *Entity_Tile {
-	return *tilemap.entity_tiles[y * tilemap.col + x];
-}
-
-entity_tile_from_index :: (index : Vector2i) -> *Entity_Tile {
-	return *tilemap.entity_tiles[index.y * tilemap.col + index.x];
 }
 
 tile_rect_from_index :: (pos : Vector3i) -> RectF32 {

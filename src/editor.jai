@@ -1,4 +1,4 @@
-editor_windows : [2]Editor_Window;
+editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 
 entry_count :: 5;
@@ -18,7 +18,7 @@ Editor_Window :: struct {
 	last_mpos : Vector2;
 	id : s32;
 	
-	entity_scrolls : [2]Editor_Scroll;
+	entity_scrolls : [..]Editor_Scroll;
 }
 
 editor_in_focus :: (window : Editor_Window) -> bool {
