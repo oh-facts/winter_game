@@ -1,7 +1,10 @@
+map_editor_camera_pos : Vector2;
+
 ToolKind :: enum {
 	Select;
 	Paint;
 	Move;
+	Place;
 }
 
 Tool :: struct {
@@ -9,12 +12,18 @@ Tool :: struct {
 	name : string;
 };
 
-tools : [3]Tool : .[.{kind = .Select, name = "select"},
+tools : [4]Tool : .[.{kind = .Select, name = "select"},
 										.{kind = .Paint, name = "paint"},
-										.{kind = .Move, name = "move"}];
+										.{kind = .Move, name = "move"},
+										.{kind = .Place, name = "place"}];
 
 Tile :: struct {
 	paint_index : s32;
+	alpha : bool;
+};
+
+Entity_Tile :: struct {
+	template_index : s32;
 	alpha : bool;
 };
 
@@ -36,6 +45,7 @@ Tilemap :: struct {
 	depth :: 2;
 	tile_size :: 32;
 	tiles : []Tile;
+	entity_tiles : []Entity_Tile;
 	uv_col :: 8;
 	uv_row :: 6;
 };
@@ -59,12 +69,12 @@ load_tilemap :: () {
 	free (data);
 }
 
-wmpos : Vector2;
 tile_pos : Vector3i;
 
 grid_toggle : bool = true;
-active_paint_index := 0;
 active_tool_index := 0;
+active_paint_index := 0;
+active_entity_index := 0;
 
 SelectionTile :: struct {
 	tile : Tile;
@@ -88,28 +98,94 @@ move_end : Vector3i;
 moving_started := false;
 moving_yes := false;
 
-ed_arena : *Arena;
 ed_initialized : bool;
 
 map_editor_window : *Editor_Window;
 
-editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, cam_size : Vector2, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
+editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	
 	if !ed_initialized {
 		ed_initialized = true;
-		ed_arena = arena_init();
 		
 		// alloc tilemap memory
 		{
+			count := tilemap.row * tilemap.col;
+			
+			tilemap.entity_tiles.data = push_array(arena, Entity_Tile, xx (count));
+			tilemap.entity_tiles.count = count;
+		}
+		
+		{
 			count := tilemap.row * tilemap.col * tilemap.depth;
 			
-			tilemap.tiles.data = push_array(ed_arena, Tile, xx (count));
+			tilemap.tiles.data = push_array(arena, Tile, xx (count));
 			tilemap.tiles.count = count;
 		}
 		
 		map_editor_window = editor_init_window("map editor");
-		editor_set_window_pos(map_editor_window, .{800, 0});
+		//editor_set_window_pos(map_editor_window, .{800, 0});
 	}
+	
+	// tilemap camera
+	{
+		mv : Vector2;
+		if(os.event(events, .W, .Pressed))
+		{
+			cam_wheld = true;
+		}
+		else if(os.event(events, .W, .Released))
+		{
+			cam_wheld = false;
+		}
+		
+		if(os.event(events, .A, .Pressed))
+		{
+			cam_aheld = true;
+		}
+		else if(os.event(events, .A, .Released))
+		{
+			cam_aheld = false;
+		}
+		
+		if(os.event(events, .D, .Pressed))
+		{
+			cam_dheld = true;
+		}
+		else if(os.event(events, .D, .Released))
+		{
+			cam_dheld = false;
+		}
+		
+		if(os.event(events, .S, .Pressed))
+		{
+			cam_sheld = true;
+		}
+		else if(os.event(events, .S, .Released))
+		{
+			cam_sheld = false;
+		}
+		
+		if cam_wheld {
+			mv.y -= 1;
+		}
+		
+		if cam_aheld {
+			mv.x -= 1;
+		}
+		
+		if cam_sheld {
+			mv.y += 1;
+		}
+		
+		if cam_dheld {
+			mv.x += 1;
+		}
+		
+		map_editor_camera_pos.x += mv.x * delta * 300;
+		map_editor_camera_pos.y += mv.y * delta * 300;
+	}
+	
+	set_camera_pos(map_editor_camera_pos);
 	
 	// draw tilemap
 	for z: 0 .. tilemap.depth - 1 {
@@ -162,6 +238,46 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 		}
 	}
 	
+	// draw entity
+	for y: 0 .. tilemap.row - 1{
+		for x: 0 .. tilemap.col - 1 {
+			
+			entity_tile := entity_tile_from_index(x, y);
+			if entity_tile.alpha {
+				
+				et := entity_templates[entity_tile.template_index];
+				
+				{
+					dst : RectF32;
+					dst.min.x = xx (x * tilemap.tile_size);
+					dst.min.y = xx (y * tilemap.tile_size);
+					dst.max.x = dst.min.x + tilemap.tile_size;
+					dst.max.y = dst.min.y + tilemap.tile_size;
+					
+					tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+				}
+				
+				{
+					dst : RectF32;
+					dst.min.x = xx (x * tilemap.tile_size - et.origin.x + 16);
+					dst.min.y = xx (y * tilemap.tile_size - et.origin.y + 16);
+					dst.max.x = dst.min.x + et.size.x;
+					dst.max.y = dst.min.y + et.size.y;
+					
+					tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+					tile_rect.tex_id = arts[et.art_id].tex.U64[1];
+					
+					width := 1. / et.frame_x;
+					
+					tile_rect.src = rectF32(et.frame_n * width, 0, width * (et.frame_n + 1), 1);
+				}
+				
+				
+				
+			}
+		}
+	}
+	
 	// draw grid
 	if grid_toggle {
 		for y: 1 .. tilemap.row - 1 - 1 {
@@ -190,10 +306,6 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	}
 	
 	// TODO(mizu): i don't want events to be shared like this.
-	if os.event(events, .TAB, .Pressed) {
-		grid_toggle = !grid_toggle;
-	}
-	
 	
 	if scroll_up {
 		tile_pos.z += 1;
@@ -203,10 +315,6 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 	}
 	
 	tile_pos.z = clamp(tile_pos.z, 0, 1);
-	
-	// mouse coords -> world space coords
-	wmpos.x = mpos.x + cam_pos.x - cam_size.x / 2.;
-	wmpos.y = mpos.y + cam_pos.y - cam_size.y / 2.;
 	
 	// world space coords -> tile pos
 	tile_pos.x = xx ((wmpos.x) / tilemap.tile_size);
@@ -338,6 +446,12 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 				moving_yes = false;
 			}
 		}
+		else if tool.kind == .Place {
+			if lmb_held {
+				entity_tile_from_index(tile_pos.x, tile_pos.y).alpha = true;
+				entity_tile_from_index(tile_pos.x, tile_pos.y).template_index = xx active_entity_index;
+			}
+		}
 		
 		if (tool.kind == .Move) || (tool.kind == .Select) {
 			if os.event(events, .RMB, .Pressed) || os.event(events, .LMB, .Pressed) {
@@ -414,6 +528,20 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 				}
 				ui_end_parent();
 			}
+			
+			else if(active_tool_index == xx ToolKind.Place && (signal.id == .{0, xx ToolKind.Place, 1})) {
+				ui_begin_parent();
+				
+				for entity_templates {
+					text = tprint("% +", it.type);
+					if ui_button(.{0, it_index, 3}, text).active {
+						active_entity_index = it_index;
+					}
+				}
+				
+				ui_end_parent();
+			}
+			
 		}
 		
 		text = tprint("%", selection_buffer.count);
@@ -422,13 +550,17 @@ editor_update :: (delta : float32, events : *os.EventList, cam_pos : Vector2, ca
 		text = tprint("% %", move_start, move_end);
 		ui_label(.{0, 0, 4}, text);
 		
+		text = tprint("toggle grid");
+		
+		grid_toggle = !ui_button(.{0, 0, 5}, text).toggle;
+		
 		text = tprint("save");
-		if ui_button(.{0, 0, 5}, text).active {
+		if ui_button(.{0, 0, 8}, text).active {
 			save_tilemap();
 		}
 		
 		text = tprint("load");
-		if ui_button(.{0, 0, 6}, text).active {
+		if ui_button(.{0, 0, 9}, text).active {
 			load_tilemap();
 		}
 	}
@@ -590,6 +722,14 @@ tile_from_index :: (x : int, y : int, z : int) -> *Tile {
 
 tile_from_index :: (index : Vector3i) -> *Tile {
 	return *tilemap.tiles[index.z * tilemap.row * tilemap.col + index.y * tilemap.col + index.x];
+}
+
+entity_tile_from_index :: (x : int, y : int) -> *Entity_Tile {
+	return *tilemap.entity_tiles[y * tilemap.col + x];
+}
+
+entity_tile_from_index :: (index : Vector2i) -> *Entity_Tile {
+	return *tilemap.entity_tiles[index.y * tilemap.col + index.x];
 }
 
 tile_rect_from_index :: (pos : Vector3i) -> RectF32 {

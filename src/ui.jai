@@ -39,7 +39,7 @@ UI_Widget_Cache :: struct {
 };
 
 push_ui_var :: () -> *UI_Widget {
-	out := push_struct(ed_arena, UI_Widget);
+	out := push_struct(arena, UI_Widget);
 	return out;
 }
 
@@ -105,7 +105,6 @@ ui_cxt : struct {
 	batches : *r.BatchList;
 	mouse_up : bool;
 	mouse_down : bool;
-	arena : *Arena;
 	x_layout :: 10;
 	cache : UI_Widget_Cache;
 	

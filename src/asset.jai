@@ -28,7 +28,7 @@ arts : [7]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									.{id = .Ell, path = "art/ell.png"},
 									.{id = .Tree, path = "art/tree.png"}];
 
-load_all_assets :: (arena : *Arena) {
+load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
 	data_folder = join(base_path, "../data");
 	

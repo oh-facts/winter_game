@@ -1,3 +1,8 @@
+EntityType :: enum {
+	Player;
+	Tree;
+}
+
 EntityFlags :: enum_flags u64 {
 	Control;
 	Animated;
@@ -5,17 +10,22 @@ EntityFlags :: enum_flags u64 {
 
 Entity :: struct {
 	name : string;
+	type : EntityType;
 	flags : EntityFlags;
 	anim_counter : float32;
 	art_id : ArtId;
 	speed : float32;
 	size : Vector2i;
 	pos : Vector2;
+	tile_pos : Vector2i;
 	origin : Vector2;
 	frame_x : s32;
 	frame_y : s32;
 	frame_n : s32;
 };
+
+entity_templates : [2]Entity : .[.{type = .Player, art_id = .Impolo, size = .{64, 64}, origin = .{32, 64}, frame_x = 8, frame_y = 1, speed = 300.},
+																 .{type = .Tree, art_id = .Tree, size = .{512, 512}, frame_x = 3, frame_y = 1, frame_n = 0, origin = .{256, 380}}];
 
 EntityStore :: struct {
 	arena : *Arena;
@@ -38,6 +48,8 @@ entity_alloc :: (flags : EntityFlags) -> *Entity {
 
 entity_window : *Editor_Window;
 
+py : *Entity;
+
 world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	if !world_initialized {
 		world_initialized = true;
@@ -46,7 +58,7 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		
 		// player
 		{
-			py := entity_alloc(.Control | .Animated);
+			py = entity_alloc(.Control | .Animated);
 			py.name = "Player";
 			py.art_id = .Impolo;
 			py.speed = 300.;
@@ -54,8 +66,6 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 			py.origin = .{32, 64};
 			py.frame_x = 8;
 			py.frame_y = 1;
-			
-			camera.target = py;
 		}
 		
 		// tree
@@ -73,6 +83,8 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		
 		entity_window = editor_init_window("entity inspector");
 	}
+	
+	set_camera_pos(py.pos);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -137,6 +149,14 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		}
 	}
 	
+	// update tile pos
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		entity.tile_pos.x = xx (entity.pos.x / 32.);
+		entity.tile_pos.y = xx (entity.pos.y / 32.);
+	}
+	
 	// update animations
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -155,15 +175,15 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		
 		// draw occupied tile
 		{
-			dst := tile_rect_from_index(xx ((entity.pos.x + entity.origin.x)/ 32.), xx ((entity.pos.y + entity.origin.y)/ 32.), 0);
+			dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
 			r.push_rect2(sprite_batches, dst, .{1, 1, 1, 1});
 		}
 		
 		// draw origin
 		{
 			dst : RectF32;
-			dst.min.x = entity.pos.x + entity.origin.x;
-			dst.min.y = entity.pos.y + entity.origin.y;
+			dst.min.x = entity.pos.x;
+			dst.min.y = entity.pos.y;
 			dst.max.x = dst.min.x + 8;
 			dst.max.y = dst.min.y + 8;
 			
@@ -196,8 +216,8 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	
 	for entity_store.sort_list {
 		dst : RectF32;
-		dst.min.x = it.pos.x;
-		dst.min.y = it.pos.y;
+		dst.min.x = it.pos.x - it.origin.x;
+		dst.min.y = it.pos.y - it.origin.y;
 		dst.max.x = dst.min.x + it.size.x;
 		dst.max.y = dst.min.y + it.size.y;
 		

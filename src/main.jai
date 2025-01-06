@@ -16,16 +16,27 @@ cam_aheld : bool;
 cam_sheld : bool;
 cam_dheld : bool;
 
-camera : struct {
-	target : *Entity;
+Camera :: struct {
+	pos : Vector2;
+	size : Vector2;
 }
 
-pos_from_camera :: () -> Vector2 {
-	out : Vector2;
-	if camera.target {
-		out = camera.target.pos;
-	}
-	return out;
+camera : Camera;
+
+wmpos : Vector2;
+
+set_camera_size :: (size : Vector2) {
+	camera.size = size;
+}
+
+set_camera_pos :: (pos : Vector2) {
+	camera.pos = pos;
+}
+
+update_camera :: () {
+	// mouse coords -> world space coords
+	wmpos.x = mpos.x + camera.pos.x - camera.size.x / 2.;
+	wmpos.y = mpos.y + camera.pos.y - camera.size.y / 2.;
 }
 
 mpos : Vector2;
@@ -41,6 +52,15 @@ scroll_down : bool;
 #load "editor.jai";
 #load "map_editor.jai";
 #load "world.jai";
+
+Mode :: enum {
+	Game;
+	Tile_Editor;
+	COUNT;
+}
+
+current_mode : Mode = .Game;
+arena : *Arena;
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -59,9 +79,9 @@ main :: () {
 	
 	frames : u64;
 	
-	arena := arena_init();
+	arena = arena_init();
 	
-	load_all_assets(arena);
+	load_all_assets();
 	
 	quit : bool;
 	
@@ -72,6 +92,7 @@ main :: () {
 		
 		events := os.poll_events();
 		win_size := os.get_window_size(win);
+		set_camera_size(win_size);
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
@@ -80,13 +101,13 @@ main :: () {
 		ui_batches : r.BatchList;
 		sprite_batches : r.BatchList;
 		
-		cam_pos := pos_from_camera();
-		
 		lmbdown_event := os.event(*events, .LMB, .Pressed);
 		lmbup_event := os.event(*events, .LMB, .Released);
 		
 		mm_event := os.event(*events, .NULL, .MouseMove);
 		scroll_event := os.event(*events, .NULL, .Scroll);
+		
+		update_camera();
 		
 		lmb_down = false;
 		lmb_up = false;
@@ -119,13 +140,21 @@ main :: () {
 			
 		}
 		
+		if os.event(*events, .TAB, .Pressed) {
+			current_mode = (current_mode + 1) % .COUNT;
+		}
+		
 		ui_begin(*ui_batches, lmb_down, lmb_up);
 		
-		editor_update(xx delta, *events, cam_pos, win_size, *sprite_batches, *ui_batches);
+		if current_mode == {
+			case .Game;
+			world_update(xx delta, *events, *sprite_batches, *ui_batches);
+			
+			case .Tile_Editor;
+			editor_update(xx delta, *events, *sprite_batches, *ui_batches);
+		}
 		
-		world_update(xx delta, *events, *sprite_batches, *ui_batches);
-		
-		r.submit(win, win_size, ui_batches, sprite_batches, cam_pos);
+		r.submit(win, camera.size, ui_batches, sprite_batches, camera.pos);
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
