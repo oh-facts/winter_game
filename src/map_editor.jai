@@ -205,78 +205,11 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 	
 	set_camera_pos(map_editor_camera_pos);
 	
-	// draw tilemap
-	for z: 0 .. tilemap.depth - 1 {
-		for y: 0 .. tilemap.row - 1{
-			for x: 0 .. tilemap.col - 1 {
-				
-				tile := tile_from_index(x, y, z);
-				
-				if tile.paint_index {
-					
-					paint := paints[tile.paint_index];
-					
-					dst : RectF32;
-					dst.min.x = xx (x * tilemap.tile_size);
-					dst.min.y = xx (y * tilemap.tile_size);
-					dst.max.x = dst.min.x + tilemap.tile_size;
-					dst.max.y = dst.min.y + tilemap.tile_size;
-					
-					src : RectF32;
-					
-					// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
-					if paint.auto {
-						neighbours := get_neighbours(x, y, z, tile.paint_index);
-						bitmask := tile_bitmask(neighbours);
-						//print("%\n", bitmask);
-						
-						uv := uv_from_bitmask(bitmask);
-						
-						src.min.x = (cast(float32)uv.x / tilemap.auto_col);
-						src.max.y = (cast(float32)uv.y / tilemap.auto_row);
-						src.max.x = src.min.x + 1. / tilemap.auto_col;
-						src.min.y = src.max.y + 1. / tilemap.auto_row;
-						
-						src.min.y = 1 - src.min.y;
-						src.max.y = 1 - src.max.y;
-						//print("%\n", src);
-						
-						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-						tile_rect.src = src;
-					}
-					else if paint.prop {
-						dst : RectF32;
-						dst.min.x = xx (x * tilemap.tile_size - paint.origin.x + 16);
-						dst.min.y = xx (y * tilemap.tile_size - paint.origin.y + 16);
-						dst.max.x = dst.min.x + paint.size.x;
-						dst.max.y = dst.min.y + paint.size.y;
-						
-						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-						
-						width := 1. / paint.frame_x;
-						
-						tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
-					}
-					else {
-						src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
-						src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
-						src.max.x = src.min.x + 1. / paint.frame_x;
-						src.min.y = src.max.y + 1. / paint.frame_y;
-						
-						src.min.y = 1 - src.min.y;
-						src.max.y = 1 - src.max.y;
-						//print("%\n", src);
-						
-						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
-						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-						tile_rect.src = src;
-					}
-				}
-			}
-		}
-	}
+	// draw map
+	draw_tilemap(sprite_batches);
+	
+	// draw entities
+	draw_entities(sprite_batches);
 	
 	// draw grid
 	if grid_toggle {
@@ -777,4 +710,91 @@ tile_rect_from_index :: (x : s32, y : s32, z : s32) -> RectF32{
 	out := rectF32(cast(float32) x * tilemap.tile_size, cast(float32) y * tilemap.tile_size, cast(float32) x * tilemap.tile_size + tilemap.tile_size, cast(float32) y * tilemap.tile_size + tilemap.tile_size);
 	
 	return out;
+}
+
+draw_tilemap :: (sprite_batches : *r.BatchList) {
+	// draw tilemap
+	for z: 0 .. tilemap.depth - 2 {
+		for y: 0 .. tilemap.row - 1{
+			for x: 0 .. tilemap.col - 1 {
+				
+				tile := tile_from_index(x, y, z);
+				
+				if tile.paint_index {
+					
+					paint := paints[tile.paint_index];
+					
+					dst : RectF32;
+					dst.min.x = xx (x * tilemap.tile_size);
+					dst.min.y = xx (y * tilemap.tile_size);
+					dst.max.x = dst.min.x + tilemap.tile_size + 1;
+					dst.max.y = dst.min.y + tilemap.tile_size + 1;
+					
+					src : RectF32;
+					
+					// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
+					if paint.auto {
+						neighbours := get_neighbours(x, y, z, tile.paint_index);
+						bitmask := tile_bitmask(neighbours);
+						//print("%\n", bitmask);
+						
+						uv := uv_from_bitmask(bitmask);
+						
+						src.min.x = (cast(float32)uv.x / tilemap.auto_col);
+						src.max.y = (cast(float32)uv.y / tilemap.auto_row);
+						src.max.x = src.min.x + 1. / tilemap.auto_col;
+						src.min.y = src.max.y + 1. / tilemap.auto_row;
+						
+						src.min.y = 1 - src.min.y;
+						src.max.y = 1 - src.max.y;
+						//print("%\n", src);
+						
+						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+						tile_rect.src = src;
+					}
+					else {
+						src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
+						src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
+						src.max.x = src.min.x + 1. / paint.frame_x;
+						src.min.y = src.max.y + 1. / paint.frame_y;
+						
+						src.min.y = 1 - src.min.y;
+						src.max.y = 1 - src.max.y;
+						//print("%\n", src);
+						
+						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+						tile_rect.src = src;
+					}
+				}
+			}
+		}
+	}
+}
+
+draw_entities :: (sprite_batches : *r.BatchList) {
+	for y: 0 .. tilemap.row - 1{
+		for x: 0 .. tilemap.col - 1 {
+			
+			tile := tile_from_index(x, y, 2);
+			
+			paint := paints[tile.paint_index];
+			
+			if paint.prop {
+				dst : RectF32;
+				dst.min.x = xx (x * tilemap.tile_size - paint.origin.x + 16);
+				dst.min.y = xx (y * tilemap.tile_size - paint.origin.y + 16);
+				dst.max.x = dst.min.x + paint.size.x;
+				dst.max.y = dst.min.y + paint.size.y;
+				
+				tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+				tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+				
+				width := 1. / paint.frame_x;
+				
+				tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
+			}
+		}
+	}
 }

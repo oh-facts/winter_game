@@ -18,7 +18,9 @@ Editor_Window :: struct {
 	last_mpos : Vector2;
 	id : s32;
 	
-	entity_scrolls : [..]Editor_Scroll;
+	entry_start : int;
+	entity_scroll_region : RectF32;
+	entity_scrolls : [30]Editor_Scroll;
 }
 
 editor_in_focus :: (window : Editor_Window) -> bool {

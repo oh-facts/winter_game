@@ -8,6 +8,13 @@ Vector2i :: struct {
 	y : s32;
 }
 
+distance_squared :: inline (a: Vector2i, b: Vector2i) -> s32 {
+	dx := b.x - a.x;
+	dy := b.y - a.y;
+	
+	return dx*dx + dy*dy;
+}
+
 Vector3i :: struct {
 	x : s32;
 	y : s32;
