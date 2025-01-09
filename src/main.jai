@@ -49,6 +49,7 @@ scroll_down : bool;
 #load "asset.jai";
 #load "ui.jai";
 #load "editor.jai";
+#load "tilemap.jai";
 #load "map_editor.jai";
 #load "world.jai";
 
@@ -107,6 +108,7 @@ main :: () {
 		mm_event := os.event(*events, .NULL, .MouseMove);
 		scroll_event := os.event(*events, .NULL, .Scroll);
 		
+		set_camera_pos(.{955, 500});
 		update_camera();
 		
 		lmb_down = false;
@@ -155,6 +157,8 @@ main :: () {
 		}
 		
 		r.submit(win, camera.size, ui_batches, sprite_batches, camera.pos);
+		
+		editor_tick_clock();
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);

@@ -1,3 +1,8 @@
+// main editor window
+// option to edit levels
+// option to play scenes
+// scenes reference levels
+
 World_Cmd_Kind :: enum {
 	Eat;
 }
@@ -60,25 +65,28 @@ Entity :: struct {
 	next : *Entity;
 };
 
-entity_templates : [2]Entity : .[.{type = .Player, art_id = .Impolo, size = .{64, 64}, origin = .{32, 64}, frame_x = 8, frame_y = 1, speed = 300.},
-																 .{type = .Tree, art_id = .Tree, size = .{512, 512}, frame_x = 3, frame_y = 1, frame_n = 0, origin = .{256, 380}}];
-
 EntityStore :: struct {
 	arena : *Arena;
 	first : *Entity;
 	count : int;
 	inactive_count : int;
-	sort_list : [..]*Entity;
-	apples : [..]*Entity;
 	free : *Entity;
+	
+	// per frame
+	sort_list : [..]*Entity;
 }
 
 active_count :: () -> int {
 	return entity_store.count - entity_store.inactive_count;
 }
 
+Quest :: struct {
+	
+};
+
 entity_store : EntityStore;
 world_initialized := false;
+quest : Quest;
 
 entity_alloc :: (flags : Entity_Flags) -> *Entity {
 	out := entity_store.free;
@@ -86,10 +94,11 @@ entity_alloc :: (flags : Entity_Flags) -> *Entity {
 	if out {
 		entity_store.free = entity_store.free.next;
 		entity_store.inactive_count -= 1;
-		<< out = .{};
 	} else {
 		out = push_struct(entity_store.arena, Entity);
 	}
+	
+	<< out = .{};
 	
 	entity_store.count += 1;
 	out.flags = flags;
@@ -108,6 +117,7 @@ entity_window : *Editor_Window;
 world_window : *Editor_Window;
 
 py : *Entity;
+world_tileworld : Tileworld;
 
 world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
 	if !world_initialized {
@@ -119,16 +129,31 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		world_window = editor_init_window("world inspector");
 		
 		editor_set_window_pos(world_window, .{1600, 0});
+		world_tileworld = init_tileworld();
 	}
 	
 	editor_window_begin(ui_batches, world_window);
 	
 	if !world_window.hide {
-		text := "start";
-		if ui_button(.{200, 0, 0}, text).active {
-			load_tilemap();
-			load_entities();
-			started = true;
+		if !started {
+			text := "start";
+			
+			if ui_button(.{200, 0, 0}, text).active {
+				load_tileworld(*world_tileworld);
+				load_entities();
+				started = true;
+			}
+			
+		} else {
+			
+			text := "restart";
+			
+			if ui_button(.{200, 0, 1}, text).active {
+				unload_entities();
+				load_tileworld(*world_tileworld);
+				load_entities();
+				started = true;
+			}
 		}
 	}
 	
@@ -147,15 +172,8 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 	world_cmds.size = 0;
 	world_cmds.cap = xx MB(1);
 	
-	if py {
-		pos : Vector2;
-		pos.x = xx (py.pos.x);
-		pos.y = xx (py.pos.y);
-		
-		set_camera_pos(pos);
-	}
-	
-	draw_tilemap(sprite_batches);
+	world_tilemap := tilemap_from_key(*world_tileworld, .{0, 0});
+	draw_tilemap(world_tilemap, sprite_batches);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -256,8 +274,8 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 		if entity.flags & .Inactive continue;
 		
 		// draw occupied tile
-		ifx 0 {
-			dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
+#if 0 {
+			dst := tile_rect_from_index(world_tilemap, xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
 			r.push_rect2(sprite_batches, dst, .{1, 1, 1, 1});
 		}
 		
@@ -319,210 +337,65 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 		
 		if << header == {
 			case .Eat;
-			eat_cmd :*World_Eat_Cmd= xx base;
-			//print("Tried to eat apple from %\n", eat_cmd.tile_pos);
-			
-			for entity_store.apples {
-				if distance_squared(it.tile_pos, eat_cmd.tile_pos) < 4 {
-					entity_free(it);
-					array_unordered_remove_by_index(*entity_store.apples, it_index);
-				}
-				
-				base += size_of(World_Eat_Cmd);
-			}
-			
-		}
-		
-	}
-	
-	{
-		text := tprint("% balls left!", entity_store.apples.count);
-		text_rect := r.get_text_rect(font, text, .{10, 10}, 0.4);
-		r.push_rect2(ui_batches, text_rect, r.COLOR_BLACK);
-		
-		r.push_text(ui_batches, font, text, .{10, 10}, 0.4, r.COLOR_RED);
-		
-	}
-	
-	if entity_store.apples.count == 0 {
-		
-		text := tprint("You have eaten all my balls! Victory is yours!");
-		
-		r.push_text(ui_batches, font, text, .{400, 500}, 1, r.COLOR_BLACK);
-		
-	}
-	
-	if entity_store.apples.count == 0 {
-		//exit(0);
-	}
-	
-	editor_window_begin(ui_batches, entity_window);
-	
-	if !entity_window.hide {
-		
-		builder: String_Builder;
-		builder.allocator = __temporary_allocator;
-		
-		ti := type_info(Entity);
-		
-		entity_window.entity_scroll_region.min = entity_window.layout.text_pos;
-		
-		e_count := active_count();
-		
-		entity_window.entry_start = max(entity_window.entry_start, 0);
-		entity_window.entry_start = min(entity_window.entry_start, e_count - entry_count - 1);
-		
-		start := entity_window.entry_start;
-		end := start + entry_count;
-		
-		occluded : bool;
-		
-		for i : start .. end {
-			entity := entity_store.first + i;
-			
-			if entity.flags & .Inactive {
-				end += 1;
-				continue;
-			}
-			
-			//print("%", << entity);
-			
-			if (ui_button(.{1, i, 0}, entity.name).toggle) {
-				
-				ui_begin_parent();
-				
-				count := ti.members.count;
-				
-				scroll := *entity_window.entity_scrolls[i];
-				
-				if point_in_rect(mpos, scroll.rect) {
-					
-					occluded = true;
-					
-					if scroll_up {
-						scroll.entry_start -= 1;
-					}
-					
-					else if scroll_down {
-						scroll.entry_start += 1;
-					}
-				}
-				
-				scroll.entry_start = max(scroll.entry_start, 0);
-				scroll.entry_start = min(scroll.entry_start, count - entry_count - 1);
-				
-				start := scroll.entry_start;
-				end := start + entry_count;
-				
-				scroll.rect.min = entity_window.layout.text_pos;
-				
-				for ti.members {
-					if it_index >= start && it_index <= end {
-						any: Any = ---;
-						any.type = it.type;
-						any.value_pointer = cast(*u8)entity + it.offset_in_bytes;
-						
-						print_item_to_builder(*builder, any);
-						
-						field_name := builder_to_string(*builder,, allocator = __temporary_allocator);
-						
-						text := tprint("%: %", it.name, field_name);
-						ui_label(.{1, 0, 0}, text);
-					}
-				}
-				
-				scroll.rect.max = entity_window.layout.rect_max;
-				ui_end_parent();
-			}
-			
-		}
-		
-		entity_window.entity_scroll_region.max = entity_window.layout.rect_max;
-		
-		if !occluded {
-			if point_in_rect(mpos, entity_window.entity_scroll_region) {
-				
-				if scroll_up {
-					entity_window.entry_start -= 1;
-				}
-				
-				else if scroll_down {
-					entity_window.entry_start += 1;
-				}
-				
-			}
 		}
 	}
+	
 }
 
 load_entities :: () {
-	for y: 0 .. tilemap.row - 1{
-		for x: 0 .. tilemap.col - 1 {
-			
-			tile := tile_from_index(x, y, 2);
-			
-			paint := paints[tile.paint_index];
-			
-			if paint.prop {
+	
+	for 0 .. world_tileworld.tm_count - 1 {
+		
+		world_tilemap := world_tileworld.tm_base + it;
+		
+		for y: 0 .. Tilemap.row - 1{
+			for x: 0 .. Tilemap.col - 1 {
 				
-				e : *Entity;
+				tile := tile_from_index(world_tilemap, x, y, 2);
 				
-				if paint.kind == .Player {
-					e = entity_alloc(.Control | .Animated);
-					e.speed = 300;
-					e.type = .Player;
-					py = e;
-				}
-				else if paint.kind == .Tree {
-					e = entity_alloc(0);
-					e.type = .Tree;
-				}
-				else if paint.kind == .Ball {
-					e = entity_alloc(0);
-					array_add(*entity_store.apples, e);
-				}
+				paint := paints[tile.paint_index];
 				
-				if e {
-					e.name = paint.name;
-					e.art_id = paint.art_id;
+				if paint.prop {
 					
-					e.origin = paint.origin;
-					e.size = paint.size;
-					e.frame_x = paint.frame_x;
-					e.frame_y = paint.frame_y;
-					e.frame_n = paint.frame_n;
-					e.pos = .{x * 32. + 16, y * 32. + 16};
+					e : *Entity;
+					
+					if paint.kind == .Player {
+						e = entity_alloc(.Control | .Animated);
+						e.speed = 100;
+						e.type = .Player;
+						//py = e;
+					}
+					else if paint.kind == .Tree {
+						e = entity_alloc(0);
+						e.type = .Tree;
+					}
+					else if paint.kind == .Ball {
+						e = entity_alloc(0);
+						//array_add(*entity_store.apples, e);
+					}
+					
+					if e {
+						e.name = paint.name;
+						e.art_id = paint.art_id;
+						
+						e.origin = paint.origin;
+						e.size = paint.size;
+						e.frame_x = paint.frame_x;
+						e.frame_y = paint.frame_y;
+						e.frame_n = paint.frame_n;
+						e.pos = .{x * 32. + 16, y * 32. + 16};
+					}
+					
 				}
 				
 			}
-			
 		}
 	}
 }
 
-// @debug
-disco_tilemap :: (sprite_batches : *r.BatchList) {
-	tile_size :: 64;
-	for y: 0 .. 64 {
-		for x: 0 .. 64 {
-			dst : RectF32;
-			dst.min.x = xx (x * tile_size);
-			dst.min.y = xx (y * tile_size);
-			dst.max.x = dst.min.x + tile_size;
-			dst.max.y = dst.min.y + tile_size;
-			
-			colors := Vector4.[r.COLOR_BLACK,
-												 r.COLOR_RED,
-												 r.COLOR_GREEN,
-												 r.COLOR_BLUE,
-												 r.COLOR_YELLOW,
-												 r.COLOR_CYAN,
-												 r.COLOR_MAGENTA,];
-			
-			color := colors[(x + y) % colors.count];
-			
-			tile_rect := r.push_rect2(sprite_batches, dst, color);
-			//tile_rect.radius = 16;
-		}
-	}
+unload_entities :: () {
+	entity_store.arena.used = 128;
+	entity_store.free = xx 0;
+	entity_store.inactive_count = 0;
+	entity_store.count = 0;
 }

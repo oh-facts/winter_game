@@ -28,6 +28,16 @@ build :: () {
 	for args {
 		if it == "clean" {
 			delete_directory(".build/");
+		} else if it == "ball" {
+			w := compiler_create_workspace("ball");
+			target_options := get_build_options(w);
+			target_options.output_executable_name = "ball";
+			target_options.output_path = ".build/";
+			set_build_options(target_options, w);
+			
+			add_build_file("src/eat_my_balls_main.jai", w);
+#if OS == .WINDOWS
+				file_link(".build/SDL2.dll", "bin/SDL2.dll");
 		}
 	}
 	

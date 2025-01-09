@@ -8,6 +8,10 @@ Vector2i :: struct {
 	y : s32;
 }
 
+operator == :: (a : Vector2i, b : Vector2i) -> bool {
+	return ((a.x == b.x) && (a.y == b.y));
+}
+
 distance_squared :: inline (a: Vector2i, b: Vector2i) -> s32 {
 	dx := b.x - a.x;
 	dy := b.y - a.y;

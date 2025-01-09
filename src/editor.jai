@@ -17,13 +17,26 @@ Editor_Window :: struct {
 	titlebar_height :: 32;
 	last_mpos : Vector2;
 	id : s32;
-	
+	last_touched : int;
 	entry_start : int;
 	entity_scroll_region : RectF32;
 	entity_scrolls : [30]Editor_Scroll;
 }
 
+editor_clock : int;
+
+editor_tick_clock :: () {
+	editor_clock += 1;
+}
+
 editor_in_focus :: (window : Editor_Window) -> bool {
+	
+	out : bool;
+	
+	if window.last_touched + 1 < editor_clock {
+		return false;
+	}
+	
 	rect : RectF32;
 	rect.min = window.layout.origin;
 	rect.max = window.layout.rect_max;
@@ -59,6 +72,8 @@ editor_init_window :: (title : string) -> *Editor_Window {
 }
 
 editor_window_begin :: (batches : *r.BatchList, window : *Editor_Window) {
+	window.last_touched = editor_clock;
+	
 	ui_select_layout(*window.layout);
 	
 	ly := *window.layout;
