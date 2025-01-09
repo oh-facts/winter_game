@@ -344,8 +344,8 @@ draw_tilemap :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 					paint := paints[tile.paint_index];
 					
 					dst : RectF32;
-					dst.min.x = xx (x * tm.tile_size);
-					dst.min.y = xx (y * tm.tile_size);
+					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size);
+					dst.min.y = xx ((y + tm.index.y * tm.row ) * tm.tile_size);
 					dst.max.x = dst.min.x + tm.tile_size + 1;
 					dst.max.y = dst.min.y + tm.tile_size + 1;
 					
@@ -465,4 +465,14 @@ disco_tilemap :: (sprite_batches : *r.BatchList) {
 			//tile_rect.radius = 16;
 		}
 	}
+}
+
+tilemap_index_from_tile_pos :: (tile_pos : Vector2i) -> Vector2i {
+	
+	out : Vector2i;
+	
+	out.x = tile_pos.x / Tilemap.col;
+	out.y = tile_pos.y / Tilemap.row;
+	
+	return out;
 }

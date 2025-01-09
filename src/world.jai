@@ -172,7 +172,11 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 	world_cmds.size = 0;
 	world_cmds.cap = xx MB(1);
 	
-	world_tilemap := tilemap_from_key(*world_tileworld, .{0, 1});
+	tm_index := tilemap_index_from_tile_pos(py.tile_pos);
+	
+	set_camera_pos(tm_index);
+	
+	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
 	draw_tilemap(world_tilemap, sprite_batches);
 	
 	// control
@@ -361,9 +365,9 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated);
-						e.speed = 100;
+						e.speed = 900;
 						e.type = .Player;
-						//py = e;
+						py = e;
 					}
 					else if paint.kind == .Tree {
 						e = entity_alloc(0);

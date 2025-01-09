@@ -45,6 +45,7 @@ move_start : Vector3i;
 move_end : Vector3i;
 moving_started := false;
 moving_yes := false;
+active_tilemap_index : Vector2i;
 
 ed_initialized : bool;
 
@@ -62,17 +63,47 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		map_editor_window = editor_init_window("map editor");
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		load_tileworld(*editor_tileworld);
+		//active_tilemap_index = Vector2i.{0, 10};
 	}
 	
-	editor_tilemap = tilemap_from_key(*editor_tileworld, .{0, 0});
+	mv : Vector2i;
+	if(os.event(events, .W, .Pressed))
+	{
+		mv.y -= 1;
+	}
+	
+	if(os.event(events, .A, .Pressed))
+	{
+		mv.x -= 1;
+	}
+	
+	if(os.event(events, .D, .Pressed))
+	{
+		mv.x += 1;
+	}
+	
+	if(os.event(events, .S, .Pressed))
+	{
+		mv.y += 1;
+	}
+	
+	set_camera_pos(active_tilemap_index);
+	
+	active_tilemap_index += mv;
+	
+	active_tilemap_index.x = max(active_tilemap_index.x, 0);
+	active_tilemap_index.y = max(active_tilemap_index.y, 0);
+	
+	
+	editor_tilemap = tilemap_from_key(*editor_tileworld, active_tilemap_index);
 	
 	// draw map
 	draw_tilemap(editor_tilemap, sprite_batches);
 	draw_entities(editor_tilemap, sprite_batches);
 	
 	if grid_toggle {
-		draw_grid(sprite_batches);
-		draw_outline(sprite_batches);
+		draw_grid(ui_batches);
+		draw_outline(ui_batches);
 	}
 	
 	// TODO(mizu): i don't want events to be shared like this.
@@ -87,10 +118,10 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 	tile_pos.z = clamp(tile_pos.z, 0, 2);
 	
 	// world space coords -> tile pos
-	tile_pos.x = xx ((wmpos.x) / Tilemap.tile_size);
-	tile_pos.y = xx ((wmpos.y) / Tilemap.tile_size);
+	tile_pos.x = xx ((mpos.x) / Tilemap.tile_size);
+	tile_pos.y = xx ((mpos.y) / Tilemap.tile_size);
 	
-	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(wmpos, Tilemap.rect);
+	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos, Tilemap.rect);
 	
 	if tilemap_in_focus {
 		
@@ -152,7 +183,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 					dst.max.x = (tile_select_range.max.x + 1) * 32.;
 					dst.max.y = (tile_select_range.max.y + 1) * 32.;
 					
-					r.push_rect2(sprite_batches, dst, r.COLOR_CYAN);
+					r.push_rect2(ui_batches, dst, r.COLOR_CYAN);
 				}
 				// selection ended
 				else {
@@ -166,15 +197,10 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 						
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
 							tile_from_index(editor_tilemap, x, y, tile_pos.z).paint_index = xx active_paint_index;
-							
 						}
 					}
-					
-					
 				}
 			}
-			
-			
 		}
 		else if tool.kind == .Select {
 			
@@ -207,7 +233,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 					dst.max.x = (tile_select_range.max.x + 1) * 32.;
 					dst.max.y = (tile_select_range.max.y + 1) * 32.;
 					
-					r.push_rect2(sprite_batches, dst, r.COLOR_CYAN);
+					r.push_rect2(ui_batches, dst, r.COLOR_CYAN);
 				}
 				// selection ended
 				else {
@@ -251,7 +277,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				for selection_buffer {
 					
 					dst := tile_rect_from_index(editor_tilemap, it.pos + mv);
-					r.push_rect2(sprite_batches, dst, r.COLOR_ORANGE);
+					r.push_rect2(ui_batches, dst, r.COLOR_ORANGE);
 				}
 			}
 			
@@ -284,7 +310,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				for selection_buffer {
 					
 					dst := tile_rect_from_index(editor_tilemap, it.pos);
-					r.push_rect2(sprite_batches, dst, .{0, 0, 1, 0.3});
+					r.push_rect2(ui_batches, dst, .{0, 0, 1, 0.3});
 					
 				}
 				
@@ -303,7 +329,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		}
 		
 		// preview tile pos
-		r.push_rect2(sprite_batches, tile_rect_from_index(editor_tilemap, tile_pos), .{0, 0, 0, 1});
+		r.push_rect2(ui_batches, tile_rect_from_index(editor_tilemap, tile_pos), .{0, 0, 0, 1});
 	}
 	
 	// @panel
@@ -369,5 +395,9 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		if ui_button(.{0, 0, 9}, text).active {
 			load_tileworld(*editor_tileworld);
 		}
+		
+		text = tprint("%", active_tilemap_index);
+		ui_label(.{0, 0, 10}, text);
+		
 	}
 }

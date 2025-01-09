@@ -28,8 +28,9 @@ set_camera_size :: (size : Vector2) {
 	camera.size = size;
 }
 
-set_camera_pos :: (pos : Vector2) {
-	camera.pos = pos;
+set_camera_pos :: (pos : Vector2i) {
+	camera.pos.x = xx ((pos.x * Tilemap.col) * Tilemap.tile_size + camera.size.x / 2);
+	camera.pos.y = xx ((pos.y * Tilemap.row) * Tilemap.tile_size + camera.size.y / 2);
 }
 
 update_camera :: () {
@@ -108,7 +109,6 @@ main :: () {
 		mm_event := os.event(*events, .NULL, .MouseMove);
 		scroll_event := os.event(*events, .NULL, .Scroll);
 		
-		set_camera_pos(.{955, 500});
 		update_camera();
 		
 		lmb_down = false;
