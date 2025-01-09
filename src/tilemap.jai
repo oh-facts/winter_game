@@ -134,25 +134,30 @@ save_tileworld :: (tw : Tileworld) {
 }
 
 load_tileworld :: (tw : *Tileworld) {
+	loaded := 0;
 	{
 		filename := tprint("%/%", data_folder, "map_meta_data");
 		data : *int = xx read_entire_file(filename).data;
 		
-		tw.tm_count = << data;
-		
-		free (data);
+		if data {
+			loaded = << data;
+			
+			free (data);
+		}
 	}
 	{
 		filename := tprint("%/%", data_folder, "map_data");
 		
 		data :*Tilemap= xx read_entire_file(filename).data;
 		
-		for 0 .. tw.tm_count - 1{
-			tm := tilemap_from_key(tw, data[it].index);
-			memcpy(tm.tiles.data, data[it].tiles.data, Tilemap.size);
+		if data {
+			for 0 .. loaded - 1{
+				tm := tilemap_from_key(tw, data[it].index);
+				memcpy(tm.tiles.data, data[it].tiles.data, Tilemap.size);
+			}
+			
+			free (data);
 		}
-		
-		free (data);
 	}
 }
 

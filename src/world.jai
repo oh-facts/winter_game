@@ -172,7 +172,7 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 	world_cmds.size = 0;
 	world_cmds.cap = xx MB(1);
 	
-	world_tilemap := tilemap_from_key(*world_tileworld, .{0, 0});
+	world_tilemap := tilemap_from_key(*world_tileworld, .{0, 1});
 	draw_tilemap(world_tilemap, sprite_batches);
 	
 	// control

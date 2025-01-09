@@ -61,6 +61,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		
 		map_editor_window = editor_init_window("map editor");
 		//editor_set_window_pos(map_editor_window, .{800, 0});
+		load_tileworld(*editor_tileworld);
 	}
 	
 	editor_tilemap = tilemap_from_key(*editor_tileworld, .{0, 0});
