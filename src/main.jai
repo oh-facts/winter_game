@@ -50,9 +50,11 @@ scroll_down : bool;
 #load "asset.jai";
 #load "ui.jai";
 #load "editor.jai";
-#load "tilemap.jai";
+#load "simulation.jai";
 #load "map_editor.jai";
 #load "world.jai";
+#load "winter.jai";
+#load "dialogue";
 
 Mode :: enum {
 	Game;
@@ -60,7 +62,8 @@ Mode :: enum {
 	COUNT;
 }
 
-current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Tile_Editor;
+current_mode : Mode = .Game;
 
 arena : *Arena;
 

@@ -29,6 +29,7 @@ grid_toggle : bool = true;
 active_tool_index := 0;
 active_paint_index := 0;
 active_entity_index := 0;
+current_key := 0;
 
 SelectionTile :: struct {
 	tile : Tile;
@@ -373,7 +374,6 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				}
 				ui_end_parent();
 			}
-			
 		}
 		
 		text = tprint("%", selection_buffer.count);

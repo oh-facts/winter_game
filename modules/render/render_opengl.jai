@@ -137,14 +137,14 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 	
 	// sprite pass
 	{
+		buffer := state.inst_buffer[INST_BUFFER.SPRITE];
+		shader := state.shader_prog[SHADER_PROG.SPRITE];
+		
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+		glUseProgram(shader);
+		
 		batch := sprite_batches.first;
 		while batch	{
-			buffer := state.inst_buffer[INST_BUFFER.SPRITE];
-			shader := state.shader_prog[SHADER_PROG.SPRITE];
-			
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-			glUseProgram(shader);
-			
 			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 			
 			memcpy(ssbo_data, batch.base, batch.size);
@@ -159,14 +159,14 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 	
 	// ui pass
 	{
+		buffer := state.inst_buffer[INST_BUFFER.UI];
+		shader := state.shader_prog[SHADER_PROG.UI];
+		
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+		glUseProgram(shader);
+		
 		batch := ui_batches.first;
 		while batch	{
-			buffer := state.inst_buffer[INST_BUFFER.UI];
-			shader := state.shader_prog[SHADER_PROG.UI];
-			
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-			glUseProgram(shader);
-			
 			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 			
 			memcpy(ssbo_data, batch.base, batch.size);
