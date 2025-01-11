@@ -29,7 +29,6 @@ grid_toggle : bool = true;
 active_tool_index := 0;
 active_paint_index := 0;
 active_entity_index := 0;
-current_key := 0;
 
 SelectionTile :: struct {
 	tile : Tile;

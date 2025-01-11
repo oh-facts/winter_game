@@ -120,6 +120,14 @@ clamp_bot :: (x : $X, b : X) -> X #expand {
 	return max(x,b);
 }
 
+max :: (a : float32, b : float32) -> float32 {
+	if a > b {
+		return a;
+	} else {
+		return b;
+	}
+}
+
 ARENA_COMMIT_SIZE :: #run KB(64);
 ARENA_RESERVE_SIZE :: #run MB(64);
 ARENA_HEADER_SIZE :: 128;
