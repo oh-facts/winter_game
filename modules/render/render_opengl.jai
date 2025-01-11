@@ -77,7 +77,7 @@ init :: () {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
 	
-	//glEnable(GL_FRAMEBUFFER_SRGB);
+	glEnable(GL_FRAMEBUFFER_SRGB);
 	
 	gl_load(*gl, SDL_GL_GetProcAddress);
 	
@@ -169,9 +169,9 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 	
 	// beam
 	{
-		shader := state.shader_prog[SHADER_PROG.BEAM];
-		glUseProgram(shader);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		//shader := state.shader_prog[SHADER_PROG.BEAM];
+		//glUseProgram(shader);
+		//glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	}
 	
 	// ui pass

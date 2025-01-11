@@ -30,8 +30,8 @@ set_camera_size :: (size : Vector2) {
 }
 
 set_camera_pos :: (pos : Vector2i) {
-	//camera.pos.x = xx ((pos.x * Tilemap.col) * Tilemap.tile_size + camera.size.x / 2);
-	//camera.pos.y = xx ((pos.y * Tilemap.row) * Tilemap.tile_size + camera.size.y / 2);
+	camera.pos.x = xx ((pos.x * Tilemap.col) * Tilemap.tile_size + camera.size.x / 2);
+	camera.pos.y = xx ((pos.y * Tilemap.row) * Tilemap.tile_size + camera.size.y / 2);
 }
 
 update_camera :: () {
@@ -49,11 +49,22 @@ scroll_up : bool;
 scroll_down : bool;
 
 #load "asset.jai";
-//#load "simulation.jai";
-//#load "map_editor.jai";
-//#load "world.jai";
+#load "editor.jai";
+#load "simulation.jai";
+#load "map_editor.jai";
+#load "world.jai";
 #load "winter.jai";
 #load "dialogue";
+
+/*
+editor_window_begin(*ui_batches, map_editor_window);
+		if !map_editor_window.hide {
+			
+			editor_label("text");
+			editor_label("text");
+		}
+		editor_window_end(map_editor_window);
+*/
 
 Mode :: enum {
 	Game;
@@ -61,38 +72,10 @@ Mode :: enum {
 	COUNT;
 }
 
-//current_mode : Mode = .Tile_Editor;
-current_mode : Mode = .Game;
+current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Game;
 
 arena : *Arena;
-
-random_index : int;
-
-draw_children :: (ui_batches : *r.BatchList, root : *ui.Widget) {
-	//print("%\n", root.dst);
-	
-	colors : [4]Vector4 : .[r.COLOR_WHITE, r.COLOR_RED, r.COLOR_GREEN, r.COLOR_BLUE];
-	random_index += 1;
-	
-	color := colors[3];
-	inverse_color := .{1, 1, 1, 2} - color;
-	
-	r.push_rect2(ui_batches, root.dst, color);
-	
-	if root.hot {
-		inverse_color = r.COLOR_ORANGE;
-	}
-	
-	r.push_text(ui_batches, font, root.text, root.pos, 0.4, inverse_color);
-	
-	{
-		child :=  root.first;
-		while child {
-			draw_children(ui_batches, child);
-			child = child.next;
-		}
-	}
-}
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -118,6 +101,7 @@ main :: () {
 	quit : bool;
 	
 	ui_cxt := ui.init();
+	editor_ui_cxt = ui_cxt;
 	
 	while !quit {
 		//print("%\n", frames);
@@ -175,29 +159,6 @@ main :: () {
 		}
 		
 		ui.begin(ui_cxt, mpos, lmb_down);
-		ui.widget_impl(ui_cxt, "hello", 1);
-		ui.widget_impl(ui_cxt, "hello", 2);
-		ui.widget_impl(ui_cxt, "hello2", 3);
-		
-		col := ui.widget_from_key(ui_cxt, 4);
-		ui.push_parent_node(ui_cxt, col);
-		col.child_layout_axis = .Y;
-		col.pref_size[0].kind = .ChildrenSum;
-		col.pref_size[1].kind = .ChildrenSum;
-		
-		ui.widget_impl(ui_cxt, "hello3", 9);
-		ui.widget_impl(ui_cxt, "hello3", 10);
-		ui.widget_impl(ui_cxt, "hello3", 11);
-		ui.widget_impl(ui_cxt, "hello3", 12);
-		ui.pop_parent_node(ui_cxt);
-		
-		ui.widget_impl(ui_cxt, "hello34", 13);
-		ui.layout(ui_cxt.root);
-		
-		//print("----\n");
-		draw_children(*ui_batches, ui_cxt.root);
-		//print("----\n");
-		ui.end(ui_cxt);
 		
 		if os.event(*events, .TAB, .Pressed) {
 			current_mode = (current_mode + 1) % .COUNT;
@@ -205,11 +166,18 @@ main :: () {
 		
 		if current_mode == {
 			case .Game;
-			//world_update(xx delta, *events, *sprite_batches, *ui_batches);
+			world_update(xx delta, *events, *sprite_batches, *ui_batches);
 			
 			case .Tile_Editor;
-			//editor_update(xx delta, *events, *sprite_batches, *ui_batches);
+			editor_update(xx delta, *events, *sprite_batches, *ui_batches);
 		}
+		
+		ui.layout(ui_cxt.root);
+		
+		//print("----\n");
+		draw_children(*ui_batches, ui_cxt.root);
+		//print("----\n");
+		ui.end(ui_cxt);
 		
 		r.submit(win, camera.size, ui_batches,  sprite_batches, camera.pos);
 		

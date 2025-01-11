@@ -134,10 +134,11 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 	}
 	
 	editor_window_begin(ui_batches, world_window);
+	defer editor_window_end(world_window);
 	
 	if !world_window.hide {
 		text := "restart";
-		if ui_button(.{200, 0, 1}, text).active {
+		if editor_label(text).active {
 			demo_quest = .{};
 			unload_entities();
 			load_tileworld(*world_tileworld);

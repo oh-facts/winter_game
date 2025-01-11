@@ -1,3 +1,5 @@
+text_size := 0.4;
+
 // I don't have the energy to add text edit.
 // Therefore, we will use pre-written names
 
@@ -337,66 +339,61 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 	
 	if !map_editor_window.hide {
 		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
-		ui_label(.{0, 0, 0}, text);
+		
+		editor_label(text);
+		
+		tool_id : [tools.count]ui.ID;
+		
+		operator == :: (a : ui.ID, b : ui.ID) -> bool {
+			return (memcmp(*a, *b, size_of(ui.ID)) == 0);
+		}
 		
 		for tools {
 			text = tprint("%", it.name);
 			
-			if(active_tool_index == xx it_index) {
-				default_text_color = r.COLOR_ORANGE;
-			}
-			
-			signal := ui_button(.{0, it_index, 1}, text);
-			
-			default_text_color = r.COLOR_WHITE;
-			
+			signal := editor_label(text, it_index);
+			tool_id[it_index] = signal.widget.key;
 			if(signal.active) {
 				active_tool_index = xx it_index;
 			}
 			
-			if(active_tool_index == xx Tool_Kind.Paint && (signal.id == .{0, xx Tool_Kind.Paint, 1})) {
-				ui_begin_parent();
+			if(active_tool_index == xx Tool_Kind.Paint && (signal.widget.key == tool_id[Tool_Kind.Paint])) {
+				
+				ui.push_padding_node(editor_ui_cxt, .{16, 0});
+				defer ui.pop_padding_node(editor_ui_cxt);
 				for 1 .. paints.count - 1{
 					paint := paints[it];
 					text = tprint("%", paint.name);
 					
-					if(active_paint_index == xx it) {
-						default_text_color = r.COLOR_ORANGE;
-					}
-					
-					if(ui_button(.{0, it, 2}, text).active) {
+					if(editor_label(text, it).active) {
 						active_paint_index = xx it;
 					}
-					
-					default_text_color = r.COLOR_WHITE;
-					
 				}
-				ui_end_parent();
 			}
 		}
 		
 		text = tprint("%", selection_buffer.count);
-		ui_label(.{0, 0, 3}, text);
+		editor_label(text);
 		
 		text = tprint("% %", move_start, move_end);
-		ui_label(.{0, 0, 4}, text);
+		editor_label(text);
 		
 		text = tprint("toggle grid");
-		
-		grid_toggle = !ui_button(.{0, 0, 5}, text).toggle;
+		grid_toggle = !editor_label(text).toggle;
 		
 		text = tprint("save");
-		if ui_button(.{0, 0, 8}, text).active {
+		if editor_label(text).active {
 			save_tileworld(editor_tileworld);
 		}
 		
 		text = tprint("load");
-		if ui_button(.{0, 0, 9}, text).active {
+		if editor_label(text).active {
 			load_tileworld(*editor_tileworld);
 		}
 		
-		text = tprint("%", active_tilemap_index);
-		ui_label(.{0, 0, 10}, text);
 		
+		text = tprint("%", active_tilemap_index);
+		editor_label(text);
 	}
+	editor_window_end(map_editor_window);
 }

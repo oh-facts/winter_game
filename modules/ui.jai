@@ -2,11 +2,16 @@
 // the editor layer can make use of owner, index, item, window id, etc. to make produce different keys. The question is, how do i resolve collisions? Since the ui layer wont know how the keys are produced? A) callback to resolve collisions. B) opaque ids?
 // so UI_ID becomes u32[6] for eg. and high level layers can adjust as they see fit. I like this idea more.
 
+// i did the write. there are leaks probably. will get to it when i run out of memory / next cleanup pass. whichever comes first.
+
 #import "Math";
 #import "mizu_base";
 r :: #import "render";
+
+padding : float32 : 8;
+
 ID :: struct {
-	v : [4]u64;
+	v : [2]u64;
 }
 
 Axis2 :: enum {
@@ -60,6 +65,11 @@ ParentNode :: struct {
 	v : *Widget;
 }
 
+PaddingNode :: struct {
+	next : *PaddingNode;
+	v : [2]float32;
+}
+
 push_parent_node :: (state : *State, parent : *Widget) {
 	
 	node : *ParentNode = xx tpush_struct(ParentNode);
@@ -76,6 +86,22 @@ pop_parent_node :: (state : *State) {
 	state.parent_stack.top = state.parent_stack.top.next;
 }
 
+push_padding_node :: (state : *State, padding : Vector2) {
+	
+	node : *PaddingNode = xx tpush_struct(PaddingNode);
+	node.v = padding.component;
+	
+	node.next = state.padding_stack.top;
+	state.padding_stack.top = node;
+	
+	i__i :: 0;
+}
+
+pop_padding_node :: (state : *State) {
+	
+	state.padding_stack.top = state.padding_stack.top.next;
+}
+
 Widget :: struct {
 	// tree
 	first : *Widget;
@@ -89,7 +115,7 @@ Widget :: struct {
 	
 	// cache info
 	hash_next : *Widget;
-	key : u64;
+	key : ID;
 	last_frame_touched_index : u64;
 	
 	// styling
@@ -100,7 +126,7 @@ Widget :: struct {
 	child_layout_axis : Axis2;
 	text : string;
 	font : r.Font;
-	
+	padding : [Axis2.COUNT]float32;
 	// calculated after hierearchy pass
 	computed_rel_position : [Axis2.COUNT]float32;
 	computed_size : [Axis2.COUNT]float32;
@@ -136,6 +162,12 @@ State :: struct {
 		auto_pop : bool;
 	};
 	
+	padding_stack : struct {
+		top : *PaddingNode;
+		free : *PaddingNode;
+		auto_pop : bool;
+	};
+	
 	root : *Widget;
 }
 
@@ -149,8 +181,22 @@ init :: () -> *State {
 	return state; 
 }
 
-widget_lookup :: (state : *State, key : u64) -> *Widget {
-	slot_index := key % xx state.slots.count;
+operator == :: (a : ID, b : ID) -> bool {
+	return (memcmp(*a, *b, size_of(ID)) == 0);
+}
+
+hash_from_key :: (key : ID) -> int {
+	hash := 5381;
+	
+	for 0 .. 1 {
+		hash = ((hash << 5) + hash) + xx key.v[it];
+	}
+	
+	return hash;
+}
+
+widget_lookup :: (state : *State, key : ID) -> *Widget {
+	slot_index := hash_from_key(key) % xx state.slots.count;
 	slot := state.slots.data + slot_index;
 	out : *Widget;
 	
@@ -167,7 +213,12 @@ widget_lookup :: (state : *State, key : u64) -> *Widget {
 	return out;
 }
 
-widget_from_key :: (state : *State, key : u64) -> *Widget {
+key_is_null :: (key : ID) -> bool {
+	NULL_ID : ID : .{}; 
+	return (memcmp(*key, *NULL_ID, size_of(ID)) == 0);
+}
+
+widget_from_key :: (state : *State, key : ID) -> *Widget {
 	
 	// check cache if widget already exists
 	out := widget_lookup(state, key);
@@ -175,12 +226,11 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 	// not found in cache, allocate
 	if !out {
 		// allocate from frame arena
-		if key == 0 {
+		if key_is_null(key) {
 			out = tzpush_struct(Widget);
 		}
 		// don't
-		else
-		{
+		else {
 			// check free list, or allocate new
 			out = state.free;
 			if !out {
@@ -192,7 +242,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 			}
 			
 			// add to cache
-			slot_index := key % xx state.slots.count;
+			slot_index := hash_from_key(key) % xx state.slots.count;
 			slot := state.slots.data + slot_index;
 			
 			if !slot.last {
@@ -254,6 +304,7 @@ widget_from_key :: (state : *State, key : u64) -> *Widget {
 	
 	// styling
 	{
+		out.padding = state.padding_stack.top.v;
 		//out.color = state.color_stack.top.v;
 		//out.border_color = state.border_color_stack.top.v;
 		//out.border_thickness = state.border_thickness_stack.top.v;
@@ -277,6 +328,7 @@ signal :: (state : *State, widget : *Widget) -> Signal {
 		
 		if state.mdown {
 			widget.active = true;
+			widget.toggle = !widget.toggle;
 		}
 		
 	}
@@ -287,7 +339,7 @@ signal :: (state : *State, widget : *Widget) -> Signal {
 	return out;
 }
 
-widget_impl :: (state : *State, text : string, key : u64) -> Signal {
+widget_impl :: (state : *State, text : string, key : ID) -> Signal {
 	
 	widget := widget_from_key(state, key);
 	widget.flags |= .Text;
@@ -325,7 +377,7 @@ layout_fixed_size :: (root : *Widget, axis : Axis2) {
 		root.computed_size[axis] = root.pref_size[axis].value;
 	}
 	
-	//root.computed_size[axis] += root.padding[axis];
+	root.computed_size[axis] += 16 ;//root.padding[axis];
 }
 
 layout_downward_dependent :: (root : *Widget, axis : Axis2) {
@@ -376,8 +428,8 @@ layout_pos :: (root : *Widget) {
 			child.computed_rel_position[0] += root.computed_rel_position[0];
 			child.computed_rel_position[1] += root.computed_rel_position[1];
 			
-			//child.computed_rel_position[0] += child.padding[0];
-			//child.computed_rel_position[1] += child.padding[1];
+			child.computed_rel_position[0] += child.padding[0];
+			child.computed_rel_position[1] += child.padding[1];
 			
 			if(!(child.flags & Floating)) {
 				axis := root.child_layout_axis;
@@ -441,11 +493,16 @@ begin :: (state : *State, mpos : Vector2, mdown : bool) {
 	state.parent_stack.top = widget_node;
 	state.root = widget;
 	
+	padding_node : *PaddingNode = push_struct(state.arena, PaddingNode);
+	
+	state.padding_stack.top = padding_node;
+	
 	state.root.child_count = 0;
 }
 
 end :: (state : *State) {
 	pop_parent_node(state);
+	pop_padding_node(state);
 	
 	for i : 0 .. state.slots.count - 1 {
 		first_hash := (state.slots.data + i).first;
