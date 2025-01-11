@@ -38,6 +38,11 @@ Rect2 :: struct {
 	pad2 : [2]float32;
 };
 
+Beam :: struct {
+	offset : Vector2;
+	pad : [2]float;
+}
+
 Batch :: struct {
 	base : *u8;
 	count : u32;

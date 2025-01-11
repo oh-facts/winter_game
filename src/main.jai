@@ -159,7 +159,7 @@ main :: () {
 			editor_update(xx delta, *events, *sprite_batches, *ui_batches);
 		}
 		
-		r.submit(win, camera.size, ui_batches, sprite_batches, camera.pos);
+		r.submit(win, camera.size, ui_batches,  sprite_batches, camera.pos);
 		
 		editor_tick_clock();
 		

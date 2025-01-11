@@ -14,6 +14,9 @@ ui_frag_shader := #run read_entire_file("shaders/ui.frag");
 sprite_vertex_shader := #run read_entire_file("shaders/sprite.vert"); 
 sprite_frag_shader := #run read_entire_file("shaders/sprite.frag");
 
+beam_vertex_shader := #run read_entire_file("shaders/beam.vert"); 
+beam_frag_shader := #run read_entire_file("shaders/beam.frag");
+
 SceneData :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
@@ -45,6 +48,7 @@ INST_BUFFER :: enum {
 SHADER_PROG :: enum {
 	UI;
 	SPRITE;
+	BEAM;
 	COUNT;
 };
 
@@ -89,18 +93,23 @@ init :: () {
 	vert_files : []string = .[
 														ui_vertex_shader,
 														sprite_vertex_shader,
+														beam_vertex_shader
 														];
 	
 	frag_files : []string = .[
 														ui_frag_shader,
 														sprite_frag_shader,
+														beam_frag_shader
 														];
 	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
 		state.shader_prog[i] = make_shader_program(vert_files[i].data, frag_files[i].data);
-		
+	}
+	
+	for i : 0 .. INST_BUFFER.COUNT - 1 {		
 		state.inst_buffer[i] = make_buffer(MB(8));
 	}
+	
 	
 	state.scene_buffer = make_buffer(size_of(SceneData));
 	
@@ -111,7 +120,8 @@ init :: () {
 	state.white_square = image(bmp);
 }
 
-submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprite_batches : BatchList, screen_offset := Vector2.{0, 0}) {
+submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprite_batches : BatchList,
+					 screen_offset := Vector2.{0, 0}) {
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -155,6 +165,13 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 			
 			batch = batch.next;
 		}
+	}
+	
+	// beam
+	{
+		shader := state.shader_prog[SHADER_PROG.BEAM];
+		glUseProgram(shader);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	}
 	
 	// ui pass
