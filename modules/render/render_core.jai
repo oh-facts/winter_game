@@ -51,6 +51,19 @@ Batch :: struct {
 	next : *Batch;
 };
 
+Pass_Kind :: enum {
+	Sprite;
+	UI;
+	Beam;
+}
+
+Pass : struct {
+	kind : Pass_Kind;
+	batches : BatchList;
+	beam : Beam;
+	beam_yes : bool;
+}
+
 BatchList :: struct {
 	first : *Batch;
 	last : *Batch;
