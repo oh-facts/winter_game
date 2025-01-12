@@ -169,6 +169,21 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
 	draw_tilemap(world_tilemap, passes);
 	
+	// 
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		if entity.flags & .Inactive continue;
+		
+		if entity.flags & .Interactable {
+			
+			if distance_squared(entity.tile_pos, py.tile_pos) < 4 {
+				entity.highlight = true;
+			};
+			
+		}
+	}
+	
 	// control
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -229,8 +244,27 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				mv.x += 1;
 			}
 			
-			entity.pos.x += mv.x * xx delta * entity.speed;
-			entity.pos.y += mv.y * xx delta * entity.speed;
+			test_pos := entity.pos;
+			test_pos.x += mv.x * xx delta * entity.speed;
+			test_pos.y += mv.y * xx delta * entity.speed;
+			
+			test_index : Vector2i;
+			test_index.x = xx (test_pos.x / 32.);
+			test_index.y = xx (test_pos.y / 32.);
+			
+			//@cleanup
+			// I am thinking we have tile flags like
+			// "collidable"
+			tile1 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 2);
+			
+			tile2 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 1);
+			tile3 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 0);
+			
+			if tile1.paint_index != 6 && (tile2.paint_index || tile3.paint_index){
+				entity.pos = test_pos;
+				//print("%\n", tile.paint_index);
+				//print("collis\n");
+			} 
 			
 			if os.event(events, .E, .Pressed) {
 				push_world_eat_cmd(entity.tile_pos);
@@ -336,7 +370,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 	}
 	
-	
 	base := world_cmds.base;
 	for 0 .. world_cmds.count - 1 {
 		header :*World_Cmd_Kind = xx base;
@@ -344,21 +377,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if << header == {
 			case .Eat;
 			cmd : *World_Eat_Cmd = xx base;
-			
-			for 0 .. entity_store.count - 1 {
-				entity := entity_store.first + it;
-				
-				if entity.flags & .Inactive continue;
-				
-				if entity.flags & .Interactable {
-					
-					if distance_squared(entity.tile_pos, cmd.tile_pos) < 4 {
-						entity.highlight = true;
-					};
-					
-				}
-			}
-			
 		}
 	}
 }
@@ -382,7 +400,7 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated);
-						e.speed = 900;
+						e.speed = 200;
 						e.type = .Player;
 						py = e;
 					}
