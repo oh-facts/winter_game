@@ -9,6 +9,7 @@ flat in uvec2 a_tex_id;
 flat in float a_border_thickness;
 flat in vec2 a_half_size;
 flat in float a_radius;
+flat in vec2 a_submerged;
 in vec2 a_norm_uv;
 
 float RectSDF(vec2 p, vec2 b, float r)
@@ -22,6 +23,10 @@ void main()
 	vec4 tex_col = texture(sampler2D(a_tex_id), a_uv);
 	
 	if(tex_col.a < 0.01) {
+		discard;
+	}
+	
+	if ((a_submerged.x * a_norm_uv.y) > (a_submerged.x * (1.0 - a_submerged.y))) {
 		discard;
 	}
 	

@@ -85,6 +85,7 @@ Entity :: struct {
 	color : Vector4;
 	interaction_state : Interaction_State;
 	next : *Entity;
+	submerged : float;
 };
 
 EntityStore :: struct {
@@ -370,6 +371,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	intro_sort(entity_store.sort_list, sort_entitties);
 	
+	
 	for entity_store.sort_list {
 		dst : RectF32;
 		dst.min.x = it.pos.x - it.origin.x;
@@ -379,6 +381,27 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
 		sprite.tex_id = arts[it.art_id].tex.U64[1];
+		sprite.pad2[0] = -1.;
+		sprite.pad2[1] = it.submerged;
+		
+		width := 1. / it.frame_x;
+		
+		sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
+	}
+	
+	r.push_beam(passes);
+	
+	for entity_store.sort_list {
+		dst : RectF32;
+		dst.min.x = it.pos.x - it.origin.x;
+		dst.min.y = it.pos.y - it.origin.y;
+		dst.max.x = dst.min.x + it.size.x;
+		dst.max.y = dst.min.y + it.size.y;
+		
+		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
+		sprite.tex_id = arts[it.art_id].tex.U64[1];
+		sprite.pad2[0] = 1.;
+		sprite.pad2[1] = it.submerged;
 		
 		width := 1. / it.frame_x;
 		
@@ -402,6 +425,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	if active_entity {
 		if active_entity.type == .Tree {
+			
 			if dialogue_box(passes, events, TREE_TALK) {
 				push_world_complete_interaction();
 			}
@@ -451,11 +475,13 @@ load_entities :: () {
 						e = entity_alloc(.Control | .Animated);
 						e.speed = 200;
 						e.type = .Player;
+						e.submerged = 0.2;
 						py = e;
 					}
 					else if paint.kind == .Tree {
 						e = entity_alloc(.Interactable);
 						e.type = .Tree;
+						e.submerged = 0.28;
 					}
 					else if paint.kind == .Ball {
 						e = entity_alloc(0);
@@ -463,6 +489,7 @@ load_entities :: () {
 					}
 					else if paint.kind == .Siren {
 						e = entity_alloc(0);
+						e.submerged = 0.2;
 					}
 					
 					if e {

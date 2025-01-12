@@ -20,6 +20,10 @@ beam_frag_shader := #run read_entire_file("shaders/beam.frag");
 SceneData :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
+	noise_id : u64;
+	displacement_id : u64;
+	pad : [3]float;
+	delta : float;
 };
 
 Image :: struct {
@@ -120,14 +124,17 @@ init :: () {
 	state.white_square = image(bmp);
 }
 
-submit :: (win : os.Handle, screen_size : Vector2, passes : Pass_List,
+submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
+					 passes : Pass_List,
+					 noise : Handle,
+					 displacement : Handle,
 					 screen_offset := Vector2.{0, 0}) {
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
-	glClearColor(1., 0, 1., 1.);
+	glClearColor(0.2, 0.2, 0.3, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	// scene buffer
@@ -135,6 +142,9 @@ submit :: (win : os.Handle, screen_size : Vector2, passes : Pass_List,
 		scene_data : SceneData;
 		scene_data.screen_size = .{screen_size.x, screen_size.y};
 		scene_data.screen_offset = screen_offset;
+		scene_data.noise_id = noise.U64[1];
+		scene_data.displacement_id = displacement.U64[1];
+		scene_data.delta = delta;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
@@ -145,7 +155,7 @@ submit :: (win : os.Handle, screen_size : Vector2, passes : Pass_List,
 		glUnmapNamedBuffer(scene_buffer);
 	}
 	
-	// ui
+	// passes
 	{
 		pass := passes.first;
 		while pass {

@@ -48,6 +48,7 @@ flat out uvec2 a_tex_id;
 flat out float a_border_thickness;
 flat out vec2 a_half_size;
 flat out float a_radius;
+flat out vec2 a_submerged;
 out vec2 a_norm_uv;
 
 void main()
@@ -94,4 +95,7 @@ void main()
 	vec2 norm_pos = shifted_pos / screen_size.xy * 2.0 - 1.0;
 	norm_pos.y = -norm_pos.y;
 	gl_Position = vec4(norm_pos, 0, 1);
+	
+	a_submerged.x = obj.pad2[0];
+	a_submerged.y = obj.pad2[1];
 }

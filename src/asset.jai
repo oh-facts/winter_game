@@ -12,6 +12,8 @@ ArtId :: enum {
 	Tree;
 	Ball;
 	Siren;
+	Displacement;
+	Noise;
 }
 
 Art :: struct {
@@ -22,15 +24,17 @@ Art :: struct {
 	bmp : Bitmap;
 }
 
-arts : [9]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
-									.{id = .TerrainGrass, path = "art/terrain_grass.png"},
-									.{id = .PropsForest, path = "art/forest_props.png"},
-									.{id = .TilesForest, path = "art/forest_tileset.png"},
-									.{id = .Impolo, path = "art/impolo-east.png"},
-									.{id = .Ell, path = "art/ell.png"},
-									.{id = .Tree, path = "art/tree.png"},
-									.{id = .Ball, path = "art/ball.png"},
-									.{id = .Siren, path = "art/siren.png"}];
+arts : [11]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
+									 .{id = .PropsForest, path = "art/forest_props.png"},
+									 .{id = .TilesForest, path = "art/forest_tileset.png"},
+									 .{id = .Impolo, path = "art/impolo-east.png"},
+									 .{id = .Ell, path = "art/ell.png"},
+									 .{id = .Tree, path = "art/tree.png"},
+									 .{id = .Ball, path = "art/ball.png"},
+									 .{id = .Siren, path = "art/siren.png"},
+									 .{id = .Displacement, path = "art/displacement.png"},
+									 .{id = .Noise, path = "art/noise.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());

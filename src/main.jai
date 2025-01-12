@@ -102,8 +102,11 @@ main :: () {
 	
 	ui_cxt := ui.init();
 	editor_ui_cxt = ui_cxt;
+	timer : float32;
 	
 	while !quit {
+		timer += xx delta;
+		
 		//print("%\n", frames);
 		frames += 1;
 		time_since_last := time_elapsed;
@@ -178,7 +181,8 @@ main :: () {
 		//print("----\n");
 		ui.end(ui_cxt);
 		
-		r.submit(win, camera.size, passes, camera.pos);
+		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,
+						 arts[xx ArtId.Displacement].tex, camera.pos);
 		
 		//editor_tick_clock();
 		

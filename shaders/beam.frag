@@ -1,8 +1,14 @@
-// Authored by ice facts
+// Ice mostly figured out the beam
 
 #version 450 core
+#extension GL_ARB_bindless_texture : enable
+
 in vec2 fragCoord;
 in vec2 screen_size;
+flat in float a_delta;
+flat in uvec2 a_noise_id;
+flat in uvec2 a_displacement_id;
+
 out vec4 FragColor;
 
 const vec2 offset = vec2(0.4, 0.1);
@@ -50,6 +56,12 @@ float circle(vec2 p, vec2 center, float radius)
 
 void main()
 {
+	vec4 displacement = texture(sampler2D(a_displacement_id), fragCoord);
+	
+	vec2 distortedUV = fragCoord + displacement.xy * 0.3;
+	
+	distortedUV = vec2(distortedUV.x, distortedUV.y / 3.0 - a_delta * 0.1);
+	
 	vec2 p = fragCoord;
 	
 	float dist = beam(p, 1.0);
@@ -62,12 +74,23 @@ void main()
 	
 	float moon = circle(p, moon_pos, moon_radius);
 	
+	vec4 beam;
+	
 	if ((dist) < lineWidth || (dist2) < lineWidth)
 	{
-		FragColor = mix(bg, beam_color, alpha);
+		beam = mix(bg, beam_color, alpha);
 	}
 	else
 	{
-		FragColor = mix(bg + star, moon_color, moon);
+		beam = mix(bg + star, moon_color, moon);
 	}
+	
+	vec4 noise = texture(sampler2D(a_noise_id), distortedUV);
+	noise = round(noise * 4.0) / 4.0;
+	//noise.w = 0.1;
+	
+	vec3 color = vec3(1, 0, 0);
+	
+	FragColor = mix(noise, vec4(color, 0.4), 0.743);
+	FragColor = mix(FragColor, beam, 0.743);
 }
