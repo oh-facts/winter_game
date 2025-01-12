@@ -336,9 +336,10 @@ tile_rect_from_index :: (tm : Tilemap, x : s32, y : s32, z : s32) -> RectF32{
 	return out;
 }
 
-draw_tilemap :: (tm : Tilemap, sprite_batches : *r.BatchList) {
+draw_tilemap :: (tm : Tilemap, passes : *r.Pass_List) {
 	// draw tilemap
 	for z: 0 .. tm.depth - 2 {
+		//r.push_beam(passes);
 		for y: 0 .. tm.row - 1 {
 			for x: 0 .. tm.col - 1 {
 				
@@ -373,7 +374,7 @@ draw_tilemap :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 						src.max.y = 1 - src.max.y;
 						//print("%\n", src);
 						
-						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
 						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
 						tile_rect.src = src;
 					}
@@ -387,7 +388,7 @@ draw_tilemap :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 						src.max.y = 1 - src.max.y;
 						//print("%\n", src);
 						
-						tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+						tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
 						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
 						tile_rect.src = src;
 					}
@@ -397,7 +398,7 @@ draw_tilemap :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 	}
 }
 
-draw_entities :: (tm : Tilemap, sprite_batches : *r.BatchList) {
+draw_entities :: (tm : Tilemap, passes : *r.Pass_List) {
 	for y: 0 .. tm.row - 1{
 		for x: 0 .. tm.col - 1 {
 			
@@ -412,7 +413,7 @@ draw_entities :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 				dst.max.x = dst.min.x + paint.size.x;
 				dst.max.y = dst.min.y + paint.size.y;
 				
-				tile_rect := r.push_rect2(sprite_batches, dst, r.COLOR_WHITE);
+				tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
 				tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
 				
 				width := 1. / paint.frame_x;
@@ -423,7 +424,7 @@ draw_entities :: (tm : Tilemap, sprite_batches : *r.BatchList) {
 	}
 }
 
-draw_grid :: (sprite_batches : *r.BatchList) {
+draw_grid :: (passes : *r.Pass_List) {
 	for y: 1 .. Tilemap.row - 1 - 1 {
 		for x: 1 .. Tilemap.col - 1 - 1 {
 			dst : RectF32;
@@ -432,21 +433,21 @@ draw_grid :: (sprite_batches : *r.BatchList) {
 			dst.max.x = dst.min.x + Tilemap.tile_size;
 			dst.max.y = dst.min.y + Tilemap.tile_size;
 			
-			tile_rect := r.push_rect2(sprite_batches, dst, .{});
+			tile_rect := r.push_rect2(passes, dst, .{});
 			tile_rect.border_thickness = 4;
 			tile_rect.border_color = r.COLOR_BLACK;
 		}
 	}
 }
 
-draw_outline :: (sprite_batches : *r.BatchList) {
-	map_outline := r.push_rect2(sprite_batches, Tilemap.rect, .{0, 0, 0, 0});
+draw_outline :: (passes : *r.Pass_List) {
+	map_outline := r.push_rect2(passes, Tilemap.rect, .{0, 0, 0, 0});
 	map_outline.border_color = r.COLOR_ORANGE;
 	map_outline.border_thickness = 4;
 }
 
 // @debug
-disco_tilemap :: (sprite_batches : *r.BatchList) {
+disco_tilemap :: (passes : *r.Pass_List) {
 	tile_size :: 64;
 	for y: 0 .. 64 {
 		for x: 0 .. 64 {
@@ -466,7 +467,7 @@ disco_tilemap :: (sprite_batches : *r.BatchList) {
 			
 			color := colors[(x + y) % colors.count];
 			
-			tile_rect := r.push_rect2(sprite_batches, dst, color);
+			tile_rect := r.push_rect2(passes, dst, color);
 			//tile_rect.radius = 16;
 		}
 	}

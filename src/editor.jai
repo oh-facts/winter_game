@@ -79,7 +79,7 @@ editor_window_end :: (window : *Editor_Window) {
 	ui.pop_parent_node(editor_ui_cxt);
 }
 
-editor_window_begin :: (batches : *r.BatchList, window : *Editor_Window) {
+editor_window_begin :: (window : *Editor_Window) {
 	window.last_touched = editor_clock;
 	
 	root_id : ui.ID = .{.[100, 100]};
@@ -132,14 +132,13 @@ editor_label :: (text : string, index := 0, loc := #caller_location) -> ui.Signa
 	return ui.widget_impl(editor_ui_cxt, text, id);
 }
 
-
-draw_children :: (ui_batches : *r.BatchList, root : *ui.Widget) {
+draw_children :: (passes : *r.Pass_List, root : *ui.Widget) {
 	//print("%\n", root.dst);
 	
 	{
 		dst := root.dst;
 		color :: Vector4.{0, 0, 0, 0.8};
-		bg := r.push_rect2(ui_batches, dst, color);
+		bg := r.push_rect2(passes, dst, color);
 		bg.border_thickness = 2;
 		bg.border_color = r.COLOR_WHITE;
 		bg.radius = 4;
@@ -153,12 +152,12 @@ draw_children :: (ui_batches : *r.BatchList, root : *ui.Widget) {
 	
 	text_pos := root.pos + .{8, 8};
 	
-	r.push_text(ui_batches, font, root.text, text_pos, 0.4, text_color);
+	r.push_text(passes, font, root.text, text_pos, 0.4, text_color);
 	
 	{
 		child :=  root.first;
 		while child {
-			draw_children(ui_batches, child);
+			draw_children(passes, child);
 			child = child.next;
 		}
 	}

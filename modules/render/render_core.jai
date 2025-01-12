@@ -51,24 +51,31 @@ Batch :: struct {
 	next : *Batch;
 };
 
+BatchList :: struct {
+	first : *Batch;
+	last : *Batch;
+	count : u32;
+};
+
 Pass_Kind :: enum {
 	Sprite;
 	UI;
 	Beam;
 }
 
-Pass : struct {
+Pass :: struct {
+	next : *Pass;
 	kind : Pass_Kind;
 	batches : BatchList;
 	beam : Beam;
-	beam_yes : bool;
+	beaming : bool;
 }
 
-BatchList :: struct {
-	first : *Batch;
-	last : *Batch;
+Pass_List :: struct {
+	first : *Pass;
+	last : *Pass;
 	count : u32;
-};
+}
 
 push_batch :: (list : *BatchList, cap : s64) -> *Batch {
 	out : *Batch = talloc(size_of(Batch));
@@ -94,11 +101,36 @@ push_batch :: (list : *BatchList, cap : s64) -> *Batch {
 	return out;
 }
 
-push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> *Rect2 {	
-	batch := list.last;
+push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
+	out : *Pass = talloc(size_of(Pass));
+	<< out = .{};
+	out.kind = kind;
+	
+	if list.last {
+		list.last.next = out;
+		list.last = out;
+	} else {
+		list.last = out;
+		list.first = out;
+	}
+	
+	list.count += 1;
+	
+	return out;
+}
+
+push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {
+	pass := list.last;
+	
+	if !pass || pass.kind != kind {
+		pass = push_pass(list, kind);
+	}
+	
+	batches := *pass.batches;
+	batch := batches.last;
 	
 	if !batch || (batch.cap < batch.size + size_of(Rect2)) {
-		batch = push_batch(list, xx MB(1));
+		batch = push_batch(batches, xx MB(1));
 		// set state params
 	}
 	
@@ -122,6 +154,22 @@ push_rect2 :: (list : *BatchList, dst : RectF32, color : Vector4) -> *Rect2 {
 	return out;
 }
 
+push_rect2 :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {	
+	return push_rect2_impl(.UI, list, dst, color);
+}
+
+push_sprite :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {	
+	return push_rect2_impl(.Sprite, list, dst, color);
+}
+
+push_beam :: (list : *Pass_List) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .Beam {
+		pass = push_pass(list, .Beam);
+	}
+}
+
 Glyph :: struct {
 	uv : Vector2;
 	size : Vector2;
@@ -143,7 +191,7 @@ Font :: struct {
 	bmp.n = 4;
 };
 
-push_text :: (list : *BatchList, font : Font, text : string, _pos : Vector2, size : float32, color := Vector4.{1, 1, 1, 1}) {
+push_text :: (list : *Pass_List, font : Font, text : string, _pos : Vector2, size : float32, color := Vector4.{1, 1, 1, 1}) {
 	pos := _pos;
 	pos.y += (font.ascent + font.descent) * size;
 	

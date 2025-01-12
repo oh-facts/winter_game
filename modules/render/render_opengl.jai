@@ -120,7 +120,7 @@ init :: () {
 	state.white_square = image(bmp);
 }
 
-submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprite_batches : BatchList,
+submit :: (win : os.Handle, screen_size : Vector2, passes : Pass_List,
 					 screen_offset := Vector2.{0, 0}) {
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
@@ -145,54 +145,60 @@ submit :: (win : os.Handle, screen_size : Vector2, ui_batches : BatchList, sprit
 		glUnmapNamedBuffer(scene_buffer);
 	}
 	
-	// sprite pass
+	// ui
 	{
-		buffer := state.inst_buffer[INST_BUFFER.SPRITE];
-		shader := state.shader_prog[SHADER_PROG.SPRITE];
-		
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-		glUseProgram(shader);
-		
-		batch := sprite_batches.first;
-		while batch	{
-			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+		pass := passes.first;
+		while pass {
+			defer pass = pass.next;
 			
-			memcpy(ssbo_data, batch.base, batch.size);
-			
-			glUnmapNamedBuffer(buffer);
-			
-			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
-			
-			batch = batch.next;
-		}
-	}
-	
-	// beam
-	{
-		//shader := state.shader_prog[SHADER_PROG.BEAM];
-		//glUseProgram(shader);
-		//glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-	}
-	
-	// ui pass
-	{
-		buffer := state.inst_buffer[INST_BUFFER.UI];
-		shader := state.shader_prog[SHADER_PROG.UI];
-		
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-		glUseProgram(shader);
-		
-		batch := ui_batches.first;
-		while batch	{
-			ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-			
-			memcpy(ssbo_data, batch.base, batch.size);
-			
-			glUnmapNamedBuffer(buffer);
-			
-			glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
-			
-			batch = batch.next;
+			if pass.kind == {
+				case .UI;
+				buffer := state.inst_buffer[INST_BUFFER.UI];
+				shader := state.shader_prog[SHADER_PROG.UI];
+				
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+				glUseProgram(shader);
+				
+				batches := pass.batches;
+				batch := batches.first;
+				while batch	{
+					ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+					
+					memcpy(ssbo_data, batch.base, batch.size);
+					
+					glUnmapNamedBuffer(buffer);
+					
+					glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+					
+					batch = batch.next;
+				}
+				
+				case .Beam;
+				shader := state.shader_prog[SHADER_PROG.BEAM];
+				glUseProgram(shader);
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				
+				case .Sprite;
+				buffer := state.inst_buffer[INST_BUFFER.SPRITE];
+				shader := state.shader_prog[SHADER_PROG.SPRITE];
+				
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+				glUseProgram(shader);
+				
+				batches := pass.batches;
+				batch := batches.first;
+				while batch	{
+					ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+					
+					memcpy(ssbo_data, batch.base, batch.size);
+					
+					glUnmapNamedBuffer(buffer);
+					
+					glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+					
+					batch = batch.next;
+				}
+			}
 		}
 	}
 	

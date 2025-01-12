@@ -117,7 +117,8 @@ world_window : *Editor_Window;
 py : *Entity;
 world_tileworld : Tileworld;
 
-world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
+world_update :: (delta : float32, events : *os.EventList, 
+								 passes : *r.Pass_List) {
 	if !world_initialized {
 		world_initialized = true;
 		entity_store.arena = arena_init();
@@ -133,7 +134,7 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		load_entities();
 	}
 	
-	editor_window_begin(ui_batches, world_window);
+	editor_window_begin(world_window);
 	defer editor_window_end(world_window);
 	
 	if !world_window.hide {
@@ -146,11 +147,11 @@ world_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.Ba
 		}
 	}
 	
-	tick(events, sprite_batches, ui_batches, delta);
-	quest_update(*demo_quest, events, sprite_batches, ui_batches);
+	tick(events, passes, delta);
+	quest_update(*demo_quest, events, passes);
 }
 
-tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList, delta : float32) {
+tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	world_cmds.base = talloc(xx MB(1));
 	world_cmds.count = 0;
@@ -166,7 +167,7 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 	set_camera_pos(tm_index);
 	
 	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
-	draw_tilemap(world_tilemap, sprite_batches);
+	draw_tilemap(world_tilemap, passes);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -269,7 +270,7 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 		// draw occupied tile
 		if entity.highlight {
 			dst := tile_rect_from_index(world_tilemap, xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
-			r.push_rect2(sprite_batches, dst, .{1, 1, 1, 1});
+			r.push_sprite(passes, dst, .{1, 1, 1, 1});
 		}
 		
 		// draw origin
@@ -280,7 +281,7 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 			dst.max.x = dst.min.x + 8;
 			dst.max.y = dst.min.y + 8;
 			
-			origin := r.push_rect2(sprite_batches, dst, r.COLOR_YELLOW);
+			origin := r.push_sprite(passes, dst, r.COLOR_YELLOW);
 			origin.radius = 4;
 			origin.border_color = r.COLOR_BLACK;
 			origin.border_thickness = 2;
@@ -314,7 +315,7 @@ tick :: (events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.
 		dst.max.x = dst.min.x + it.size.x;
 		dst.max.y = dst.min.y + it.size.y;
 		
-		sprite := r.push_rect2(sprite_batches, dst, .{1, 1, 1, 1});
+		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
 		sprite.tex_id = arts[it.art_id].tex.U64[1];
 		
 		width := 1. / it.frame_x;
@@ -429,7 +430,7 @@ Quest :: struct {
 
 demo_quest : Quest;
 
-quest_update :: (quest : *Quest, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
+quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) {
 	
 	if !quest.started {
 		quest.started = true;
@@ -450,8 +451,8 @@ quest_update :: (quest : *Quest, events : *os.EventList, sprite_batches : *r.Bat
 		bg.max.x = camera.size.x;
 		bg.max.y = camera.size.y;
 		
-		r.push_rect2(ui_batches, bg, r.COLOR_BLACK);
-		r.push_text(ui_batches, font, OPENING_PROMPT, .{padding, padding}, text_size);
+		r.push_rect2(passes, bg, r.COLOR_BLACK);
+		r.push_text(passes, font, OPENING_PROMPT, .{padding, padding}, text_size);
 		
 		continue_text := "space ->";
 		
@@ -461,7 +462,7 @@ quest_update :: (quest : *Quest, events : *os.EventList, sprite_batches : *r.Bat
 		bottom_right.x -= (text_rect.max.x - text_rect.min.x);
 		bottom_right.y -= (text_rect.max.y - text_rect.min.y);
 		
-		r.push_text(ui_batches, font, continue_text, bottom_right, text_size);
+		r.push_text(passes, font, continue_text, bottom_right, text_size);
 		if os.event(events, .SPACE, .Pressed) {
 			py.flags |= .Control;
 			quest.opening_prompt = true;

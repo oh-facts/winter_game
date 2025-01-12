@@ -485,15 +485,15 @@ begin :: (state : *State, mpos : Vector2, mdown : bool) {
 	state.mdown = mdown;
 	state.frame_index+=1;
 	
-	widget : *Widget = push_struct(state.arena, Widget);
+	widget : *Widget = tzpush_struct(Widget);
 	widget.child_layout_axis = .X;
-	widget_node : *ParentNode = push_struct(state.arena, ParentNode);
+	widget_node : *ParentNode = tzpush_struct(ParentNode);
 	
 	widget_node.v = widget;
 	state.parent_stack.top = widget_node;
 	state.root = widget;
 	
-	padding_node : *PaddingNode = push_struct(state.arena, PaddingNode);
+	padding_node : *PaddingNode = tzpush_struct(PaddingNode);
 	
 	state.padding_stack.top = padding_node;
 	

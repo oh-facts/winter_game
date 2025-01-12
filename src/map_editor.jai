@@ -54,7 +54,8 @@ ed_initialized : bool;
 map_editor_window : *Editor_Window;
 editor_tilemap : *Tilemap;
 
-editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.BatchList, ui_batches : *r.BatchList) {
+editor_update :: (delta : float32, events : *os.EventList, 
+									passes : *r.Pass_List) {
 	
 	if !ed_initialized {
 		ed_initialized = true;
@@ -100,12 +101,12 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 	editor_tilemap = tilemap_from_key(*editor_tileworld, active_tilemap_index);
 	
 	// draw map
-	draw_tilemap(editor_tilemap, sprite_batches);
-	draw_entities(editor_tilemap, sprite_batches);
+	draw_tilemap(editor_tilemap, passes);
+	draw_entities(editor_tilemap, passes);
 	
 	if grid_toggle {
-		draw_grid(ui_batches);
-		draw_outline(ui_batches);
+		draw_grid(passes);
+		draw_outline(passes);
 	}
 	
 	// TODO(mizu): i don't want events to be shared like this.
@@ -185,7 +186,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 					dst.max.x = (tile_select_range.max.x + 1) * 32.;
 					dst.max.y = (tile_select_range.max.y + 1) * 32.;
 					
-					r.push_rect2(ui_batches, dst, r.COLOR_CYAN);
+					r.push_rect2(passes, dst, r.COLOR_CYAN);
 				}
 				// selection ended
 				else {
@@ -235,7 +236,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 					dst.max.x = (tile_select_range.max.x + 1) * 32.;
 					dst.max.y = (tile_select_range.max.y + 1) * 32.;
 					
-					r.push_rect2(ui_batches, dst, r.COLOR_CYAN);
+					r.push_rect2(passes, dst, r.COLOR_CYAN);
 				}
 				// selection ended
 				else {
@@ -279,7 +280,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				for selection_buffer {
 					
 					dst := tile_rect_from_index(editor_tilemap, it.pos + mv);
-					r.push_rect2(ui_batches, dst, r.COLOR_ORANGE);
+					r.push_rect2(passes, dst, r.COLOR_ORANGE);
 				}
 			}
 			
@@ -312,7 +313,7 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 				for selection_buffer {
 					
 					dst := tile_rect_from_index(editor_tilemap, it.pos);
-					r.push_rect2(ui_batches, dst, .{0, 0, 1, 0.3});
+					r.push_rect2(passes, dst, .{0, 0, 1, 0.3});
 					
 				}
 				
@@ -331,11 +332,11 @@ editor_update :: (delta : float32, events : *os.EventList, sprite_batches : *r.B
 		}
 		
 		// preview tile pos
-		r.push_rect2(ui_batches, tile_rect_from_index(editor_tilemap, tile_pos), .{0, 0, 0, 1});
+		r.push_rect2(passes, tile_rect_from_index(editor_tilemap, tile_pos), .{0, 0, 0, 1});
 	}
 	
 	// @panel
-	editor_window_begin(ui_batches, map_editor_window);
+	editor_window_begin(map_editor_window);
 	
 	if !map_editor_window.hide {
 		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);

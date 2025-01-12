@@ -116,8 +116,7 @@ main :: () {
 			quit = true;
 		}
 		
-		ui_batches : r.BatchList;
-		sprite_batches : r.BatchList;
+		passes : r.Pass_List;
 		
 		lmbdown_event := os.event(*events, .LMB, .Pressed);
 		lmbup_event := os.event(*events, .LMB, .Released);
@@ -166,20 +165,20 @@ main :: () {
 		
 		if current_mode == {
 			case .Game;
-			world_update(xx delta, *events, *sprite_batches, *ui_batches);
+			world_update(xx delta, *events, *passes);
 			
 			case .Tile_Editor;
-			editor_update(xx delta, *events, *sprite_batches, *ui_batches);
+			editor_update(xx delta, *events, *passes);
 		}
 		
 		ui.layout(ui_cxt.root);
 		
 		//print("----\n");
-		draw_children(*ui_batches, ui_cxt.root);
+		draw_children(*passes, ui_cxt.root);
 		//print("----\n");
 		ui.end(ui_cxt);
 		
-		r.submit(win, camera.size, ui_batches,  sprite_batches, camera.pos);
+		r.submit(win, camera.size, passes, camera.pos);
 		
 		//editor_tick_clock();
 		
