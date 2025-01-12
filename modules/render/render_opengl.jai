@@ -22,8 +22,9 @@ SceneData :: struct {
 	screen_offset : Vector2;
 	noise_id : u64;
 	displacement_id : u64;
-	pad : [3]float;
+	offset : Vector2;
 	delta : float;
+	pad : float;
 };
 
 Image :: struct {
@@ -127,7 +128,7 @@ init :: () {
 submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
 					 passes : Pass_List,
 					 noise : Handle,
-					 displacement : Handle,
+					 displacement : Handle, ophset : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
@@ -145,6 +146,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.noise_id = noise.U64[1];
 		scene_data.displacement_id = displacement.U64[1];
 		scene_data.delta = delta;
+		scene_data.offset = ophset;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);

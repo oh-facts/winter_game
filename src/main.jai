@@ -15,6 +15,7 @@ cam_wheld : bool;
 cam_aheld : bool;
 cam_sheld : bool;
 cam_dheld : bool;
+beam_pos : Vector2;
 
 Camera :: struct {
 	pos : Vector2;
@@ -182,7 +183,7 @@ main :: () {
 		ui.end(ui_cxt);
 		
 		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,
-						 arts[xx ArtId.Displacement].tex, camera.pos);
+						 arts[xx ArtId.Displacement].tex, beam_pos, camera.pos);
 		
 		//editor_tick_clock();
 		

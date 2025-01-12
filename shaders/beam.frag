@@ -8,10 +8,10 @@ in vec2 screen_size;
 flat in float a_delta;
 flat in uvec2 a_noise_id;
 flat in uvec2 a_displacement_id;
+flat in vec2 a_offset;
 
 out vec4 FragColor;
 
-const vec2 offset = vec2(0.4, 0.1);
 const vec4 bg = vec4(0.2, 0.2, 0.3, 1.0);
 const vec4 beam_color = vec4(1.0, 0.0, 0.0, 1.0);
 
@@ -38,10 +38,10 @@ float beam(vec2 p, float pew)
 	float z = -3.0;   
 	
 	// y = (-x^(4n) + m) / z
-	float x = (p.x + offset.x) * pew;
+	float x = (p.x + a_offset.x) * pew;
 	
 	float y = (-pow(x, 4.0 * n) + m) / z;
-	y += offset.y;
+	y += a_offset.y;
 	
 	// Distance?
 	float dist = abs(p.y - y);

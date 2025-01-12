@@ -172,14 +172,15 @@ world_update :: (delta : float32, events : *os.EventList,
 	quest_update(*demo_quest, events, passes);
 }
 
+tm_index := Vector2i.{};
+aos_tm_index := Vector2i.{3, 3};
+
 tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	world_cmds.base = talloc(xx MB(1));
 	world_cmds.count = 0;
 	world_cmds.size = 0;
 	world_cmds.cap = xx MB(1);
-	
-	tm_index := Vector2i.{};
 	
 	if py {
 		tm_index = tilemap_index_from_tile_pos(py.tile_pos);
@@ -389,6 +390,20 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 	}
 	
+	calculate_beam_pos :: () -> Vector2 {
+		c := tm_index;
+		t :: Vector2i.{10, 10};
+		
+		out : Vector2;
+		
+		out.x = (cast(float32)c.x) / t.x - 0.5;;
+		out.y = (cast(float32)c.y) / t.y;
+		
+		return out;
+	}
+	
+	beam_pos = calculate_beam_pos();
+	
 	r.push_beam(passes);
 	
 	for entity_store.sort_list {
@@ -540,6 +555,7 @@ quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) 
 		quest.opening_prompt = dialogue_box(passes, events, OPENING_PROMPT);
 		
 	}
+	
 }
 
 dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -> bool {
