@@ -1,3 +1,11 @@
 OPENING_PROMPT :: #string DONE
 Cutscene
 DONE;
+
+TREE_TALK :: #string DONE
+Tree.
+DONE
+
+SIREN_TALK :: #string DONE
+mashallah
+DONE

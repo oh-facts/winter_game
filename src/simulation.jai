@@ -5,6 +5,7 @@
 
 World_Cmd_Kind :: enum {
 	Eat;
+	Complete_Interaction;
 }
 
 World_Cmd_Header :: struct {
@@ -13,9 +14,12 @@ World_Cmd_Header :: struct {
 
 World_Eat_Cmd :: struct {
 	header : World_Cmd_Header;
-	
 	// position of eater
 	tile_pos : Vector2i;
+}
+
+World_Complete_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
 }
 
 World_Cmd_Buffer :: struct {
@@ -25,14 +29,24 @@ World_Cmd_Buffer :: struct {
 	cap : s64;
 }
 
+active_entity : *Entity;
+
 world_cmds : World_Cmd_Buffer;
 
 push_world_eat_cmd :: (tile_pos : Vector2i) {
 	data : *World_Eat_Cmd = xx world_cmds.base;
 	data.tile_pos = tile_pos;
+	data.header.kind = .Eat;
 	
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Eat_Cmd);
+}
+
+push_world_complete_interaction :: () {
+	data : *World_Complete_Interaction_Cmd = xx world_cmds.base;
+	data.header.kind = .Complete_Interaction;
+	world_cmds.count += 1;
+	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
 }
 
 Entity_Type :: enum {
@@ -46,6 +60,12 @@ Entity_Flags :: enum_flags u64 {
 	Animated;
 	Inactive;
 	Interactable;
+}
+
+Interaction_State :: enum {
+	Cold;
+	Hot;
+	Active;
 }
 
 Entity :: struct {
@@ -63,8 +83,8 @@ Entity :: struct {
 	frame_y : s32;
 	frame_n : s32;
 	color : Vector4;
+	interaction_state : Interaction_State;
 	next : *Entity;
-	highlight : bool;
 };
 
 EntityStore :: struct {
@@ -169,21 +189,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
 	draw_tilemap(world_tilemap, passes);
 	
-	// 
-	for 0 .. entity_store.count - 1 {
-		entity := entity_store.first + it;
-		
-		if entity.flags & .Inactive continue;
-		
-		if entity.flags & .Interactable {
-			
-			if distance_squared(entity.tile_pos, py.tile_pos) < 4 {
-				entity.highlight = true;
-			};
-			
-		}
-	}
-	
 	// control
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -282,6 +287,26 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		entity.tile_pos.y = xx (entity.pos.y / 32.);
 	}
 	
+	highlighted_entity : *Entity;
+	
+	// 
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		if entity.flags & .Inactive continue;
+		
+		if entity.flags & .Interactable {
+			
+			if distance_squared(entity.tile_pos, py.tile_pos) < 4 {
+				if entity.interaction_state == .Cold {
+					entity.interaction_state = .Hot;
+					highlighted_entity = entity;
+				}
+			};
+			
+		}
+	}
+	
 	// update animations
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -302,9 +327,12 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if entity.flags & .Inactive continue;
 		
 		// draw occupied tile
-		if entity.highlight {
-			dst := tile_rect_from_index(world_tilemap, xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
+		dst := tile_rect_from_index(world_tilemap, xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
+		if entity.interaction_state == {
+			case .Hot;
 			r.push_sprite(passes, dst, .{1, 1, 1, 1});
+			case .Active;
+			r.push_sprite(passes, dst, .{0, 0, 1, 1});
 		}
 		
 		// draw origin
@@ -359,14 +387,24 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
-	
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
 		
 		if entity.flags & .Inactive continue;
 		
 		if entity.flags & .Interactable {
-			entity.highlight = false;
+			if entity.interaction_state == {
+				case .Hot;
+				entity.interaction_state = .Cold;
+			}
+		}
+	}
+	
+	if active_entity {
+		if active_entity.type == .Tree {
+			if dialogue_box(passes, events, TREE_TALK) {
+				push_world_complete_interaction();
+			}
 		}
 	}
 	
@@ -377,6 +415,17 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if << header == {
 			case .Eat;
 			cmd : *World_Eat_Cmd = xx base;
+			if highlighted_entity {
+				highlighted_entity.interaction_state = .Active;
+				
+				active_entity = highlighted_entity;
+				
+			}
+			
+			case .Complete_Interaction;
+			cmd : *World_Complete_Interaction_Cmd = xx base;
+			active_entity.interaction_state = .Hot;
+			active_entity = xx 0;
 		}
 	}
 }
@@ -461,30 +510,37 @@ quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) 
 	
 	if !quest.opening_prompt {
 		
-		padding := 16.;
+		quest.opening_prompt = dialogue_box(passes, events, OPENING_PROMPT);
 		
-		bg : RectF32;
-		bg.min.x = 0;
-		bg.min.y = 0;
-		bg.max.x = camera.size.x;
-		bg.max.y = camera.size.y;
-		
-		r.push_rect2(passes, bg, r.COLOR_BLACK);
-		r.push_text(passes, font, OPENING_PROMPT, .{padding, padding}, text_size);
-		
-		continue_text := "space ->";
-		
-		text_rect := r.get_text_rect(font, continue_text, camera.size, text_size);
-		
-		bottom_right := camera.size - .{padding, padding};
-		bottom_right.x -= (text_rect.max.x - text_rect.min.x);
-		bottom_right.y -= (text_rect.max.y - text_rect.min.y);
-		
-		r.push_text(passes, font, continue_text, bottom_right, text_size);
-		if os.event(events, .SPACE, .Pressed) {
-			py.flags |= .Control;
-			quest.opening_prompt = true;
-		}
 	}
+}
+
+dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -> bool {
+	out := false;
+	padding := 16.;
 	
+	bg : RectF32;
+	bg.min.x = 0;
+	bg.min.y = 0;
+	bg.max.x = camera.size.x;
+	bg.max.y = camera.size.y;
+	
+	r.push_rect2(passes, bg, r.COLOR_BLACK);
+	r.push_text(passes, font, text, .{padding, padding}, text_size);
+	
+	continue_text := "space ->";
+	
+	text_rect := r.get_text_rect(font, continue_text, camera.size, text_size);
+	
+	bottom_right := camera.size - .{padding, padding};
+	bottom_right.x -= (text_rect.max.x - text_rect.min.x);
+	bottom_right.y -= (text_rect.max.y - text_rect.min.y);
+	
+	r.push_text(passes, font, continue_text, bottom_right, text_size);
+	
+	if os.event(events, .SPACE, .Pressed) {
+		py.flags |= .Control;
+		out = true;
+	}
+	return out;
 }
