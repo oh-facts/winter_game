@@ -23,6 +23,9 @@ water_frag_shader := #run read_entire_file("shaders/water.frag");
 final_vertex_shader := #run read_entire_file("shaders/final.vert"); 
 final_frag_shader := #run read_entire_file("shaders/final.frag");
 
+blur_vertex_shader := #run read_entire_file("shaders/blur.vert"); 
+blur_frag_shader := #run read_entire_file("shaders/blur.frag");
+
 SceneData :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
@@ -33,6 +36,9 @@ SceneData :: struct {
 	pad : float;
 	draw_id : u64;
 	water_id : u64;
+	bloom_id : u64;
+	blur1_id : u64;
+	blur2_id : u64;
 };
 
 Image :: struct {
@@ -49,26 +55,39 @@ Framebuffer :: struct {
 	// color tex
 	tex : GLuint;
 	resident : GLuint64;
+	bloom : GLuint;
+	bloom_resident : GLuint64;
 	
 	// depth stencil rbo
 	depth_stencil : GLuint;
 }
 
-framebuffer :: (size : Vector2) -> Framebuffer {
+framebuffer :: (size : Vector2, sec : bool = false) -> Framebuffer {
 	out : Framebuffer;
 	
 	glCreateFramebuffers(1, *out.id);
 	width : u32 = xx size.x;
 	height : u32 = xx size.y;
 	
-	glCreateTextures(GL_TEXTURE_2D, 1, *out.tex);
-	glTextureStorage2D(out.tex, 1, GL_RGBA8, width, height);
+	{
+		glCreateTextures(GL_TEXTURE_2D, 1, *out.tex);
+		glTextureStorage2D(out.tex, 1, GL_RGBA8, width, height);
+		
+		resident := glGetTextureHandleARB(out.tex);
+		glMakeTextureHandleResidentARB(resident);
+		out.resident = resident;
+		glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT0, out.tex, 0);
+	}
 	
-	resident := glGetTextureHandleARB(out.tex);
-	glMakeTextureHandleResidentARB(resident);
-	out.resident = resident;
-	
-	glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT0, out.tex, 0);
+	if sec {
+		glCreateTextures(GL_TEXTURE_2D, 1, *out.bloom);
+		glTextureStorage2D(out.bloom, 1, GL_RGBA8, width, height);
+		
+		resident := glGetTextureHandleARB(out.bloom);
+		glMakeTextureHandleResidentARB(resident);
+		out.bloom_resident = resident;
+		glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT1, out.bloom, 0);
+	}
 	
 	renderbuffer : GLuint;
 	glCreateRenderbuffers(1, *renderbuffer);
@@ -103,6 +122,7 @@ SHADER_PROG :: enum {
 	BEAM;
 	WATER;
 	FINAL;
+	BLUR;
 	COUNT;
 };
 
@@ -113,8 +133,11 @@ State :: struct {
 	shader_prog : [SHADER_PROG.COUNT] GLuint;
 	inst_buffer : [INST_BUFFER.COUNT] GLuint;
 	white_square : Handle;
+	
 	draw_fb : Framebuffer;
 	water_fb : Framebuffer;
+	blur_fb : [2]Framebuffer;
+	
 	last_screen_size : Vector2;
 };
 
@@ -134,7 +157,7 @@ init :: () {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
 	
-	glEnable(GL_FRAMEBUFFER_SRGB);
+	//glEnable(GL_FRAMEBUFFER_SRGB);
 	
 	gl_load(*gl, SDL_GL_GetProcAddress);
 	
@@ -152,7 +175,8 @@ init :: () {
 														sprite_vertex_shader,
 														beam_vertex_shader,
 														water_vertex_shader,
-														final_vertex_shader
+														final_vertex_shader,
+														blur_vertex_shader,
 														];
 	
 	frag_files : []string = .[
@@ -160,7 +184,8 @@ init :: () {
 														sprite_frag_shader,
 														beam_frag_shader,
 														water_frag_shader,
-														final_frag_shader
+														final_frag_shader,
+														blur_frag_shader,
 														];
 	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
@@ -182,8 +207,11 @@ init :: () {
 	
 	{
 		screen_size : Vector2 = .{1920, 1051};
-		state.draw_fb = framebuffer(screen_size);
-		state.water_fb = framebuffer(screen_size);
+		state.draw_fb = framebuffer(screen_size, false);
+		state.water_fb = framebuffer(screen_size, true);
+		
+		state.blur_fb[0] = framebuffer(screen_size, false);
+		state.blur_fb[1] = framebuffer(screen_size, false);
 	}
 }
 
@@ -212,6 +240,9 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.offset = ophset;
 		scene_data.draw_id = state.draw_fb.resident;
 		scene_data.water_id = state.water_fb.resident;
+		scene_data.bloom_id = state.water_fb.bloom_resident;
+		scene_data.blur1_id = state.blur_fb[0].resident;
+		scene_data.blur2_id = state.blur_fb[1].resident;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
@@ -257,6 +288,10 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				case .Begin_Water;
 				glBindFramebuffer(GL_FRAMEBUFFER, state.water_fb.id);
+				
+				attachments : [2]u32 = .[GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1];
+				glDrawBuffers(2, attachments.data);
+				
 				glClear(GL_COLOR_BUFFER_BIT);
 				
 				case .End_Water;
@@ -291,9 +326,36 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		}
 	}
 	
+	// blur
+	{
+		shader := state.shader_prog[SHADER_PROG.BLUR];
+		
+		horizontal := true;
+		first_iteration := true;
+		
+		amount := 2;
+		glUseProgram(shader);
+		
+		for i : 0 .. amount - 1 {
+			glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[xx horizontal].id);
+			glUniform1i(glGetUniformLocation(shader, "horizontal"), xx horizontal);
+			
+			if first_iteration {
+				glBindTexture(GL_TEXTURE_2D, state.water_fb.bloom);
+				first_iteration = false;
+			} else {
+				glBindTexture(GL_TEXTURE_2D, state.blur_fb[xx !horizontal].id);
+			}
+			
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			horizontal = !horizontal;
+		}
+	}
+	
 	// copy to window fb
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
 		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 		shader := state.shader_prog[SHADER_PROG.FINAL];
 		glUseProgram(shader);

@@ -17,8 +17,12 @@ layout (std430, binding = 0) buffer ssbo {
 
 flat out uvec2 a_noise_id;
 flat out uvec2 a_draw_id;
-flat out uvec2 a_blur_id;
+flat out uvec2 a_bloom_id;
+flat out uvec2 a_blur1_id;
+flat out uvec2 a_blur2_id;
+
 out vec2 a_uv;
+flat out vec2 a_screen_size;
 
 void main()
 {
@@ -44,16 +48,17 @@ void main()
 		{1, 1}
 	};
 	
-	a_blur_id = blur2_id;
 	a_noise_id = noise_id;
 	a_uv = base_uv[gl_VertexID];
 	vec2 vertex = vertices[gl_VertexID];
 	
 	float aspect_ratio = screen_size.x / screen_size.y;
+	
 	vec2 norm_pos = vertex;// / screen_size.xy * 2.0 - 1.0;
 	//norm_pos.x *= aspect_ratio;
 	
-	
+	a_bloom_id = bloom_id;
+	a_screen_size = screen_size;
 	gl_Position = vec4(norm_pos, 0, 1);
 	a_draw_id = draw_id;
 }

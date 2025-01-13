@@ -383,8 +383,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 	}
 	
-	r.push_beam(passes);
-	
 	sort_entitties :: (a : *Entity, b : *Entity) -> int {
 		pos_a := a.pos;
 		pos_b := b.pos;
@@ -429,6 +427,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	beam_pos = calculate_beam_pos();
+	
+	r.push_beam(passes);
 	
 	r.end_water(passes);
 	

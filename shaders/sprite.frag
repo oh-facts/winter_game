@@ -1,6 +1,8 @@
 #version 450
 #extension GL_ARB_bindless_texture : enable
-out vec4 out_color;
+
+layout (location=0) out vec4 out_color;
+layout (location=1) out vec4 BloomColor;
 
 in vec4 a_border_color;
 in vec4 a_fade;
@@ -38,4 +40,5 @@ void main()
 	vec4 v4FromColor = a_border_color;
 	vec4 v4ToColor = (fDist < 0.0) ? a_fade * tex_col : vec4(0);
 	out_color = mix(v4FromColor, v4ToColor, fBlendAmount);
+	BloomColor = vec4(0, 0, 0, 1);
 }

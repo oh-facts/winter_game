@@ -10,7 +10,8 @@ flat in uvec2 a_displacement_id;
 flat in vec2 a_offset;
 flat in uvec2 a_water_id;
 
-out vec4 FragColor;
+layout (location=0) out vec4 FragColor;
+layout (location=1) out vec4 BloomColor;
 
 const vec4 bg = vec4(0.2, 0.2, 0.3, 1.0);
 
@@ -31,5 +32,7 @@ void main()
 	distortedUV.x += sin(a_delta * 2.0 + a_uv.y * 10.0) * 0.002;
 	vec4 screen_color = texture(sampler2D(a_water_id), distortedUV);
 	
-	FragColor = mix(noise , screen_color, 0.5);
+	FragColor = mix(noise, screen_color, 0.5);
+	
+	BloomColor = vec4(0, 0, 0, 1);
 }

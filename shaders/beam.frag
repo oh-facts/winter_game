@@ -10,10 +10,11 @@ flat in uvec2 a_noise_id;
 flat in uvec2 a_displacement_id;
 flat in vec2 a_offset;
 
-out vec4 FragColor;
+layout (location=0) out vec4 FragColor;
+layout (location=1) out vec4 BloomColor;
 
 const vec4 bg = vec4(0.2, 0.2, 0.3, 0.0);
-const vec4 beam_color = vec4(1.0, 0.0, 0.0, 1.0);
+const vec4 beam_color = vec4(1.0, 0.0, 0.0, 0.8);
 
 const vec2 moon_pos = vec2(0.3, 0.5);
 const float moon_radius = 0.1;
@@ -72,12 +73,23 @@ void main()
 	if ((dist) < lineWidth || (dist2) < lineWidth)
 	{
 		beam = beam_color;
+		BloomColor = vec4(1, 0, 0, 1);
 	}
 	else
 	{
 		beam = mix(bg + star, moon_color, moon);
+		BloomColor = vec4(0, 0, 0, 1);
+		
+		if (moon > 0.0 || star > 0.0)
+		{
+			BloomColor = vec4(1, 1, 1, 1);
+		}
+		else
+		{
+			BloomColor = vec4(0, 0, 0, 1);
+		}
+		
 	}
-	
 	
 	FragColor = beam;
 }
