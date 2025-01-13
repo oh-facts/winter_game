@@ -172,13 +172,12 @@ world_update :: (delta : float32, events : *os.EventList,
 			text = tprint("%", tm_index);
 			editor_label(text);
 			
-			text = tprint("%", py.pos);
-			editor_label(text);
-			
 			text = tprint("%", py.tile_pos);
 			editor_label(text);
 		}
 		
+		text = tprint("%", delta);
+		editor_label(text);
 	}
 	
 	tick(events, passes, delta);
@@ -202,6 +201,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	set_camera_pos(tm_index);
 	
 	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
+	
+	r.begin_water(passes);
 	draw_tilemap(world_tileworld, world_tilemap, passes);
 	
 	// control
@@ -382,6 +383,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 	}
 	
+	r.push_beam(passes);
+	
 	sort_entitties :: (a : *Entity, b : *Entity) -> int {
 		pos_a := a.pos;
 		pos_b := b.pos;
@@ -395,7 +398,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	intro_sort(entity_store.sort_list, sort_entitties);
-	
 	
 	for entity_store.sort_list {
 		dst : RectF32;
@@ -415,8 +417,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	calculate_beam_pos :: () -> Vector2 {
-		c := tm_index;
-		t :: Vector2i.{10, 10};
+		c := py.pos;//tm_index;
+		t :: Vector2i.{10 * Tilemap.tile_size * Tilemap.col, 10 * Tilemap.tile_size * Tilemap.row};
 		
 		out : Vector2;
 		
@@ -428,8 +430,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	beam_pos = calculate_beam_pos();
 	
-	//r.push_beam(passes);
-	r.push_water(passes);
+	r.end_water(passes);
 	
 	for entity_store.sort_list {
 		dst : RectF32;
@@ -513,7 +514,7 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
-						e.speed = 400;
+						e.speed = 1400;
 						e.type = .Player;
 						e.submerged = 0.2;
 						py = e;

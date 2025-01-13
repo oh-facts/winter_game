@@ -61,7 +61,8 @@ Pass_Kind :: enum {
 	Sprite;
 	UI;
 	Beam;
-	Water;
+	Begin_Water;
+	End_Water;
 }
 
 Pass :: struct {
@@ -170,11 +171,19 @@ push_beam :: (list : *Pass_List) {
 	}
 }
 
-push_water :: (list : *Pass_List) {
+begin_water :: (list : *Pass_List) {
 	pass := list.last;
 	
-	if !pass || pass.kind != .Water {
-		pass = push_pass(list, .Water);
+	if !pass || pass.kind != .Begin_Water {
+		pass = push_pass(list, .Begin_Water);
+	}
+}
+
+end_water :: (list : *Pass_List) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .End_Water {
+		pass = push_pass(list, .End_Water);
 	}
 }
 

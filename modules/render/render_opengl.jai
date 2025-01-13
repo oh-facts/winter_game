@@ -31,6 +31,8 @@ SceneData :: struct {
 	offset : Vector2;
 	delta : float;
 	pad : float;
+	draw_id : u64;
+	water_id : u64;
 };
 
 Image :: struct {
@@ -39,6 +41,45 @@ Image :: struct {
 	w : u32;
 	h : u32;
 };
+
+Framebuffer :: struct {
+	// fb id
+	id : GLuint;
+	
+	// color tex
+	tex : GLuint;
+	resident : GLuint64;
+	
+	// depth stencil rbo
+	depth_stencil : GLuint;
+}
+
+framebuffer :: (size : Vector2) -> Framebuffer {
+	out : Framebuffer;
+	
+	glCreateFramebuffers(1, *out.id);
+	width : u32 = xx size.x;
+	height : u32 = xx size.y;
+	
+	glCreateTextures(GL_TEXTURE_2D, 1, *out.tex);
+	glTextureStorage2D(out.tex, 1, GL_RGBA8, width, height);
+	
+	resident := glGetTextureHandleARB(out.tex);
+	glMakeTextureHandleResidentARB(resident);
+	out.resident = resident;
+	
+	glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT0, out.tex, 0);
+	
+	renderbuffer : GLuint;
+	glCreateRenderbuffers(1, *renderbuffer);
+	glNamedRenderbufferStorage(renderbuffer, GL_DEPTH24_STENCIL8, width, height);
+	glNamedFramebufferRenderbuffer(out.id, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
+	
+	status := glCheckNamedFramebufferStatus(out.id, GL_FRAMEBUFFER);
+	
+	assert(status == GL_FRAMEBUFFER_COMPLETE, "fb not complete");
+	return out;
+}
 
 size_from_image :: (h : Handle) -> Vector2i {
 	img := h.U64[0];
@@ -72,8 +113,8 @@ State :: struct {
 	shader_prog : [SHADER_PROG.COUNT] GLuint;
 	inst_buffer : [INST_BUFFER.COUNT] GLuint;
 	white_square : Handle;
-	draw_fb : GLuint;
-	draw_tex : GLuint;
+	draw_fb : Framebuffer;
+	water_fb : Framebuffer;
 	last_screen_size : Vector2;
 };
 
@@ -139,24 +180,11 @@ init :: () {
 	
 	state.white_square = image(bmp);
 	
-	screen_size : Vector2 = .{1920, 1051};
-	glCreateFramebuffers(1, *state.draw_fb);
-	width : u32 = xx screen_size.x;
-	height : u32 = xx screen_size.y;
-	
-	glCreateTextures(GL_TEXTURE_2D, 1, *state.draw_tex);
-	glTextureStorage2D(state.draw_tex, 1, GL_RGBA8, width, height);
-	glNamedFramebufferTexture(state.draw_fb, GL_COLOR_ATTACHMENT0, state.draw_tex, 0);
-	
-	renderbuffer : GLuint;
-	glCreateRenderbuffers(1, *renderbuffer);
-	glNamedRenderbufferStorage(renderbuffer, GL_DEPTH24_STENCIL8, width, height);
-	glNamedFramebufferRenderbuffer(state.draw_fb, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
-	
-	status := glCheckNamedFramebufferStatus(state.draw_fb, GL_FRAMEBUFFER);
-	
-	state.last_screen_size = screen_size;
-	assert(status == GL_FRAMEBUFFER_COMPLETE, "fb not complete");
+	{
+		screen_size : Vector2 = .{1920, 1051};
+		state.draw_fb = framebuffer(screen_size);
+		state.water_fb = framebuffer(screen_size);
+	}
 }
 
 submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
@@ -164,8 +192,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 noise : Handle,
 					 displacement : Handle, ophset : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb);
+	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -183,6 +210,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.displacement_id = displacement.U64[1];
 		scene_data.delta = delta;
 		scene_data.offset = ophset;
+		scene_data.draw_id = state.draw_fb.resident;
+		scene_data.water_id = state.water_fb.resident;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
@@ -226,10 +255,17 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				glUseProgram(shader);
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 				
-				case .Water;
+				case .Begin_Water;
+				glBindFramebuffer(GL_FRAMEBUFFER, state.water_fb.id);
+				glClear(GL_COLOR_BUFFER_BIT);
+				
+				case .End_Water;
 				shader := state.shader_prog[SHADER_PROG.WATER];
 				glUseProgram(shader);
-				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				
+				glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
+				
+				glDrawArrays(GL_TRIANGLES, 0, 6);
 				
 				case .Sprite;
 				buffer := state.inst_buffer[INST_BUFFER.SPRITE];
@@ -260,11 +296,6 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 		shader := state.shader_prog[SHADER_PROG.FINAL];
-		
-		screenTextureLocation := glGetUniformLocation(shader, "screen_tex");
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, state.draw_tex);
-		glUniform1i(screenTextureLocation, 0);
 		glUseProgram(shader);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
@@ -337,14 +368,16 @@ image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 	if params == .LINEAR {
 		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	}
-	else {
+	} else {
 		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 	
 	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, xx bmp.w, xx bmp.h);
 	glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
+	
+	glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	
 	resident := glGetTextureHandleARB(id);
 	glMakeTextureHandleResidentARB(resident);

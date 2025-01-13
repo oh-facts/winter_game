@@ -12,7 +12,7 @@ flat in vec2 a_offset;
 
 out vec4 FragColor;
 
-const vec4 bg = vec4(0.2, 0.2, 0.3, 1.0);
+const vec4 bg = vec4(0.2, 0.2, 0.3, 0.0);
 const vec4 beam_color = vec4(1.0, 0.0, 0.0, 1.0);
 
 const vec2 moon_pos = vec2(0.3, 0.5);
@@ -56,12 +56,6 @@ float circle(vec2 p, vec2 center, float radius)
 
 void main()
 {
-	vec4 displacement = texture(sampler2D(a_displacement_id), fragCoord);
-	
-	vec2 distortedUV = fragCoord + displacement.xy * 0.3;
-	
-	distortedUV = vec2(distortedUV.x, distortedUV.y / 3.0 - a_delta * 0.1);
-	
 	vec2 p = fragCoord;
 	
 	float dist = beam(p, 1.0);
@@ -69,7 +63,6 @@ void main()
 	
 	float lineWidth = 0.85;
 	
-	float alpha = smoothstep(-1.0, 1.0, -p.y);
 	float star = stars(p);
 	
 	float moon = circle(p, moon_pos, moon_radius);
@@ -78,19 +71,13 @@ void main()
 	
 	if ((dist) < lineWidth || (dist2) < lineWidth)
 	{
-		beam = mix(bg, beam_color, alpha);
+		beam = beam_color;
 	}
 	else
 	{
 		beam = mix(bg + star, moon_color, moon);
 	}
 	
-	vec4 noise = texture(sampler2D(a_noise_id), distortedUV);
-	noise = round(noise * 4.0) / 4.0;
-	noise.w = 0.1;
 	
-	vec3 color = vec3(1, 0, 0);
-	
-	FragColor = mix(noise, vec4(color, 0.4), 0.743);
-	FragColor = mix(FragColor, beam, 0.743);
+	FragColor = beam;
 }
