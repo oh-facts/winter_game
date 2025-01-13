@@ -87,7 +87,7 @@ void main()
 	
 	vec4 noise = texture(sampler2D(a_noise_id), distortedUV);
 	noise = round(noise * 4.0) / 4.0;
-	//noise.w = 0.1;
+	noise.w = 0.1;
 	
 	vec3 color = vec3(1, 0, 0);
 	

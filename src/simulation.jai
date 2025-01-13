@@ -166,6 +166,18 @@ world_update :: (delta : float32, events : *os.EventList,
 			load_tileworld(*world_tileworld);
 			load_entities();
 		}
+		
+		if py {
+			text = tprint("%", tm_index);
+			editor_label(text);
+			
+			text = tprint("%", py.pos);
+			editor_label(text);
+			
+			text = tprint("%", py.tile_pos);
+			editor_label(text);
+		}
+		
 	}
 	
 	tick(events, passes, delta);
@@ -189,7 +201,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	set_camera_pos(tm_index);
 	
 	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
-	draw_tilemap(world_tilemap, passes);
+	draw_tilemap(world_tileworld, world_tilemap, passes);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -255,23 +267,14 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			test_pos.x += mv.x * xx delta * entity.speed;
 			test_pos.y += mv.y * xx delta * entity.speed;
 			
-			test_index : Vector2i;
-			test_index.x = xx (test_pos.x / 32.);
-			test_index.y = xx (test_pos.y / 32.);
 			
-			//@cleanup
-			// I am thinking we have tile flags like
-			// "collidable"
-			tile1 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 2);
+			test_tile_pos : Vector2i;
+			test_tile_pos.x = cast(s32) test_pos.x / 32;
+			test_tile_pos.y = cast(s32) test_pos.y / 32;
 			
-			tile2 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 1);
-			tile3 := tile_from_index(editor_tilemap, test_index.x, test_index.y, 0);
 			
-			if tile1.paint_index != 6 && (tile2.paint_index || tile3.paint_index){
-				entity.pos = test_pos;
-				//print("%\n", tile.paint_index);
-				//print("collis\n");
-			} 
+			
+			entity.pos = test_pos;
 			
 			if os.event(events, .E, .Pressed) {
 				push_world_eat_cmd(entity.tile_pos);
@@ -329,7 +332,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if entity.flags & .Inactive continue;
 		
 		// draw occupied tile
-		dst := tile_rect_from_index(world_tilemap, xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
+		dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
 		if entity.interaction_state == {
 			case .Hot;
 			r.push_sprite(passes, dst, .{1, 1, 1, 1});
@@ -478,7 +481,7 @@ load_entities :: () {
 		for y: 0 .. Tilemap.row - 1{
 			for x: 0 .. Tilemap.col - 1 {
 				
-				tile := tile_from_index(tm, x, y, 2);
+				tile := tile_from_local_index(tm, .{xx x, xx y, 2});
 				
 				paint := paints[tile.paint_index];
 				
@@ -488,7 +491,7 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated);
-						e.speed = 200;
+						e.speed = 400;
 						e.type = .Player;
 						e.submerged = 0.2;
 						py = e;

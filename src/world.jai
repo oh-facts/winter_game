@@ -53,7 +53,7 @@ Tilemap :: struct {
 	size :: row * col * depth * size_of(Tile);
 	auto_col :: 8;
 	auto_row :: 6;
-	rect : RectF32 : .{.{tile_size, tile_size}, .{(col - 1) * tile_size, (row - 1) * tile_size}};
+	rect : RectF32 : .{.{0, 0}, .{(col) * tile_size, (row) * tile_size}};
 	next : *Tilemap;
 	index : Vector2i;
 };
@@ -121,6 +121,29 @@ tilemap_from_key :: (world : *Tileworld, key : Vector2i) -> *Tilemap {
 	return out;
 }
 
+tilemap_from_key_dont_alloc:: (world : Tileworld, key : Vector2i) -> *Tilemap {
+	out : *Tilemap;
+	
+	hash : u64 = 5381;
+	hash = ((hash << 5) + hash) + xx key.x;
+	hash = ((hash << 5) + hash) + xx key.y;
+	
+	index := xx hash % world.slots.count;
+	slot := world.slots.data + index;
+	
+	cur := slot.first;
+	
+	while  cur {
+		if cur.index == key {
+			out = cur;
+			break;
+		}
+		cur = cur.next;
+	}
+	
+	return out;
+}
+
 save_tileworld :: (tw : Tileworld) {
 	print("started saving\n");
 	
@@ -177,22 +200,30 @@ TileNeighbours :: struct {
 	br : bool;
 };
 
-get_neighbours :: (tm : Tilemap, x : int, y : int, z : int, paint_index : s32) -> TileNeighbours {
+get_neighbours :: (tw : Tileworld, x : int, y : int, z : int, paint_index : s32) -> TileNeighbours {
 	out : TileNeighbours;
 	using out;
 	
-	tile_present :: (tm : Tilemap, x : int, y : int, z : int,  _paint_index : s32) -> bool {
-		return xx tile_from_index(tm, x, y, z).paint_index;
-	}
+	t  = tile_present(tw, x, y - 1, z); 
+	tr = tile_present(tw, x + 1, y - 1, z); 
+	r = tile_present(tw, x + 1, y, z); 
+	br = tile_present(tw, x + 1, y + 1, z); 
+	b = tile_present(tw, x, y + 1, z); 
+	bl = tile_present(tw, x - 1, y + 1, z); 
+	l = tile_present(tw, x - 1, y, z); 
+	tl = tile_present(tw, x - 1, y - 1, z); 
 	
-	t  = tile_present(tm, x, y - 1, z, paint_index); 
-	tr = tile_present(tm, x + 1, y - 1, z, paint_index); 
-	r = tile_present(tm, x + 1, y, z, paint_index); 
-	br = tile_present(tm, x + 1, y + 1, z, paint_index); 
-	b = tile_present(tm, x, y + 1, z, paint_index); 
-	bl = tile_present(tm, x - 1, y + 1, z, paint_index); 
-	l = tile_present(tm, x - 1, y, z, paint_index); 
-	tl = tile_present(tm, x - 1, y - 1, z, paint_index); 
+	return out;
+}
+
+tile_present :: (tw : Tileworld, x : int, y : int, z : int) -> bool {
+	
+	out : bool;
+	tile := tile_from_index(tw, .{xx x, xx y, xx z});
+	
+	if tile {
+		out = xx tile.paint_index;
+	}
 	
 	return out;
 }
@@ -316,36 +347,83 @@ uv_from_bitmask :: (bitmask : u8) -> Vector2i {
 	return out;
 };
 
-tile_from_index :: (tm : Tilemap, x : int, y : int, z : int) -> *Tile {
-	return *tm.tiles[z * tm.row * tm.col + y * tm.col + x];
-}
-
-tile_from_index :: (tm : Tilemap, index : Vector3i) -> *Tile {
-	return *tm.tiles[index.z * tm.row * tm.col + index.y * tm.col + index.x];
-}
-
-tile_rect_from_index :: (tm : Tilemap, pos : Vector3i) -> RectF32 {
-	out := rectF32(cast(float32) pos.x * tm.tile_size, cast(float32) pos.y * tm.tile_size, cast(float32) pos.x * tm.tile_size + tm.tile_size, cast(float32) pos.y * tm.tile_size + tm.tile_size);
+local_to_real_coords :: (tm : Tilemap, l : Vector3i) -> Vector3i {
+	out : Vector3i;
+	out.x = l.x + tm.index.x * Tilemap.col;
+	out.y = l.y + tm.index.y * Tilemap.row;
+	out.z = l.z;
 	
 	return out;
 }
 
-tile_rect_from_index :: (tm : Tilemap, x : s32, y : s32, z : s32) -> RectF32{
-	out := rectF32(cast(float32) x * tm.tile_size, cast(float32) y * tm.tile_size, cast(float32) x * tm.tile_size + tm.tile_size, cast(float32) y * tm.tile_size + tm.tile_size);
+real_to_local_coords :: (tw : Tileworld, r : Vector3i) -> Vector2i, Vector3i {
+	out : Vector3i;
+	
+	tm_slot := Vector2i.{r.x / Tilemap.col, r.y / Tilemap.row};
+	
+	out.x = r.x % Tilemap.col;
+	out.y = r.y % Tilemap.row;
+	out.z = r.z;
+	
+	return tm_slot, out;
+}
+
+tile_from_index :: (tw : Tileworld, r : Vector3i) -> *Tile {
+	tm_slot, index := real_to_local_coords(tw, r);
+	
+	tm := tilemap_from_key_dont_alloc(tw, tm_slot);
+	
+	out : *Tile;
+	
+	if tm {
+		tile_slot := index.z * tm.row * tm.col + index.y * tm.col + index.x;
+		
+		if index.x >= 0 && index.y >= 0 && index.x < tm.col && index.y < tm.row {
+			out = *tm.tiles[tile_slot];
+		}
+	}
 	
 	return out;
 }
 
-draw_tilemap :: (tm : Tilemap, passes : *r.Pass_List) {
+tile_from_local_index :: (tm : *Tilemap, l : Vector3i) -> *Tile {
+	
+	tile_slot := l.z * tm.row * tm.col + l.y * tm.col + l.x;
+	
+	tile : *Tile;
+	if l.x >= 0 && l.y >= 0 && l.x < tm.col && l.y < tm.row {
+		tile = *tm.tiles[tile_slot];
+	}
+	
+	return tile;
+}
+
+tile_rect_from_index :: (pos : Vector3i) -> RectF32 {
+	out := rectF32(cast(float32) pos.x * Tilemap.tile_size, cast(float32) pos.y * Tilemap.tile_size, cast(float32) pos.x * Tilemap.tile_size + Tilemap.tile_size, cast(float32) pos.y * Tilemap.tile_size + Tilemap.tile_size);
+	
+	return out;
+}
+
+tile_rect_from_index :: (x : s32, y : s32, z : s32) -> RectF32{
+	out := rectF32(cast(float32) x * Tilemap.tile_size, cast(float32) y * Tilemap.tile_size, cast(float32) x * Tilemap.tile_size + Tilemap.tile_size, cast(float32) y * Tilemap.tile_size + Tilemap.tile_size);
+	
+	return out;
+}
+
+draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 	// draw tilemap
 	for z: 0 .. tm.depth - 2 {
 		//r.push_beam(passes);
 		for y: 0 .. tm.row - 1 {
 			for x: 0 .. tm.col - 1 {
 				
-				tile := tile_from_index(tm, x, y, z);
+				if x == 1 && y == 1 {
+					i____t := 0;
+				}
 				
-				if tile.paint_index {
+				tile := tile_from_local_index(tm, .{xx x, xx y, xx z});
+				
+				if tile && tile.paint_index {
 					
 					paint := paints[tile.paint_index];
 					
@@ -359,7 +437,10 @@ draw_tilemap :: (tm : Tilemap, passes : *r.Pass_List) {
 					
 					// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
 					if paint.auto {
-						neighbours := get_neighbours(tm, x, y, z, tile.paint_index);
+						
+						real := local_to_real_coords(tm, .{xx x, xx y, xx z});
+						
+						neighbours := get_neighbours(tw, real.x, real.y, z, tile.paint_index);
 						bitmask := tile_bitmask(neighbours);
 						//print("%\n", bitmask);
 						
@@ -398,35 +479,38 @@ draw_tilemap :: (tm : Tilemap, passes : *r.Pass_List) {
 	}
 }
 
-draw_entities :: (tm : Tilemap, passes : *r.Pass_List) {
+draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
 	for y: 0 .. tm.row - 1{
 		for x: 0 .. tm.col - 1 {
 			
-			tile := tile_from_index(tm, x, y, 2);
+			tile := tile_from_local_index(tm, .{xx x, xx y, 2});
 			
-			paint := paints[tile.paint_index];
-			
-			if paint.prop {
-				dst : RectF32;
-				dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size - paint.origin.x + 16);
-				dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size - paint.origin.y + 16);
-				dst.max.x = dst.min.x + paint.size.x;
-				dst.max.y = dst.min.y + paint.size.y;
+			if tile && tile.paint_index {
 				
-				tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-				tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+				paint := paints[tile.paint_index];
 				
-				width := 1. / paint.frame_x;
-				
-				tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
+				if paint.prop {
+					dst : RectF32;
+					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size - paint.origin.x + 16);
+					dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size - paint.origin.y + 16);
+					dst.max.x = dst.min.x + paint.size.x;
+					dst.max.y = dst.min.y + paint.size.y;
+					
+					tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
+					tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+					
+					width := 1. / paint.frame_x;
+					
+					tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
+				}
 			}
 		}
 	}
 }
 
 draw_grid :: (passes : *r.Pass_List) {
-	for y: 1 .. Tilemap.row - 1 - 1 {
-		for x: 1 .. Tilemap.col - 1 - 1 {
+	for y: 0 .. Tilemap.row - 1 {
+		for x: 0 .. Tilemap.col - 1 {
 			dst : RectF32;
 			dst.min.x = xx (x * Tilemap.tile_size);
 			dst.min.y = xx (y * Tilemap.tile_size);

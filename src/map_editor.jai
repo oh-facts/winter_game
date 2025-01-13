@@ -101,7 +101,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	editor_tilemap = tilemap_from_key(*editor_tileworld, active_tilemap_index);
 	
 	// draw map
-	draw_tilemap(editor_tilemap, passes);
+	draw_tilemap(editor_tileworld, editor_tilemap, passes);
 	draw_entities(editor_tilemap, passes);
 	
 	if grid_toggle {
@@ -148,11 +148,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 			
 			// paint
 			if lmb_held {
-				tile_from_index(editor_tilemap, tile_pos).paint_index = xx active_paint_index;
+				tile_from_local_index(editor_tilemap, tile_pos).paint_index = xx active_paint_index;
 			}
 			// erase
 			else if rmb_held{
-				tile_from_index(editor_tilemap, tile_pos).paint_index = 0;
+				tile_from_local_index(editor_tilemap, tile_pos).paint_index = 0;
 			}
 		}
 		else if tool.kind == .Fill {
@@ -199,7 +199,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
-							tile_from_index(editor_tilemap, x, y, tile_pos.z).paint_index = xx active_paint_index;
+							tile_from_local_index(editor_tilemap, .{xx x, xx y, xx tile_pos.z}).paint_index = xx active_paint_index;
 						}
 					}
 				}
@@ -248,7 +248,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
 							
-							tile := tile_from_index(editor_tilemap, x, y, tile_pos.z);
+							tile := tile_from_local_index(editor_tilemap, .{xx x, xx y, tile_pos.z});
 							
 							if tile.paint_index {
 								select_tile : SelectionTile;
@@ -279,7 +279,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				
 				for selection_buffer {
 					
-					dst := tile_rect_from_index(editor_tilemap, it.pos + mv);
+					dst := tile_rect_from_index(it.pos + mv);
 					r.push_rect2(passes, dst, r.COLOR_ORANGE);
 				}
 			}
@@ -288,10 +288,10 @@ editor_update :: (delta : float32, events : *os.EventList,
 				mv := move_end - move_start;
 				
 				for *selection_buffer {
-					tile1 := tile_from_index(editor_tilemap, it.pos);
+					tile1 := tile_from_local_index(editor_tilemap, it.pos);
 					tile1.paint_index = 0;
 					
-					tile := tile_from_index(editor_tilemap, mv + it.pos);
+					tile := tile_from_local_index(editor_tilemap, mv + it.pos);
 					<< tile = it.tile;
 					it.pos = mv + it.pos;
 				}
@@ -312,7 +312,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				
 				for selection_buffer {
 					
-					dst := tile_rect_from_index(editor_tilemap, it.pos);
+					dst := tile_rect_from_index(it.pos);
 					r.push_rect2(passes, dst, .{0, 0, 1, 0.3});
 					
 				}
@@ -321,7 +321,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				if os.event(events, .DEL, .Pressed) {
 					// empty buffer
 					for selection_buffer {
-						tile := tile_from_index(editor_tilemap, it.pos);
+						tile := tile_from_local_index(editor_tilemap, it.pos);
 						tile.paint_index = 0;
 					}
 					
@@ -332,7 +332,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		}
 		
 		// preview tile pos
-		r.push_rect2(passes, tile_rect_from_index(editor_tilemap, tile_pos), .{0, 0, 0, 1});
+		r.push_rect2(passes, tile_rect_from_index(tile_pos), .{0, 0, 0, 1});
 	}
 	
 	// @panel
