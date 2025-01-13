@@ -253,6 +253,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		glUnmapNamedBuffer(scene_buffer);
 	}
 	
+	do_blur : bool;
+	
 	// passes
 	{
 		pass := passes.first;
@@ -285,6 +287,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				shader := state.shader_prog[SHADER_PROG.BEAM];
 				glUseProgram(shader);
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				do_blur = true;
 				
 				case .Begin_Water;
 				glBindFramebuffer(GL_FRAMEBUFFER, state.water_fb.id);
@@ -326,8 +329,14 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		}
 	}
 	
+	glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[0].id);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[1].id);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
 	// blur
-	{
+	if do_blur {
 		shader := state.shader_prog[SHADER_PROG.BLUR];
 		
 		horizontal := true;

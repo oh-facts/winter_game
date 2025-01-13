@@ -428,8 +428,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	beam_pos = calculate_beam_pos();
 	
-	r.push_beam(passes);
 	
+	r.push_beam(passes);
 	r.end_water(passes);
 	
 	for entity_store.sort_list {
@@ -514,7 +514,7 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
-						e.speed = 1400;
+						e.speed = 140;
 						e.type = .Player;
 						e.submerged = 0.2;
 						py = e;
