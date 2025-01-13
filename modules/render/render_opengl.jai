@@ -17,6 +17,12 @@ sprite_frag_shader := #run read_entire_file("shaders/sprite.frag");
 beam_vertex_shader := #run read_entire_file("shaders/beam.vert"); 
 beam_frag_shader := #run read_entire_file("shaders/beam.frag");
 
+water_vertex_shader := #run read_entire_file("shaders/water.vert"); 
+water_frag_shader := #run read_entire_file("shaders/water.frag");
+
+final_vertex_shader := #run read_entire_file("shaders/final.vert"); 
+final_frag_shader := #run read_entire_file("shaders/final.frag");
+
 SceneData :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
@@ -54,6 +60,8 @@ SHADER_PROG :: enum {
 	UI;
 	SPRITE;
 	BEAM;
+	WATER;
+	FINAL;
 	COUNT;
 };
 
@@ -64,6 +72,9 @@ State :: struct {
 	shader_prog : [SHADER_PROG.COUNT] GLuint;
 	inst_buffer : [INST_BUFFER.COUNT] GLuint;
 	white_square : Handle;
+	draw_fb : GLuint;
+	draw_tex : GLuint;
+	last_screen_size : Vector2;
 };
 
 state : *State;
@@ -98,13 +109,17 @@ init :: () {
 	vert_files : []string = .[
 														ui_vertex_shader,
 														sprite_vertex_shader,
-														beam_vertex_shader
+														beam_vertex_shader,
+														water_vertex_shader,
+														final_vertex_shader
 														];
 	
 	frag_files : []string = .[
 														ui_frag_shader,
 														sprite_frag_shader,
-														beam_frag_shader
+														beam_frag_shader,
+														water_frag_shader,
+														final_frag_shader
 														];
 	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
@@ -123,6 +138,25 @@ init :: () {
 	bmp := Bitmap.{data.data, 1, 1, 4};
 	
 	state.white_square = image(bmp);
+	
+	screen_size : Vector2 = .{1920, 1051};
+	glCreateFramebuffers(1, *state.draw_fb);
+	width : u32 = xx screen_size.x;
+	height : u32 = xx screen_size.y;
+	
+	glCreateTextures(GL_TEXTURE_2D, 1, *state.draw_tex);
+	glTextureStorage2D(state.draw_tex, 1, GL_RGBA8, width, height);
+	glNamedFramebufferTexture(state.draw_fb, GL_COLOR_ATTACHMENT0, state.draw_tex, 0);
+	
+	renderbuffer : GLuint;
+	glCreateRenderbuffers(1, *renderbuffer);
+	glNamedRenderbufferStorage(renderbuffer, GL_DEPTH24_STENCIL8, width, height);
+	glNamedFramebufferRenderbuffer(state.draw_fb, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
+	
+	status := glCheckNamedFramebufferStatus(state.draw_fb, GL_FRAMEBUFFER);
+	
+	state.last_screen_size = screen_size;
+	assert(status == GL_FRAMEBUFFER_COMPLETE, "fb not complete");
 }
 
 submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
@@ -130,6 +164,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 noise : Handle,
 					 displacement : Handle, ophset : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb);
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -190,6 +226,11 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				glUseProgram(shader);
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 				
+				case .Water;
+				shader := state.shader_prog[SHADER_PROG.WATER];
+				glUseProgram(shader);
+				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+				
 				case .Sprite;
 				buffer := state.inst_buffer[INST_BUFFER.SPRITE];
 				shader := state.shader_prog[SHADER_PROG.SPRITE];
@@ -212,6 +253,20 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				}
 			}
 		}
+	}
+	
+	// copy to window fb
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
+		shader := state.shader_prog[SHADER_PROG.FINAL];
+		
+		screenTextureLocation := glGetUniformLocation(shader, "screen_tex");
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, state.draw_tex);
+		glUniform1i(screenTextureLocation, 0);
+		glUseProgram(shader);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 	
 	SDL_GL_SwapWindow(xx win.U64[0]);

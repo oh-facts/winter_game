@@ -60,6 +60,7 @@ Entity_Flags :: enum_flags u64 {
 	Animated;
 	Inactive;
 	Interactable;
+	Sloppy_Shadow;
 }
 
 Interaction_State :: enum {
@@ -332,16 +333,36 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if entity.flags & .Inactive continue;
 		
 		// draw occupied tile
-		dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), 0);
-		if entity.interaction_state == {
-			case .Hot;
-			r.push_sprite(passes, dst, .{1, 1, 1, 1});
-			case .Active;
-			r.push_sprite(passes, dst, .{0, 0, 1, 1});
+		{
+			dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), xx 0);
+			if entity.interaction_state == {
+				case .Hot;
+				r.push_sprite(passes, dst, .{1, 1, 1, 1});
+				case .Active;
+				r.push_sprite(passes, dst, .{0, 0, 1, 1});
+			}
+		}
+		
+		// draw shadow
+		if entity.flags & .Sloppy_Shadow {
+			// cylinder radius and "extra" width when
+			// one stretches a circle along x to form
+			// a cylinder
+			rad :: 12.;
+			fat :: 6.;
+			
+			dst : RectF32;
+			dst.min.x = entity.pos.x - rad - fat / 2;
+			dst.min.y = entity.pos.y - rad;
+			dst.max.x = dst.min.x + rad*2 + fat;
+			dst.max.y = dst.min.y + rad*2;
+			
+			shadow := r.push_sprite(passes, dst, .{0, 0, 0, 0.4});
+			shadow.radius = rad;
 		}
 		
 		// draw origin
-		ifx 0 {
+		if 0 {
 			dst : RectF32;
 			dst.min.x = entity.pos.x;
 			dst.min.y = entity.pos.y;
@@ -407,7 +428,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	beam_pos = calculate_beam_pos();
 	
-	r.push_beam(passes);
+	//r.push_beam(passes);
+	r.push_water(passes);
 	
 	for entity_store.sort_list {
 		dst : RectF32;
@@ -490,7 +512,7 @@ load_entities :: () {
 					e : *Entity;
 					
 					if paint.kind == .Player {
-						e = entity_alloc(.Control | .Animated);
+						e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
 						e.speed = 400;
 						e.type = .Player;
 						e.submerged = 0.2;

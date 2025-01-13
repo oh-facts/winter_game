@@ -1,5 +1,4 @@
 #version 450 core
-
 out vec2 fragCoord;
 
 layout (std430, binding = 0) buffer ssbo {
@@ -18,6 +17,7 @@ flat out uvec2 a_noise_id;
 flat out uvec2 a_displacement_id;
 flat out float a_delta;
 flat out vec2 a_offset;
+
 void main() {
 	vec2 vertices[4] = vec2[](
 														vec2(-1.0,  1.0),
