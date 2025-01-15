@@ -3,8 +3,13 @@
 // option to play scenes
 // scenes reference levels
 
+// I think mimic trees will just have
+// a demon shadow ??
+
 World_Cmd_Kind :: enum {
 	Eat;
+	Test_Interaction;
+	Start_Interaction;
 	Complete_Interaction;
 }
 
@@ -18,8 +23,19 @@ World_Eat_Cmd :: struct {
 	tile_pos : Vector2i;
 }
 
+World_Test_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
+	interactee_kind : Entity_Type;
+}
+
+World_Start_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
+	interactee_kind : Entity_Type;
+}
+
 World_Complete_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
+	interactee_kind : Entity_Type;
 }
 
 World_Cmd_Buffer :: struct {
@@ -42,17 +58,35 @@ push_world_eat_cmd :: (tile_pos : Vector2i) {
 	world_cmds.size += size_of(World_Eat_Cmd);
 }
 
-push_world_complete_interaction :: () {
+push_world_test_interaction :: () {
+	data : *World_Test_Interaction_Cmd = xx world_cmds.base;
+	data.header.kind = .Test_Interaction;
+	world_cmds.count += 1;
+	world_cmds.size += size_of(World_Test_Interaction_Cmd);
+}
+
+push_world_start_interaction :: (interactee_kind : Entity_Type) {
+	data : *World_Start_Interaction_Cmd = xx world_cmds.base;
+	data.header.kind = .Start_Interaction;
+	data.interactee_kind = interactee_kind;
+	world_cmds.count += 1;
+	world_cmds.size += size_of(World_Start_Interaction_Cmd);
+}
+
+push_world_complete_interaction :: (interactee_kind : Entity_Type) {
 	data : *World_Complete_Interaction_Cmd = xx world_cmds.base;
 	data.header.kind = .Complete_Interaction;
+	data.interactee_kind = interactee_kind;
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
 }
 
 Entity_Type :: enum {
 	Nothing;
+	Opening;
 	Player;
 	Tree;
+	Siren;
 }
 
 Entity_Flags :: enum_flags u64 {
@@ -69,23 +103,45 @@ Interaction_State :: enum {
 	Active;
 }
 
+Animation_State :: enum {
+	Idle;
+	Move;
+}
+
+Animation :: struct {
+	art : ArtId;
+	frame_x : s32;
+	frame_y : s32;
+	speed : float32;
+}
+
+animations : [2]Animation : .[.{art = .Impolo, frame_x = 1, frame_y = 1, speed = 0},
+															.{art = .Impolo_East, frame_x = 8, frame_y = 1, speed = 7}];
+
 Entity :: struct {
+	next : *Entity;
 	name : string;
 	type : Entity_Type;
 	flags : Entity_Flags;
-	anim_counter : float32;
-	art_id : ArtId;
+	
+	dir : Vector2i;
 	speed : float32;
 	size : Vector2i;
 	pos : Vector2;
 	tile_pos : Vector2i;
 	origin : Vector2;
+	
+	art_id : ArtId;
 	frame_x : s32;
 	frame_y : s32;
 	frame_n : s32;
+	flipped : bool;
+	
+	anim_state : Animation_State;
+	anim_counter : float32;
+	
 	color : Vector4;
 	interaction_state : Interaction_State;
-	next : *Entity;
 	submerged : float;
 };
 
@@ -274,12 +330,22 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			test_tile_pos.x = cast(s32) test_pos.x / 32;
 			test_tile_pos.y = cast(s32) test_pos.y / 32;
 			
+			if mv.x || mv.y {
+				entity.anim_state = .Move;
+			} else {
+				entity.anim_state = .Idle;
+			}
 			
+			if mv.x < 0 {
+				entity.flipped = xx 1;
+			} else {
+				entity.flipped = xx 0;
+			}
 			
 			entity.pos = test_pos;
 			
 			if os.event(events, .E, .Pressed) {
-				push_world_eat_cmd(entity.tile_pos);
+				push_world_test_interaction();
 			}
 		}
 	}
@@ -322,9 +388,10 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		if entity.flags & .Animated {
 			
-			entity.anim_counter += xx delta;
+			anim := animations[entity.anim_state];
 			
-			entity.frame_n = (xx (entity.anim_counter * 10)) % entity.frame_x;
+			entity.anim_counter += xx delta;
+			entity.frame_n = (xx (entity.anim_counter * anim.speed)) % anim.frame_x;
 		}
 	}
 	
@@ -396,23 +463,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	intro_sort(entity_store.sort_list, sort_entitties);
-	
-	for entity_store.sort_list {
-		dst : RectF32;
-		dst.min.x = it.pos.x - it.origin.x;
-		dst.min.y = it.pos.y - it.origin.y;
-		dst.max.x = dst.min.x + it.size.x;
-		dst.max.y = dst.min.y + it.size.y;
-		
-		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
-		sprite.tex_id = arts[it.art_id].tex.U64[1];
-		sprite.pad2[0] = -1.;
-		sprite.pad2[1] = it.submerged;
-		
-		width := 1. / it.frame_x;
-		
-		sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
-	}
+	draw_submerged_entities(passes, -1);
 	
 	calculate_beam_pos :: () -> Vector2 {
 		c := py.pos;//tm_index;
@@ -428,26 +479,10 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	beam_pos = calculate_beam_pos();
 	
-	
 	r.push_beam(passes);
 	r.end_water(passes);
 	
-	for entity_store.sort_list {
-		dst : RectF32;
-		dst.min.x = it.pos.x - it.origin.x;
-		dst.min.y = it.pos.y - it.origin.y;
-		dst.max.x = dst.min.x + it.size.x;
-		dst.max.y = dst.min.y + it.size.y;
-		
-		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
-		sprite.tex_id = arts[it.art_id].tex.U64[1];
-		sprite.pad2[0] = 1.;
-		sprite.pad2[1] = it.submerged;
-		
-		width := 1. / it.frame_x;
-		
-		sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
-	}
+	draw_submerged_entities(passes, 1);
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
@@ -465,10 +500,14 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	if active_entity {
-		if active_entity.type == .Tree {
-			
+		if active_entity.type ==  {
+			case .Tree;
 			if dialogue_box(passes, events, TREE_TALK) {
-				push_world_complete_interaction();
+				push_world_complete_interaction(.Tree);
+			}
+			case .Siren;
+			if dialogue_box(passes, events, SIREN_TALK) {
+				push_world_complete_interaction(.Siren);
 			}
 		}
 	}
@@ -477,20 +516,44 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	for 0 .. world_cmds.count - 1 {
 		header :*World_Cmd_Kind = xx base;
 		
+		print("%\n", it);
+		
 		if << header == {
 			case .Eat;
 			cmd : *World_Eat_Cmd = xx base;
+			
+			base += size_of(type_of(<< cmd));
+			
+			case .Test_Interaction;
+			cmd : *World_Test_Interaction_Cmd = xx base;
+			
 			if highlighted_entity {
 				highlighted_entity.interaction_state = .Active;
-				
 				active_entity = highlighted_entity;
-				
+				push_world_start_interaction(cmd.interactee_kind);
 			}
+			
+			base += size_of(type_of(<< cmd));
+			
+			case .Start_Interaction;
+			cmd : *World_Start_Interaction_Cmd = xx base;
+			py.flags &= ~.Control;
+			print("started");
+			base += size_of(type_of(<< cmd));
 			
 			case .Complete_Interaction;
 			cmd : *World_Complete_Interaction_Cmd = xx base;
-			active_entity.interaction_state = .Hot;
-			active_entity = xx 0;
+			py.flags |= .Control;
+			
+			if active_entity {
+				active_entity.interaction_state = .Hot;
+				active_entity = xx 0;
+			}
+			
+			base += size_of(type_of(<< cmd));
+			
+			case;
+			assert(true, "cmd not found");
 		}
 	}
 }
@@ -514,7 +577,7 @@ load_entities :: () {
 					
 					if paint.kind == .Player {
 						e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
-						e.speed = 140;
+						e.speed = 200;
 						e.type = .Player;
 						e.submerged = 0.2;
 						py = e;
@@ -529,8 +592,9 @@ load_entities :: () {
 						//array_add(*entity_store.apples, e);
 					}
 					else if paint.kind == .Siren {
-						e = entity_alloc(0);
-						e.submerged = 0.2;
+						e = entity_alloc(.Interactable);
+						e.type = .Siren;
+						e.submerged = 0.08;
 					}
 					
 					if e {
@@ -571,15 +635,10 @@ quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) 
 		quest.started = true;
 		
 		print("%", OPENING_PROMPT);
-		py.flags &= ~.Control;
+		
+		push_world_start_interaction(.Opening);
 		
 		// some cutscene. Very short. Just the explosion
-	}
-	
-	if !quest.opening_prompt {
-		
-		quest.opening_prompt = dialogue_box(passes, events, OPENING_PROMPT);
-		
 	}
 	
 }
@@ -608,8 +667,43 @@ dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -
 	r.push_text(passes, font, continue_text, bottom_right, text_size);
 	
 	if os.event(events, .SPACE, .Pressed) {
-		py.flags |= .Control;
 		out = true;
 	}
+	
 	return out;
+}
+
+draw_submerged_entities :: (passes : *r.Pass_List, pass : s32) {
+	
+	for entity_store.sort_list {
+		dst : RectF32;
+		dst.min.x = it.pos.x - it.origin.x;
+		dst.min.y = it.pos.y - it.origin.y;
+		dst.max.x = dst.min.x + it.size.x;
+		dst.max.y = dst.min.y + it.size.y;
+		
+		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
+		sprite.pad2[0] = xx pass;
+		sprite.pad2[1] = it.submerged;
+		
+		if it.flags & .Animated {
+			
+			anim := animations[it.anim_state];
+			sprite.tex_id = arts[anim.art].tex.U64[1];
+			
+			width := 1. / anim.frame_x;
+			
+			if it.flipped {
+				width = -width;
+			}
+			
+			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
+		} else {
+			sprite.tex_id = arts[it.art_id].tex.U64[1];
+			width := 1. / it.frame_x;
+			
+			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
+		}
+	}
+	
 }

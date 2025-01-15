@@ -39,10 +39,10 @@ paints : [9]Paint : .[.{empty = true},
 											.{auto = true, art_id = .TerrainGrass, name = "auto grass", kind = .Grass},
 											.{auto = false, art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9, kind = .Grass},
 											.{auto = false, art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6, kind = .Dirt},
-											.{auto = false, art_id = .Impolo, name = "player", kind = .Player, size = .{64, 64}, origin = .{32, 64}, src = .{.{0, 0}, .{1, 1}}, frame_x = 8, frame_y = 1, prop = true, kind = .Player},
+											.{auto = false, art_id = .Impolo, name = "player", kind = .Player, size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, prop = true, kind = .Player},
 											.{auto = false, art_id = .Tree, name = "tree", kind = .Tree, size = .{512, 512}, src = .{.{0, 0}, .{1, 1}}, frame_x = 3, frame_y = 1, frame_n = 2, origin = .{254, 386}, prop = true},
 											.{art_id = .Ball, name = "Ball", size = .{32, 32}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{16, 32}, prop = true, kind = .Ball},
-											.{art_id = .Siren, name = "Siren", size = .{256, 256}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{128, 240}, prop = true, kind = .Siren}];
+											.{art_id = .Siren, name = "Siren", size = .{512, 512}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{250, 500}, prop = true, kind = .Siren}];
 
 Tilemap :: struct {
 	row :: 32;
