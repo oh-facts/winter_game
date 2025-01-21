@@ -1,48 +1,45 @@
-Tile_Kind :: enum {
-	Grass;
-	Dirt;
-	Player;
-	Tree;
-	Ball;
-	Siren;
-}
-
 Tile :: struct {
 	paint_index : s32;
 };
 
 Paint :: struct {
-	auto : bool;
-	prop : bool;
-	empty : bool;
-	kind : Tile_Kind;
 	name : string;
 	art_id : ArtId;
+	
+	// use auto tiling?
+	auto : bool;
 	
 	// i was thinking of using this as an offset into an image. So imagine a massive image with .. I don't feel like writing the rest I am particularly sad.
 	src : RectF32;
 	
-	frame_x : s32;
+	// NOTE(mizu): I think I want to make stuff like origin, frame_x, frame_y, etc. part of the art struct and a higher level struct that handles the tex, bmp, name, path
+	frame_x : s32; 
 	frame_y : s32;
 	frame_n : s32;
 	
-	// used by props
+	// entity data 
+	entity_kind : Entity_Kind;
 	size : Vector2i;
 	origin : Vector2;
 	
-	// used for identification
+	// used for unique identification
+	// i don't see special reason? Just use entity kind?
 	key : int;
 };
 
-paints : [9]Paint : .[.{empty = true},
-											.{auto = true, art_id = .TerrainTemplate, name = "template 1"},
-											.{auto = true, art_id = .TerrainGrass, name = "auto grass", kind = .Grass},
-											.{auto = false, art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9, kind = .Grass},
-											.{auto = false, art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6, kind = .Dirt},
-											.{auto = false, art_id = .Impolo, name = "player", kind = .Player, size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, prop = true, kind = .Player},
-											.{auto = false, art_id = .Tree, name = "tree", kind = .Tree, size = .{512, 512}, src = .{.{0, 0}, .{1, 1}}, frame_x = 3, frame_y = 1, frame_n = 2, origin = .{254, 386}, prop = true},
-											.{art_id = .Ball, name = "Ball", size = .{32, 32}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{16, 32}, prop = true, kind = .Ball},
-											.{art_id = .Siren, name = "Siren", size = .{512, 512}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{250, 500}, prop = true, kind = .Siren}];
+paints : [10]Paint : .[.{},
+											 .{auto = true, art_id = .TerrainTemplate, name = "template 1"},
+											 .{auto = true, art_id = .TerrainGrass, name = "auto grass"},
+											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9},
+											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6},
+											 .{art_id = .Impolo, name = "player", entity_kind = .Player, size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, },
+											 .{art_id = .Tree, name = "tree", entity_kind = .Tree, size = .{512, 512}, src = .{.{0, 0}, .{1, 1}}, frame_x = 3, frame_y = 1, frame_n = 2, origin = .{254, 386}, },
+											 .{art_id = .Ball, name = "Ball", size = .{32, 32}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{16, 32} , entity_kind = .Ball},
+											 .{art_id = .Siren, name = "Siren", size = .{512, 512}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{250, 500}, entity_kind = .Siren},
+											 .{art_id = .Impolo, name = "husk", size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, entity_kind = .Husk}];
+
+auto_col :: 8;
+auto_row :: 6;
 
 Tilemap :: struct {
 	row :: 32;
@@ -51,8 +48,6 @@ Tilemap :: struct {
 	tile_size :: 32;
 	tiles : [row * col * depth]Tile;
 	size :: row * col * depth * size_of(Tile);
-	auto_col :: 8;
-	auto_row :: 6;
 	rect : RectF32 : .{.{0, 0}, .{(col) * tile_size, (row) * tile_size}};
 	next : *Tilemap;
 	index : Vector2i;
@@ -446,10 +441,10 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 						
 						uv := uv_from_bitmask(bitmask);
 						
-						src.min.x = (cast(float32)uv.x / tm.auto_col);
-						src.max.y = (cast(float32)uv.y / tm.auto_row);
-						src.max.x = src.min.x + 1. / tm.auto_col;
-						src.min.y = src.max.y + 1. / tm.auto_row;
+						src.min.x = (cast(float32)uv.x / auto_col);
+						src.max.y = (cast(float32)uv.y / auto_row);
+						src.max.x = src.min.x + 1. / auto_col;
+						src.min.y = src.max.y + 1. / auto_row;
 						
 						src.min.y = 1 - src.min.y;
 						src.max.y = 1 - src.max.y;
@@ -489,7 +484,7 @@ draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
 				
 				paint := paints[tile.paint_index];
 				
-				if paint.prop {
+				if paint.entity_kind {
 					dst : RectF32;
 					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size - paint.origin.x + 16);
 					dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size - paint.origin.y + 16);

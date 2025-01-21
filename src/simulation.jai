@@ -25,17 +25,16 @@ World_Eat_Cmd :: struct {
 
 World_Test_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
-	interactee_kind : Entity_Type;
 }
 
 World_Start_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
-	interactee_kind : Entity_Type;
+	id : Interaction_Id;
 }
 
 World_Complete_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
-	interactee_kind : Entity_Type;
+	id : Interaction_Id;
 }
 
 World_Cmd_Buffer :: struct {
@@ -45,12 +44,10 @@ World_Cmd_Buffer :: struct {
 	cap : s64;
 }
 
-active_entity : *Entity;
-
 world_cmds : World_Cmd_Buffer;
 
 push_world_eat_cmd :: (tile_pos : Vector2i) {
-	data : *World_Eat_Cmd = xx world_cmds.base;
+	data : *World_Eat_Cmd = xx (world_cmds.base + world_cmds.size);
 	data.tile_pos = tile_pos;
 	data.header.kind = .Eat;
 	
@@ -59,34 +56,36 @@ push_world_eat_cmd :: (tile_pos : Vector2i) {
 }
 
 push_world_test_interaction :: () {
-	data : *World_Test_Interaction_Cmd = xx world_cmds.base;
+	data : *World_Test_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
 	data.header.kind = .Test_Interaction;
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Test_Interaction_Cmd);
 }
 
-push_world_start_interaction :: (interactee_kind : Entity_Type) {
-	data : *World_Start_Interaction_Cmd = xx world_cmds.base;
+push_world_start_interaction :: (id : Interaction_Id) {
+	data : *World_Start_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
 	data.header.kind = .Start_Interaction;
-	data.interactee_kind = interactee_kind;
+	data.id = id;
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Start_Interaction_Cmd);
 }
 
-push_world_complete_interaction :: (interactee_kind : Entity_Type) {
-	data : *World_Complete_Interaction_Cmd = xx world_cmds.base;
+push_world_complete_interaction :: (id : Interaction_Id) {
+	data : *World_Complete_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
 	data.header.kind = .Complete_Interaction;
-	data.interactee_kind = interactee_kind;
+	data.id = id;
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
 }
 
-Entity_Type :: enum {
+Entity_Kind :: enum {
 	Nothing;
 	Opening;
 	Player;
 	Tree;
 	Siren;
+	Husk;
+	Ball;
 }
 
 Entity_Flags :: enum_flags u64 {
@@ -121,12 +120,15 @@ animations : [2]Animation : .[.{art = .Impolo, frame_x = 1, frame_y = 1, speed =
 Entity :: struct {
 	next : *Entity;
 	name : string;
-	type : Entity_Type;
+	type : Entity_Kind;
 	flags : Entity_Flags;
 	
 	dir : Vector2i;
 	speed : float32;
 	size : Vector2i;
+	
+	test_pos : Vector2;
+	
 	pos : Vector2;
 	tile_pos : Vector2i;
 	origin : Vector2;
@@ -163,6 +165,27 @@ active_count :: () -> int {
 entity_store : EntityStore;
 world_initialized := false;
 quest : Quest;
+
+Interaction_Id :: enum {
+	None;
+	Tree;
+	Siren;
+	Opening;
+};
+
+interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
+	
+	if e.type == {
+		case .Tree; return .Tree;
+		case .Siren; return .Siren;
+		case .Opening; return .Opening;
+	}
+	
+	return .None;
+}
+
+active_interatction : Interaction_Id;
+active_entity : *Entity;
 
 entity_alloc :: (flags : Entity_Flags) -> *Entity {
 	out := entity_store.free;
@@ -237,7 +260,6 @@ world_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	tick(events, passes, delta);
-	quest_update(*demo_quest, events, passes);
 }
 
 tm_index := Vector2i.{};
@@ -249,6 +271,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	world_cmds.count = 0;
 	world_cmds.size = 0;
 	world_cmds.cap = xx MB(1);
+	
+	quest_update(*demo_quest, events, passes);
 	
 	if py {
 		tm_index = tilemap_index_from_tile_pos(py.tile_pos);
@@ -342,7 +366,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				entity.flipped = xx 0;
 			}
 			
-			entity.pos = test_pos;
+			entity.test_pos = test_pos;
 			
 			if os.event(events, .E, .Pressed) {
 				push_world_test_interaction();
@@ -350,14 +374,50 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 	}
 	
-	// update tile pos
+	// physics
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
 		
 		if entity.flags & .Inactive continue;
 		
-		entity.tile_pos.x = xx (entity.pos.x / 32.);
-		entity.tile_pos.y = xx (entity.pos.y / 32.);
+		//valid := false;
+		valid := true;
+		
+		test_tile_pos : Vector2i;
+		test_tile_pos.x = cast(s32) entity.test_pos.x / 32;
+		test_tile_pos.y = cast(s32) entity.test_pos.y / 32;
+		
+		// tilemap collision
+#if 0 {
+			for 0 .. 1 {
+				
+				tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y, xx it});
+				
+				if tile.paint_index {
+					valid = true;
+				}
+			}
+		}
+		
+		// other entities
+		for 0 .. entity_store.count - 1 {
+			other := entity_store.first + it;
+			
+			if other == entity continue;
+			
+			if other.tile_pos == test_tile_pos {
+				valid = false;
+				break;
+			}
+			
+		}
+		
+		if valid {
+			entity.pos = entity.test_pos;
+			
+			entity.tile_pos.x = xx (entity.pos.x / 32.);
+			entity.tile_pos.y = xx (entity.pos.y / 32.);
+		}
 	}
 	
 	highlighted_entity : *Entity;
@@ -462,6 +522,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		return out; 
 	}
 	
+	r.push_beam(passes);
 	intro_sort(entity_store.sort_list, sort_entitties);
 	draw_submerged_entities(passes, -1);
 	
@@ -478,8 +539,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 	
 	beam_pos = calculate_beam_pos();
-	
-	r.push_beam(passes);
+	//r.push_beam(passes);
 	r.end_water(passes);
 	
 	draw_submerged_entities(passes, 1);
@@ -499,24 +559,29 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 	}
 	
-	if active_entity {
-		if active_entity.type ==  {
-			case .Tree;
-			if dialogue_box(passes, events, TREE_TALK) {
-				push_world_complete_interaction(.Tree);
-			}
-			case .Siren;
-			if dialogue_box(passes, events, SIREN_TALK) {
-				push_world_complete_interaction(.Siren);
-			}
+	if active_interatction == {
+		case .Tree;
+		if dialogue_box(passes, events, TREE_TALK) {
+			push_world_complete_interaction(.Tree);
+		}
+		case .Siren;
+		if dialogue_box(passes, events, SIREN_TALK) {
+			push_world_complete_interaction(.Siren);
+		}
+		case .Opening;
+		if dialogue_box(passes, events, OPENING_PROMPT) {
+			push_world_complete_interaction(.Opening);
 		}
 	}
 	
 	base := world_cmds.base;
-	for 0 .. world_cmds.count - 1 {
+	i : s32;
+	while i < world_cmds.count {
+		defer i+=1;
+		
 		header :*World_Cmd_Kind = xx base;
 		
-		print("%\n", it);
+		//print("%\n", i);
 		
 		if << header == {
 			case .Eat;
@@ -530,7 +595,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			if highlighted_entity {
 				highlighted_entity.interaction_state = .Active;
 				active_entity = highlighted_entity;
-				push_world_start_interaction(cmd.interactee_kind);
+				push_world_start_interaction(interaction_id_from_entity(active_entity));
 			}
 			
 			base += size_of(type_of(<< cmd));
@@ -539,6 +604,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			cmd : *World_Start_Interaction_Cmd = xx base;
 			py.flags &= ~.Control;
 			print("started");
+			active_interatction = cmd.id;
+			
 			base += size_of(type_of(<< cmd));
 			
 			case .Complete_Interaction;
@@ -549,6 +616,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				active_entity.interaction_state = .Hot;
 				active_entity = xx 0;
 			}
+			active_interatction = .None;
 			
 			base += size_of(type_of(<< cmd));
 			
@@ -571,45 +639,57 @@ load_entities :: () {
 				
 				paint := paints[tile.paint_index];
 				
-				if paint.prop {
+				e : *Entity;
+				
+				if paint.entity_kind == {
+					case .Player;
+					e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
+					e.speed = 200;
+					e.type = .Player;
+					e.submerged = 0.2;
+					py = e;
+					e.color = r.COLOR_WHITE;
 					
-					e : *Entity;
+					case .Tree;
+					e = entity_alloc(.Interactable);
+					e.type = .Tree;
+					e.submerged = 0.28;
+					e.color = r.COLOR_WHITE;
 					
-					if paint.kind == .Player {
-						e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
-						e.speed = 200;
-						e.type = .Player;
-						e.submerged = 0.2;
-						py = e;
-					}
-					else if paint.kind == .Tree {
-						e = entity_alloc(.Interactable);
-						e.type = .Tree;
-						e.submerged = 0.28;
-					}
-					else if paint.kind == .Ball {
-						e = entity_alloc(0);
-						//array_add(*entity_store.apples, e);
-					}
-					else if paint.kind == .Siren {
-						e = entity_alloc(.Interactable);
-						e.type = .Siren;
-						e.submerged = 0.08;
-					}
+					case .Ball;
+					e = entity_alloc(0);
+					e.color = r.COLOR_WHITE;
 					
-					if e {
-						e.name = paint.name;
-						e.art_id = paint.art_id;
-						
-						e.origin = paint.origin;
-						e.size = paint.size;
-						e.frame_x = paint.frame_x;
-						e.frame_y = paint.frame_y;
-						e.frame_n = paint.frame_n;
-						e.pos = .{(x + tm.index.x * tm.col) * 32. + 16, (y + tm.index.y * tm.row) * 32. + 16};
-					}
+					//array_add(*entity_store.apples, e);
 					
+					case .Siren;
+					e = entity_alloc(.Interactable);
+					e.type = .Siren;
+					e.submerged = 0.08;
+					e.color = r.COLOR_WHITE;
+					
+					case .Husk;
+					e = entity_alloc(0);
+					e.type = .Husk;
+					e.color = r.COLOR_BLACK;
+					e.submerged = 0.08;
 				}
+				
+				if e {
+					e.name = paint.name;
+					e.art_id = paint.art_id;
+					e.origin = paint.origin;
+					e.size = paint.size;
+					e.frame_x = paint.frame_x;
+					e.frame_y = paint.frame_y;
+					e.frame_n = paint.frame_n;
+					e.test_pos = .{(x + tm.index.x * tm.col) * 32. + 16, (y + tm.index.y * tm.row) * 32. + 16};
+					e.pos = e.test_pos;
+					
+					e.tile_pos.x = xx (e.pos.x / 32.);
+					e.tile_pos.y = xx (e.pos.y / 32.);
+				}
+				
 			}
 		}
 	}
@@ -634,7 +714,7 @@ quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) 
 	if !quest.started {
 		quest.started = true;
 		
-		print("%", OPENING_PROMPT);
+		//print("%", OPENING_PROMPT);
 		
 		push_world_start_interaction(.Opening);
 		
@@ -682,7 +762,7 @@ draw_submerged_entities :: (passes : *r.Pass_List, pass : s32) {
 		dst.max.x = dst.min.x + it.size.x;
 		dst.max.y = dst.min.y + it.size.y;
 		
-		sprite := r.push_sprite(passes, dst, .{1, 1, 1, 1});
+		sprite := r.push_sprite(passes, dst, it.color);
 		sprite.pad2[0] = xx pass;
 		sprite.pad2[1] = it.submerged;
 		
@@ -705,5 +785,4 @@ draw_submerged_entities :: (passes : *r.Pass_List, pass : s32) {
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		}
 	}
-	
 }
