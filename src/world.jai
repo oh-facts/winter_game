@@ -1,7 +1,3 @@
-Tile :: struct {
-	paint_index : s32;
-};
-
 Paint :: struct {
 	name : string;
 	art_id : ArtId;
@@ -41,15 +37,39 @@ paints : [10]Paint : .[.{},
 auto_col :: 8;
 auto_row :: 6;
 
+// TODO(mizu): generate tile collisions.
+// idk if i want to move it to tile data
+// or keep separate.
+// i dont see point in keeping inside
+// I think I will keep separate
+// in the video you can talk about generating per frame collisions is easier now because of the array.
+// Also I am thinking that I store entities
+// in its own grid instead of having depth of 3
+// since entity grid will also be per frame. Maybe this way, I would have an easier time saving the world data as tile data
+
+Tile :: struct {
+	layers :: 3;
+	v : [layers]s32;
+	occupied : bool;
+};
+
 Tilemap :: struct {
+	// dim
 	row :: 32;
 	col :: 60;
-	depth :: 3;
+	
 	tile_size :: 32;
-	tiles : [row * col * depth]Tile;
-	size :: row * col * depth * size_of(Tile);
-	rect : RectF32 : .{.{0, 0}, .{(col) * tile_size, (row) * tile_size}};
+	count :: row * col;
+	size :: count * size_of(Tile);
+	rect :: RectF32.{.{0, 0}, .{(col) * tile_size, (row) * tile_size}};
+	
+	// tile data
+	tiles : [row * col]Tile;
+	
+	// hash link
 	next : *Tilemap;
+	
+	// key
 	index : Vector2i;
 };
 
@@ -62,9 +82,8 @@ Tileworld :: struct {
 	slots : []Tilemap_Slot;
 	
 	// useful for serializing or for batch operations ??
-	tm_arena : *Arena;
-	tm_base : *Tilemap;
-	tm_count : int;
+	tilemap_arena : *Arena;
+	tilemaps : []Tilemap;
 }
 
 init_tileworld :: () -> Tileworld {
@@ -73,8 +92,8 @@ init_tileworld :: () -> Tileworld {
 	
 	out.slots.data = push_array(arena, Tilemap, xx (count));
 	out.slots.count = count;
-	out.tm_arena = arena_init();
-	out.tm_base = push_struct(out.tm_arena, void);
+	out.tilemap_arena = arena_init();
+	out.tilemaps.data = push_struct(out.tilemap_arena, void);
 	return out;
 }
 
@@ -99,7 +118,7 @@ tilemap_from_key :: (world : *Tileworld, key : Vector2i) -> *Tilemap {
 	}
 	
 	if !out {
-		out = push_struct(world.tm_arena, Tilemap);
+		out = push_struct(world.tilemap_arena, Tilemap);
 		out.index = key;
 		
 		if slot.last {
@@ -110,7 +129,7 @@ tilemap_from_key :: (world : *Tileworld, key : Vector2i) -> *Tilemap {
 			slot.first = out;
 		}
 		
-		world.tm_count += 1;
+		world.tilemaps.count += 1;
 	}
 	
 	return out;
@@ -145,12 +164,12 @@ save_tileworld :: (tw : Tileworld) {
 	{
 		filename := tprint("%/%", data_folder, "map_data");
 		
-		write_entire_file(filename, tw.tm_base, size_of(Tilemap) * tw.tm_count);
+		write_entire_file(filename, tw.tilemaps.data, size_of(Tilemap) * tw.tilemaps.count);
 	}
 	{
 		filename := tprint("%/%", data_folder, "map_meta_data");
 		
-		count := tw.tm_count;
+		count := tw.tilemaps.count;
 		write_entire_file(filename, *count, size_of(int));
 	}
 	print("ended saving\n");
@@ -211,13 +230,13 @@ get_neighbours :: (tw : Tileworld, x : int, y : int, z : int, paint_index : s32)
 	return out;
 }
 
-tile_present :: (tw : Tileworld, x : int, y : int, z : int) -> bool {
+tile_present :: (tw : Tileworld, x : int, y : int, layer : int) -> bool {
 	
 	out : bool;
-	tile := tile_from_index(tw, .{xx x, xx y, xx z});
+	tile := tile_from_index(tw, .{xx x, xx y});
 	
 	if tile {
-		out = xx tile.paint_index;
+		out = xx tile.v[layer];
 	}
 	
 	return out;
@@ -342,28 +361,26 @@ uv_from_bitmask :: (bitmask : u8) -> Vector2i {
 	return out;
 };
 
-local_to_real_coords :: (tm : Tilemap, l : Vector3i) -> Vector3i {
+local_to_real_coords :: (tm : Tilemap, l : Vector2i) -> Vector3i {
 	out : Vector3i;
 	out.x = l.x + tm.index.x * Tilemap.col;
 	out.y = l.y + tm.index.y * Tilemap.row;
-	out.z = l.z;
 	
 	return out;
 }
 
-real_to_local_coords :: (tw : Tileworld, r : Vector3i) -> Vector2i, Vector3i {
-	out : Vector3i;
+real_to_local_coords :: (tw : Tileworld, r : Vector2i) -> Vector2i, Vector2i {
+	out : Vector2i;
 	
 	tm_slot := Vector2i.{r.x / Tilemap.col, r.y / Tilemap.row};
 	
 	out.x = r.x % Tilemap.col;
 	out.y = r.y % Tilemap.row;
-	out.z = r.z;
 	
 	return tm_slot, out;
 }
 
-tile_from_index :: (tw : Tileworld, r : Vector3i) -> *Tile {
+tile_from_index :: (tw : Tileworld, r : Vector2i) -> *Tile {
 	tm_slot, index := real_to_local_coords(tw, r);
 	
 	tm := tilemap_from_key_dont_alloc(tw, tm_slot);
@@ -371,7 +388,7 @@ tile_from_index :: (tw : Tileworld, r : Vector3i) -> *Tile {
 	out : *Tile;
 	
 	if tm {
-		tile_slot := index.z * tm.row * tm.col + index.y * tm.col + index.x;
+		tile_slot := index.y * tm.col + index.x;
 		
 		if index.x >= 0 && index.y >= 0 && index.x < tm.col && index.y < tm.row {
 			out = *tm.tiles[tile_slot];
@@ -381,9 +398,8 @@ tile_from_index :: (tw : Tileworld, r : Vector3i) -> *Tile {
 	return out;
 }
 
-tile_from_local_index :: (tm : *Tilemap, l : Vector3i) -> *Tile {
-	
-	tile_slot := l.z * tm.row * tm.col + l.y * tm.col + l.x;
+tile_from_local_index :: (tm : *Tilemap, l : Vector2i) -> *Tile {
+	tile_slot := l.y * tm.col + l.x;
 	
 	tile : *Tile;
 	if l.x >= 0 && l.y >= 0 && l.x < tm.col && l.y < tm.row {
@@ -393,13 +409,13 @@ tile_from_local_index :: (tm : *Tilemap, l : Vector3i) -> *Tile {
 	return tile;
 }
 
-tile_rect_from_index :: (pos : Vector3i) -> RectF32 {
+tile_rect_from_index :: (pos : Vector2i) -> RectF32 {
 	out := rectF32(cast(float32) pos.x * Tilemap.tile_size, cast(float32) pos.y * Tilemap.tile_size, cast(float32) pos.x * Tilemap.tile_size + Tilemap.tile_size, cast(float32) pos.y * Tilemap.tile_size + Tilemap.tile_size);
 	
 	return out;
 }
 
-tile_rect_from_index :: (x : s32, y : s32, z : s32) -> RectF32{
+tile_rect_from_index :: (x : s32, y : s32) -> RectF32{
 	out := rectF32(cast(float32) x * Tilemap.tile_size, cast(float32) y * Tilemap.tile_size, cast(float32) x * Tilemap.tile_size + Tilemap.tile_size, cast(float32) y * Tilemap.tile_size + Tilemap.tile_size);
 	
 	return out;
@@ -407,69 +423,72 @@ tile_rect_from_index :: (x : s32, y : s32, z : s32) -> RectF32{
 
 draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 	// draw tilemap
-	for z: 0 .. tm.depth - 2 {
-		//r.push_beam(passes);
-		for y: 0 .. tm.row - 1 {
-			for x: 0 .. tm.col - 1 {
-				
-				if x == 1 && y == 1 {
-					i____t := 0;
-				}
-				
-				tile := tile_from_local_index(tm, .{xx x, xx y, xx z});
-				
-				if tile && tile.paint_index {
+	//r.push_beam(passes);
+	for y: 0 .. tm.row - 1 {
+		for x: 0 .. tm.col - 1 {
+			
+			if x == 1 && y == 1 {
+				i____t := 0;
+			}
+			
+			tile := tile_from_local_index(tm, .{xx x, xx y});
+			
+			if tile {
+				for layer : 0 .. Tile.layers - 2 {
 					
-					paint := paints[tile.paint_index];
-					
-					dst : RectF32;
-					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size);
-					dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size);
-					dst.max.x = dst.min.x + tm.tile_size + 1;
-					dst.max.y = dst.min.y + tm.tile_size + 1;
-					
-					src : RectF32;
-					
-					// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
-					if paint.auto {
+					if tile.v[layer] {
+						paint := paints[tile.v[layer]];
 						
-						real := local_to_real_coords(tm, .{xx x, xx y, xx z});
+						dst : RectF32;
+						dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size);
+						dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size);
+						dst.max.x = dst.min.x + tm.tile_size + 1;
+						dst.max.y = dst.min.y + tm.tile_size + 1;
 						
-						neighbours := get_neighbours(tw, real.x, real.y, z, tile.paint_index);
-						bitmask := tile_bitmask(neighbours);
-						//print("%\n", bitmask);
+						src : RectF32;
 						
-						uv := uv_from_bitmask(bitmask);
-						
-						src.min.x = (cast(float32)uv.x / auto_col);
-						src.max.y = (cast(float32)uv.y / auto_row);
-						src.max.x = src.min.x + 1. / auto_col;
-						src.min.y = src.max.y + 1. / auto_row;
-						
-						src.min.y = 1 - src.min.y;
-						src.max.y = 1 - src.max.y;
-						//print("%\n", src);
-						
-						tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-						tile_rect.src = src;
-					}
-					else {
-						src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
-						src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
-						src.max.x = src.min.x + 1. / paint.frame_x;
-						src.min.y = src.max.y + 1. / paint.frame_y;
-						
-						src.min.y = 1 - src.min.y;
-						src.max.y = 1 - src.max.y;
-						//print("%\n", src);
-						
-						tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-						tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-						tile_rect.src = src;
+						// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
+						if paint.auto {
+							
+							real := local_to_real_coords(tm, .{xx x, xx y});
+							
+							neighbours := get_neighbours(tw, real.x, real.y, layer, tile.v[layer]);
+							bitmask := tile_bitmask(neighbours);
+							//print("%\n", bitmask);
+							
+							uv := uv_from_bitmask(bitmask);
+							
+							src.min.x = (cast(float32)uv.x / auto_col);
+							src.max.y = (cast(float32)uv.y / auto_row);
+							src.max.x = src.min.x + 1. / auto_col;
+							src.min.y = src.max.y + 1. / auto_row;
+							
+							src.min.y = 1 - src.min.y;
+							src.max.y = 1 - src.max.y;
+							//print("%\n", src);
+							
+							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
+							tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+							tile_rect.src = src;
+						}
+						else {
+							src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
+							src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
+							src.max.x = src.min.x + 1. / paint.frame_x;
+							src.min.y = src.max.y + 1. / paint.frame_y;
+							
+							src.min.y = 1 - src.min.y;
+							src.max.y = 1 - src.max.y;
+							//print("%\n", src);
+							
+							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
+							tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+							tile_rect.src = src;
+						}
 					}
 				}
 			}
+			
 		}
 	}
 }
@@ -478,11 +497,10 @@ draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
 	for y: 0 .. tm.row - 1{
 		for x: 0 .. tm.col - 1 {
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y, 2});
-			
-			if tile && tile.paint_index {
+			tile := tile_from_local_index(tm, .{xx x, xx y});
+			if tile && tile.v[2] {
 				
-				paint := paints[tile.paint_index];
+				paint := paints[tile.v[2]];
 				
 				if paint.entity_kind {
 					dst : RectF32;
@@ -561,3 +579,62 @@ tilemap_index_from_tile_pos :: (tile_pos : Vector2i) -> Vector2i {
 	
 	return out;
 }
+
+generate_collisions :: (tw : *Tileworld, store : Entity_Store) {
+	
+#if 0 {
+		for 0 .. tw.tm_count - 1 {
+			tm := tw.tm_base + it;
+			for z: 0 .. tm.depth - 2 {
+				for y: 0 .. tm.row - 1 {
+					for x: 0 .. tm.col - 1 {
+						
+						tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y, xx it});
+						
+						if tile.paint_index {
+							valid = true;
+						}
+						
+					}
+				}
+			}
+		}
+	}
+	
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		if entity.flags & .Inactive continue;
+		
+		
+		
+	}
+}
+
+// a* pathfinding
+
+AS_Node :: struct {
+	g : s32;
+	h : s32;
+	pos : Vector2i;
+	unwalkable : bool;
+}
+
+fcost :: (n : AS_Node) -> s32 {
+	return n.g + n.h;
+}
+
+/*
+as_node_from_pos :: (tw : *Tileworld, pos : Vector2) -> AS_Node {
+	out : AS_Node;
+	out.pos = pos;
+	
+	//tile := tile_from_index(tw, );
+	//out.unwalkable = 
+}
+
+find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
+	
+	//start := tile_from_index(tw, );
+	start_node = 
+}*/

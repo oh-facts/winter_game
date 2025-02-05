@@ -12,12 +12,24 @@ operator == :: (a : Vector2i, b : Vector2i) -> bool {
 	return ((a.x == b.x) && (a.y == b.y));
 }
 
-
-operator += :: (a : *Vector2i, b : Vector2i) {
-	a.x += b.x;
-	a.y += b.y;
+operator -= :: (a : *Vector2i, b : Vector2i) {
+	a.x -= b.x;
+	a.y -= b.y;
 }
 
+operator + :: (a : Vector2i, b : Vector2i) -> Vector2i {
+	out : Vector2i;
+	out.x = a.x + b.x;
+	out.y = a.y + b.y;
+	return out;
+}
+
+operator - :: (a : Vector2i, b : Vector2i) -> Vector2i {
+	out : Vector2i;
+	out.x = a.x - b.x;
+	out.y = a.y - b.y;
+	return out;
+}
 
 distance_squared :: inline (a: Vector2i, b: Vector2i) -> s32 {
 	dx := b.x - a.x;

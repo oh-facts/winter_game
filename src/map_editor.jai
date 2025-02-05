@@ -25,7 +25,8 @@ tools : [4]Tool : .[.{kind = .Select, name = "select"},
 
 editor_tileworld : Tileworld;
 
-tile_pos : Vector3i;
+tile_pos : Vector2i;
+paint_layer : int;
 
 grid_toggle : bool = true;
 active_tool_index := 0;
@@ -34,17 +35,18 @@ active_entity_index := 0;
 
 SelectionTile :: struct {
 	tile : Tile;
-	pos : Vector3i;
+	pos : Vector2i;
+	layer : int;
 }
 
 selection_started : bool;
-selection_tile_start : Vector3i;
-selection_tile_end : Vector3i;
+selection_tile_start : Vector2i;
+selection_tile_end : Vector2i;
 selection_buffer : [..]SelectionTile;
 selection_yes : bool;
 
-move_start : Vector3i;
-move_end : Vector3i;
+move_start : Vector2i;
+move_end : Vector2i;
 moving_started := false;
 moving_yes := false;
 active_tilemap_index : Vector2i;
@@ -112,13 +114,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 	// TODO(mizu): i don't want events to be shared like this.
 	
 	if scroll_up {
-		tile_pos.z += 1;
+		paint_layer += 1;
 	}
 	else if scroll_down {
-		tile_pos.z -= 1;
+		paint_layer -= 1;
 	}
 	
-	tile_pos.z = clamp(tile_pos.z, 0, 2);
+	paint_layer = clamp(paint_layer, 0, 2);
 	
 	// world space coords -> tile pos
 	tile_pos.x = xx ((mpos.x) / Tilemap.tile_size);
@@ -148,11 +150,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 			
 			// paint
 			if lmb_held {
-				tile_from_local_index(editor_tilemap, tile_pos).paint_index = xx active_paint_index;
+				tile_from_local_index(editor_tilemap, tile_pos).v[paint_layer] = xx active_paint_index;
 			}
 			// erase
 			else if rmb_held{
-				tile_from_local_index(editor_tilemap, tile_pos).paint_index = 0;
+				tile_from_local_index(editor_tilemap, tile_pos).v[paint_layer] = 0;
 			}
 		}
 		else if tool.kind == .Fill {
@@ -199,7 +201,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
-							tile_from_local_index(editor_tilemap, .{xx x, xx y, xx tile_pos.z}).paint_index = xx active_paint_index;
+							tile_from_local_index(editor_tilemap, .{xx x, xx y}).v[paint_layer] = xx active_paint_index;
 						}
 					}
 				}
@@ -248,12 +250,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
 							
-							tile := tile_from_local_index(editor_tilemap, .{xx x, xx y, tile_pos.z});
+							tile := tile_from_local_index(editor_tilemap, .{xx x, xx y});
 							
-							if tile.paint_index {
+							if tile.v[paint_layer] {
 								select_tile : SelectionTile;
 								select_tile.tile = << tile;
-								select_tile.pos = .{x, y, tile_pos.z};
+								select_tile.pos = .{x, y};
+								select_tile.layer = paint_layer;
 								
 								array_add(*selection_buffer, select_tile);
 							}
@@ -289,7 +292,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				
 				for *selection_buffer {
 					tile1 := tile_from_local_index(editor_tilemap, it.pos);
-					tile1.paint_index = 0;
+					tile1.v[it.layer] = 0;
 					
 					tile := tile_from_local_index(editor_tilemap, mv + it.pos);
 					<< tile = it.tile;
@@ -322,7 +325,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					// empty buffer
 					for selection_buffer {
 						tile := tile_from_local_index(editor_tilemap, it.pos);
-						tile.paint_index = 0;
+						tile.v[it.layer] = 0;
 					}
 					
 					array_reset_keeping_memory(*selection_buffer);
@@ -339,7 +342,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	editor_window_begin(map_editor_window);
 	
 	if !map_editor_window.hide {
-		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos);
+		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%\nlayer:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos, paint_layer);
 		
 		editor_label(text);
 		

@@ -94,9 +94,16 @@ Entity_Flags :: enum_flags u64 {
 	Inactive;
 	Interactable;
 	Sloppy_Shadow;
+	Chase_Entity;
 }
 
 Interaction_State :: enum {
+	Cold;
+	Hot;
+	Active;
+}
+
+Chase_State :: enum {
 	Cold;
 	Hot;
 	Active;
@@ -133,6 +140,9 @@ Entity :: struct {
 	tile_pos : Vector2i;
 	origin : Vector2;
 	
+	target_entity : *Entity;
+	chase_state : Chase_State;
+	
 	art_id : ArtId;
 	frame_x : s32;
 	frame_y : s32;
@@ -147,7 +157,7 @@ Entity :: struct {
 	submerged : float;
 };
 
-EntityStore :: struct {
+Entity_Store :: struct {
 	arena : *Arena;
 	first : *Entity;
 	count : int;
@@ -162,7 +172,7 @@ active_count :: () -> int {
 	return entity_store.count - entity_store.inactive_count;
 }
 
-entity_store : EntityStore;
+entity_store : Entity_Store;
 world_initialized := false;
 quest : Quest;
 
@@ -285,6 +295,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	r.begin_water(passes);
 	draw_tilemap(world_tileworld, world_tilemap, passes);
 	
+	//generate_collisions(*world_tileworld);
+	
 	// control
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -374,6 +386,19 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 	}
 	
+	// pathfind
+	
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		if entity.flags & .Inactive continue;
+		
+		if entity.flags & .Chase_Entity {
+			
+		}
+		
+	}
+	
 	// physics
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -413,11 +438,14 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 		
 		if valid {
-			entity.pos = entity.test_pos;
-			
+			entity.pos.x = entity.test_pos.x;
 			entity.tile_pos.x = xx (entity.pos.x / 32.);
+			
+			entity.pos.y = entity.test_pos.y;
 			entity.tile_pos.y = xx (entity.pos.y / 32.);
+			
 		}
+		
 	}
 	
 	highlighted_entity : *Entity;
@@ -429,8 +457,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if entity.flags & .Inactive continue;
 		
 		if entity.flags & .Interactable {
-			
-			if distance_squared(entity.tile_pos, py.tile_pos) < 4 {
+			min_dist :: 2;
+			if distance_squared(entity.tile_pos, py.tile_pos) < min_dist * min_dist {
 				if entity.interaction_state == .Cold {
 					entity.interaction_state = .Hot;
 					highlighted_entity = entity;
@@ -462,7 +490,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		// draw occupied tile
 		{
-			dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)), xx 0);
+			dst := tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)));
 			if entity.interaction_state == {
 				case .Hot;
 				r.push_sprite(passes, dst, .{1, 1, 1, 1});
@@ -626,18 +654,16 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	}
 }
 
+
 load_entities :: () {
 	
-	for 0 .. world_tileworld.tm_count - 1 {
-		
-		tm := world_tileworld.tm_base + it;
+	for *tm : world_tileworld.tilemaps {
 		
 		for y: 0 .. Tilemap.row - 1{
 			for x: 0 .. Tilemap.col - 1 {
 				
-				tile := tile_from_local_index(tm, .{xx x, xx y, 2});
-				
-				paint := paints[tile.paint_index];
+				tile := tile_from_local_index(tm, .{xx x, xx y});
+				paint := paints[tile.v[2]];
 				
 				e : *Entity;
 				
@@ -655,6 +681,7 @@ load_entities :: () {
 					e.type = .Tree;
 					e.submerged = 0.28;
 					e.color = r.COLOR_WHITE;
+					e.frame_n = cast(s32) (random_get() % 3);
 					
 					case .Ball;
 					e = entity_alloc(0);
@@ -669,7 +696,7 @@ load_entities :: () {
 					e.color = r.COLOR_WHITE;
 					
 					case .Husk;
-					e = entity_alloc(0);
+					e = entity_alloc(.Chase_Entity);
 					e.type = .Husk;
 					e.color = r.COLOR_BLACK;
 					e.submerged = 0.08;
@@ -682,7 +709,10 @@ load_entities :: () {
 					e.size = paint.size;
 					e.frame_x = paint.frame_x;
 					e.frame_y = paint.frame_y;
-					e.frame_n = paint.frame_n;
+					
+					if e.type != .Tree {
+						e.frame_n = paint.frame_n;
+					}
 					e.test_pos = .{(x + tm.index.x * tm.col) * 32. + 16, (y + tm.index.y * tm.row) * 32. + 16};
 					e.pos = e.test_pos;
 					
@@ -719,6 +749,19 @@ quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) 
 		push_world_start_interaction(.Opening);
 		
 		// some cutscene. Very short. Just the explosion
+		
+		for 0 .. entity_store.count - 1 {
+			entity := entity_store.first + it;
+			
+			if entity.flags & .Inactive continue;
+			
+			if entity.flags & .Chase_Entity {
+				entity.target_entity = py;
+				entity.chase_state = .Hot;
+			}
+			
+		}
+		
 	}
 	
 }
@@ -736,7 +779,7 @@ dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -
 	r.push_rect2(passes, bg, r.COLOR_BLACK);
 	r.push_text(passes, font, text, .{padding, padding}, text_size);
 	
-	continue_text := "space ->";
+	continue_text :: "space ->";
 	
 	text_rect := r.get_text_rect(font, continue_text, camera.size, text_size);
 	
