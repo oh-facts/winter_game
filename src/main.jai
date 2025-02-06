@@ -95,7 +95,7 @@ main :: () {
 	
 	frames : u64;
 	
-	arena = arena_init();
+	arena = arena_init(ARENA_COMMIT_SIZE, MB(256));
 	
 	load_all_assets();
 	ui.set_font(font);

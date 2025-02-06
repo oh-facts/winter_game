@@ -295,7 +295,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	r.begin_water(passes);
 	draw_tilemap(world_tileworld, world_tilemap, passes);
 	
-	//generate_collisions(*world_tileworld);
+	generate_collisions(*world_tileworld, entity_store);
+	draw_tilemap_collisions(world_tileworld, world_tilemap, passes);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -425,16 +426,13 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 		
 		// other entities
-		for 0 .. entity_store.count - 1 {
-			other := entity_store.first + it;
-			
-			if other == entity continue;
-			
-			if other.tile_pos == test_tile_pos {
-				valid = false;
-				break;
+		
+		tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y}, .occupied);
+		if tile {
+			valid = !tile.entity;
+			if tile.entity == entity {
+				valid = true;
 			}
-			
 		}
 		
 		if valid {
@@ -536,6 +534,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			array_add(*entity_store.sort_list, entity);
 		}
 		
+		clear_collisions(*world_tileworld);
 	}
 	
 	sort_entitties :: (a : *Entity, b : *Entity) -> int {
@@ -662,7 +661,7 @@ load_entities :: () {
 		for y: 0 .. Tilemap.row - 1{
 			for x: 0 .. Tilemap.col - 1 {
 				
-				tile := tile_from_local_index(tm, .{xx x, xx y});
+				tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
 				paint := paints[tile.v[2]];
 				
 				e : *Entity;

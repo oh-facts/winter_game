@@ -47,10 +47,28 @@ auto_row :: 6;
 // in its own grid instead of having depth of 3
 // since entity grid will also be per frame. Maybe this way, I would have an easier time saving the world data as tile data
 
+// 0 : bg
+// 1 : fg
+// 2 : entity start locations ?
+
+// I am thinking it might be better to store
+// a physics tileworld. And build it every frame
+// Either that, or I put it inside the tile struct
+// Ok I have decided to store it inside the tile struct
+// AOS would be easier. one memeset
+// Separate occupied map would be easiest.
+// Need to pass enums
+// 
+
+Tile_Kind :: enum {
+	gfx;
+	occupied;
+}
+
 Tile :: struct {
 	layers :: 3;
 	v : [layers]s32;
-	occupied : bool;
+	entity : *Entity;
 };
 
 Tilemap :: struct {
@@ -60,11 +78,16 @@ Tilemap :: struct {
 	
 	tile_size :: 32;
 	count :: row * col;
-	size :: count * size_of(Tile);
+	size_gfx :: count * size_of(Tile);
+	size_occupied :: count * size_of(Tile);
+	size :: size_gfx + size_occupied;
 	rect :: RectF32.{.{0, 0}, .{(col) * tile_size, (row) * tile_size}};
 	
 	// tile data
-	tiles : [row * col]Tile;
+	gfx : [row * col]Tile;
+	
+	// per frame
+	occupied : [row * col]Tile;
 	
 	// hash link
 	next : *Tilemap;
@@ -195,7 +218,7 @@ load_tileworld :: (tw : *Tileworld) {
 		if data {
 			for 0 .. loaded - 1{
 				tm := tilemap_from_key(tw, data[it].index);
-				memcpy(tm.tiles.data, data[it].tiles.data, Tilemap.size);
+				memcpy(tm.gfx.data, data[it].gfx.data, Tilemap.size);
 			}
 			
 			free (data);
@@ -233,7 +256,7 @@ get_neighbours :: (tw : Tileworld, x : int, y : int, z : int, paint_index : s32)
 tile_present :: (tw : Tileworld, x : int, y : int, layer : int) -> bool {
 	
 	out : bool;
-	tile := tile_from_index(tw, .{xx x, xx y});
+	tile := tile_from_index(tw, .{xx x, xx y}, .gfx);
 	
 	if tile {
 		out = xx tile.v[layer];
@@ -380,7 +403,7 @@ real_to_local_coords :: (tw : Tileworld, r : Vector2i) -> Vector2i, Vector2i {
 	return tm_slot, out;
 }
 
-tile_from_index :: (tw : Tileworld, r : Vector2i) -> *Tile {
+tile_from_index :: (tw : Tileworld, r : Vector2i, kind : Tile_Kind) -> *Tile {
 	tm_slot, index := real_to_local_coords(tw, r);
 	
 	tm := tilemap_from_key_dont_alloc(tw, tm_slot);
@@ -391,19 +414,24 @@ tile_from_index :: (tw : Tileworld, r : Vector2i) -> *Tile {
 		tile_slot := index.y * tm.col + index.x;
 		
 		if index.x >= 0 && index.y >= 0 && index.x < tm.col && index.y < tm.row {
-			out = *tm.tiles[tile_slot];
+			
+			if kind == .gfx out = *tm.gfx[tile_slot];
+			else if kind == .occupied out = *tm.occupied[tile_slot];
+			
 		}
 	}
 	
 	return out;
 }
 
-tile_from_local_index :: (tm : *Tilemap, l : Vector2i) -> *Tile {
+tile_from_local_index :: (tm : *Tilemap, l : Vector2i, kind : Tile_Kind) -> *Tile {
 	tile_slot := l.y * tm.col + l.x;
 	
 	tile : *Tile;
 	if l.x >= 0 && l.y >= 0 && l.x < tm.col && l.y < tm.row {
-		tile = *tm.tiles[tile_slot];
+		
+		if kind == .gfx tile = *tm.gfx[tile_slot];
+		else if kind == .occupied tile = *tm.occupied[tile_slot];
 	}
 	
 	return tile;
@@ -431,7 +459,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 				i____t := 0;
 			}
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y});
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
 			
 			if tile {
 				for layer : 0 .. Tile.layers - 2 {
@@ -497,7 +525,7 @@ draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
 	for y: 0 .. tm.row - 1{
 		for x: 0 .. tm.col - 1 {
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y});
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
 			if tile && tile.v[2] {
 				
 				paint := paints[tile.v[2]];
@@ -580,34 +608,55 @@ tilemap_index_from_tile_pos :: (tile_pos : Vector2i) -> Vector2i {
 	return out;
 }
 
+// lol no need for tile map collisions , since that data is stored inside the tile tileworld
+// unless ... unless ofc ....
+// I am thinking I memcpy it once, then when recreating the physics map, I just memset the map to 0
+// eh, whats the point
+
+// I had another idea!!
+// What if, I just stored a physics tile inside
+// of the tilemap that uses the same tile ??
+// I can just memset the physics tile to 0
+// This is clearly the best idea.
+
 generate_collisions :: (tw : *Tileworld, store : Entity_Store) {
-	
-#if 0 {
-		for 0 .. tw.tm_count - 1 {
-			tm := tw.tm_base + it;
-			for z: 0 .. tm.depth - 2 {
-				for y: 0 .. tm.row - 1 {
-					for x: 0 .. tm.col - 1 {
-						
-						tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y, xx it});
-						
-						if tile.paint_index {
-							valid = true;
-						}
-						
-					}
-				}
-			}
-		}
-	}
-	
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
 		
 		if entity.flags & .Inactive continue;
 		
-		
-		
+		tile := tile_from_index(tw, entity.tile_pos, .occupied);
+		tile.v[0] = 1;
+		tile.entity = entity;
+	}
+}
+
+clear_collisions :: (tw : *Tileworld) {
+	for tw.tilemaps {
+		memset(it.occupied.data, 0, Tilemap.size_occupied);
+	}
+}
+
+draw_tilemap_collisions :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
+	for y: 0 .. tm.row - 1 {
+		for x: 0 .. tm.col - 1 {
+			
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .occupied);
+			
+			if tile {
+				
+				if tile.v[0] {
+					dst : RectF32;
+					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size);
+					dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size);
+					dst.max.x = dst.min.x + tm.tile_size + 1;
+					dst.max.y = dst.min.y + tm.tile_size + 1;
+					tile_rect := r.push_sprite(passes, dst, r.COLOR_RED);
+				}
+				
+			}
+			
+		}
 	}
 }
 
