@@ -8,24 +8,6 @@ os :: #import "os";
 #import "File";
 #import "Math";
 
-ui_vertex_shader := #run read_entire_file("shaders/ui.vert"); 
-ui_frag_shader := #run read_entire_file("shaders/ui.frag");
-
-sprite_vertex_shader := #run read_entire_file("shaders/sprite.vert"); 
-sprite_frag_shader := #run read_entire_file("shaders/sprite.frag");
-
-beam_vertex_shader := #run read_entire_file("shaders/beam.vert"); 
-beam_frag_shader := #run read_entire_file("shaders/beam.frag");
-
-water_vertex_shader := #run read_entire_file("shaders/water.vert"); 
-water_frag_shader := #run read_entire_file("shaders/water.frag");
-
-final_vertex_shader := #run read_entire_file("shaders/final.vert"); 
-final_frag_shader := #run read_entire_file("shaders/final.frag");
-
-blur_vertex_shader := #run read_entire_file("shaders/blur.vert"); 
-blur_frag_shader := #run read_entire_file("shaders/blur.frag");
-
 SceneData :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
@@ -126,6 +108,22 @@ SHADER_PROG :: enum {
 	COUNT;
 };
 
+vert_shader_paths :[SHADER_PROG.COUNT]string: .["shaders/ui.vert",
+																								"shaders/sprite.vert",
+																								"shaders/beam.vert",
+																								"shaders/water.vert",
+																								"shaders/final.vert",
+																								"shaders/blur.vert"
+																								];
+
+frag_shader_paths :[SHADER_PROG.COUNT]string: .["shaders/ui.frag",
+																								"shaders/sprite.frag",
+																								"shaders/beam.frag",
+																								"shaders/water.frag",
+																								"shaders/final.frag",
+																								"shaders/blur.frag"
+																								];
+
 State :: struct {
 	arena : *Arena;
 	
@@ -170,26 +168,14 @@ init :: () {
 	
 	SDL_GL_SetSwapInterval(1);
 	
-	vert_files : []string = .[
-														ui_vertex_shader,
-														sprite_vertex_shader,
-														beam_vertex_shader,
-														water_vertex_shader,
-														final_vertex_shader,
-														blur_vertex_shader,
-														];
-	
-	frag_files : []string = .[
-														ui_frag_shader,
-														sprite_frag_shader,
-														beam_frag_shader,
-														water_frag_shader,
-														final_frag_shader,
-														blur_frag_shader,
-														];
-	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
-		state.shader_prog[i] = make_shader_program(vert_files[i].data, frag_files[i].data);
+		vert_shader_file := read_entire_file(vert_shader_paths[i]);
+		defer free(vert_shader_file);
+		
+		frag_shader_file := read_entire_file(frag_shader_paths[i]);
+		defer free(frag_shader_file);
+		
+		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
 	}
 	
 	for i : 0 .. INST_BUFFER.COUNT - 1 {		
