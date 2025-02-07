@@ -428,6 +428,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		// other entities
 		
 		tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y}, .occupied);
+		
 		if tile {
 			valid = !tile.entity;
 			if tile.entity == entity {
@@ -435,13 +436,22 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			}
 		}
 		
+		// if valid, set new position. if not, slide
+		
 		if valid {
 			entity.pos.x = entity.test_pos.x;
 			entity.tile_pos.x = xx (entity.pos.x / 32.);
 			
 			entity.pos.y = entity.test_pos.y;
 			entity.tile_pos.y = xx (entity.pos.y / 32.);
-			
+		} else {
+			if entity.tile_pos.y != test_tile_pos.y {
+				entity.pos.x = entity.test_pos.x;
+				entity.tile_pos.x = xx (entity.pos.x / 32.);
+			} else {
+				entity.pos.y = entity.test_pos.y;
+				entity.tile_pos.y = xx (entity.pos.y / 32.);
+			}
 		}
 		
 	}
@@ -828,3 +838,34 @@ draw_submerged_entities :: (passes : *r.Pass_List, pass : s32) {
 		}
 	}
 }
+
+AStar :: struct {
+	g : s32;
+	h : s32;
+	pos : Vector2i;
+	unwalkable : bool;
+}
+
+fcost :: (n : AStar) -> s32 {
+	return n.g + n.h;
+}
+
+astar_from_pos :: (tw : *Tileworld, pos : Vector2) -> AStar {
+	out : AStar;
+	
+	tile_pos := index_from_coords(pos);
+	out.pos = tile_pos;
+	
+	tile := tile_from_index(tw, tile_pos, .occupied);
+	out.unwalkable = xx tile.v[0];
+	
+	return out;
+}
+
+/*
+find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
+	
+	start := tile_from_index(tw, );
+	//start_node = 
+}
+*/

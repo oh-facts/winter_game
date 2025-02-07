@@ -449,6 +449,10 @@ tile_rect_from_index :: (x : s32, y : s32) -> RectF32{
 	return out;
 }
 
+index_from_coords :: (pos : Vector2) -> Vector2i {
+	return Vector2i.{cast(s32)pos.x / Tilemap.tile_size, cast(s32)pos.y / Tilemap.tile_size};
+}
+
 draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 	// draw tilemap
 	//r.push_beam(passes);
@@ -653,37 +657,7 @@ draw_tilemap_collisions :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List
 					dst.max.y = dst.min.y + tm.tile_size + 1;
 					tile_rect := r.push_sprite(passes, dst, r.COLOR_RED);
 				}
-				
 			}
-			
 		}
 	}
 }
-
-// a* pathfinding
-
-AS_Node :: struct {
-	g : s32;
-	h : s32;
-	pos : Vector2i;
-	unwalkable : bool;
-}
-
-fcost :: (n : AS_Node) -> s32 {
-	return n.g + n.h;
-}
-
-/*
-as_node_from_pos :: (tw : *Tileworld, pos : Vector2) -> AS_Node {
-	out : AS_Node;
-	out.pos = pos;
-	
-	//tile := tile_from_index(tw, );
-	//out.unwalkable = 
-}
-
-find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
-	
-	//start := tile_from_index(tw, );
-	start_node = 
-}*/
