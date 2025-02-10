@@ -571,7 +571,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			array_add(*entity_store.sort_list, entity);
 		}
 		
-		clear_collisions(*world_tileworld);
 	}
 	
 	sort_entitties :: (a : *Entity, b : *Entity) -> int {
@@ -684,10 +683,30 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			base += size_of(type_of(<< cmd));
 			
+			case .Start_Attack;
+			print("started attack");
+			
+			cmd : *World_Start_Attack_Cmd = xx base;
+			
+			target_pos := cmd.entity.tile_pos;
+			target_pos.x += 1;
+			
+			target_tile := tile_from_index(world_tileworld, target_pos, .occupied);
+			
+			if target_tile {
+				if target_tile.entity {
+					target_tile.entity.color.w = 0;
+				}
+			}
+			
+			base += size_of(type_of(<< cmd));
+			
 			case;
 			assert(false, "cmd not found");
 		}
 	}
+	
+	clear_collisions(*world_tileworld);
 }
 
 
