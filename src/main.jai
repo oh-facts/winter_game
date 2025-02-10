@@ -42,6 +42,8 @@ update_camera :: () {
 }
 
 mpos : Vector2;
+
+// TODO(mizu): Needs to go.
 rmb_held : bool;
 
 scroll_up : bool;

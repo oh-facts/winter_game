@@ -267,7 +267,6 @@ world_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	editor_window_begin(world_window, events);
-	defer editor_window_end(world_window);
 	
 	if !world_window.hide {
 		text := "restart";
@@ -289,6 +288,7 @@ world_update :: (delta : float32, events : *os.EventList,
 		text = tprint("%", delta);
 		editor_label(text);
 	}
+	editor_window_end(world_window);
 	
 	tick(events, passes, delta);
 }

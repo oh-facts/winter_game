@@ -10,6 +10,7 @@ Editor_Scroll :: struct {
 
 Editor_Window :: struct {
 	hide : bool;
+	events : *os.EventList;
 	
 	// titlebar
 	title : string;
@@ -77,6 +78,15 @@ editor_window_end :: (window : *Editor_Window) {
 	window.dst = window.root.dst;
 	window.tb_dst = window.tb.dst;
 	ui.pop_parent_node(editor_ui_cxt);
+	
+	if point_in_rect(mpos, window.root.dst) {
+		os.event(window.events, .LMB, .Pressed);
+		os.event(window.events, .RMB, .Pressed);
+		
+		os.event(window.events, .LMB, .Released);
+		os.event(window.events, .RMB, .Released);
+	}
+	
 }
 
 editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
@@ -92,6 +102,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	root.computed_rel_position[1] = window.pos.y;
 	
 	window.root = root;
+	window.events = events;
 	
 	{
 		if point_in_rect(mpos, window.tb_dst) {
