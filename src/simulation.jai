@@ -11,6 +11,7 @@ World_Cmd_Kind :: enum {
 	Test_Interaction;
 	Start_Interaction;
 	Complete_Interaction;
+	Start_Attack;
 }
 
 World_Cmd_Header :: struct {
@@ -35,6 +36,11 @@ World_Start_Interaction_Cmd :: struct {
 World_Complete_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
 	id : Interaction_Id;
+}
+
+World_Start_Attack_Cmd :: struct {
+	header : World_Cmd_Header;
+	entity : *Entity; 
 }
 
 World_Cmd_Buffer :: struct {
@@ -78,6 +84,14 @@ push_world_complete_interaction :: (id : Interaction_Id) {
 	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
 }
 
+push_world_start_attack :: (entity : *Entity) {
+	data : *World_Start_Attack_Cmd = xx (world_cmds.base + world_cmds.size);
+	data.header.kind = .Start_Attack;
+	data.entity = entity;
+	world_cmds.count += 1;
+	world_cmds.size += size_of(World_Start_Attack_Cmd);
+}
+
 Entity_Kind :: enum {
 	Nothing;
 	Opening;
@@ -112,6 +126,11 @@ Chase_State :: enum {
 Animation_State :: enum {
 	Idle;
 	Move;
+}
+
+Attack_State :: enum {
+	Cold;
+	Active;
 }
 
 Animation :: struct {
@@ -155,6 +174,8 @@ Entity :: struct {
 	color : Vector4;
 	interaction_state : Interaction_State;
 	submerged : float;
+	
+	attack_state : Attack_State;
 };
 
 Entity_Store :: struct {
@@ -245,7 +266,7 @@ world_update :: (delta : float32, events : *os.EventList,
 		load_entities();
 	}
 	
-	editor_window_begin(world_window);
+	editor_window_begin(world_window, events);
 	defer editor_window_end(world_window);
 	
 	if !world_window.hide {
@@ -383,6 +404,12 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			if os.event(events, .E, .Pressed) {
 				push_world_test_interaction();
+			}
+			
+			if os.event(events, .LMB, .Pressed) {
+				if entity.attack_state == .Cold {
+					push_world_start_attack(entity);
+				}
 			}
 		}
 	}
@@ -658,7 +685,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			base += size_of(type_of(<< cmd));
 			
 			case;
-			assert(true, "cmd not found");
+			assert(false, "cmd not found");
 		}
 	}
 }
@@ -857,7 +884,7 @@ astar_from_pos :: (tw : *Tileworld, pos : Vector2) -> AStar {
 	out.pos = tile_pos;
 	
 	tile := tile_from_index(tw, tile_pos, .occupied);
-	out.unwalkable = xx tile.v[0];
+	//out.unwalkable = xx tile.v[0];
 	
 	return out;
 }

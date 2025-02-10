@@ -42,10 +42,8 @@ update_camera :: () {
 }
 
 mpos : Vector2;
-lmb_held : bool;
 rmb_held : bool;
-lmb_down : bool;
-lmb_up : bool;
+
 scroll_up : bool;
 scroll_down : bool;
 
@@ -122,28 +120,13 @@ main :: () {
 		
 		passes : r.Pass_List;
 		
-		lmbdown_event := os.event(*events, .LMB, .Pressed);
-		lmbup_event := os.event(*events, .LMB, .Released);
-		
 		mm_event := os.event(*events, .NULL, .MouseMove);
 		scroll_event := os.event(*events, .NULL, .Scroll);
 		
 		update_camera();
 		
-		lmb_down = false;
-		lmb_up = false;
 		scroll_up = false;
 		scroll_down = false;
-		
-		if lmbdown_event {
-			lmb_held = true;
-			lmb_down = true;
-		}
-		
-		if lmbup_event {
-			lmb_held = false;
-			lmb_up = true;
-		}
 		
 		if mm_event {
 			mpos = mm_event.mpos;
@@ -161,7 +144,7 @@ main :: () {
 			
 		}
 		
-		ui.begin(ui_cxt, mpos, lmb_down);
+		ui.begin(ui_cxt, *events, mpos);
 		
 		if os.event(*events, .TAB, .Pressed) {
 			current_mode = (current_mode + 1) % .COUNT;

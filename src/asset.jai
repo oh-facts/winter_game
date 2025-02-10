@@ -9,6 +9,7 @@ ArtId :: enum {
 	TilesForest;
 	Impolo;
 	Impolo_East;
+	Impolo_Sword;
 	Ell;
 	Tree;
 	Ball;
@@ -25,12 +26,13 @@ Art :: struct {
 	bmp : Bitmap;
 }
 
-arts : [12]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [13]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
 									 .{id = .Impolo, path = "art/impolo-idle.png"},
 									 .{id = .Impolo_East, path = "art/impolo-east.png"},
+									 .{id = .Impolo_Sword, path = "art/impolo-sword.png"},
 									 .{id = .Ell, path = "art/ell.png"},
 									 .{id = .Tree, path = "art/tree.png"},
 									 .{id = .Ball, path = "art/ball.png"},

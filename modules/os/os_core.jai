@@ -117,6 +117,10 @@ event :: (list : *EventList, key : Key, kind : EventKind) -> *Event {
 	while cur {
 		if((cur.key == key) && (cur.kind == kind)) {
 			out = eat_event(list, cur);
+			if kind == .Pressed {
+				a_ew2 := 3;
+			}
+			
 			break;
 		}
 		cur = cur.next;

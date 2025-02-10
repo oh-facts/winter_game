@@ -50,6 +50,7 @@ move_end : Vector2i;
 moving_started := false;
 moving_yes := false;
 active_tilemap_index : Vector2i;
+map_editor_lmb_held : bool;
 
 ed_initialized : bool;
 
@@ -135,6 +136,18 @@ editor_update :: (delta : float32, events : *os.EventList,
 		if tool.kind == .Paint {
 			
 			// collect input events
+			
+			lmbup_event := os.event(events, .LMB, .Released);
+			lmbdown_event := os.event(events, .LMB, .Pressed);
+			
+			if lmbdown_event {
+				map_editor_lmb_held = true;
+			}
+			
+			if lmbup_event {
+				map_editor_lmb_held = false;
+			}
+			
 			rmbup_event := os.event(events, .RMB, .Released);
 			rmbdown_event := os.event(events, .RMB, .Pressed);
 			rmb_click : bool;
@@ -149,7 +162,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 			}
 			
 			// paint
-			if lmb_held {
+			if map_editor_lmb_held {
 				tile_from_local_index(editor_tilemap, tile_pos, .gfx).v[paint_layer] = xx active_paint_index;
 			}
 			// erase
@@ -160,7 +173,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		else if tool.kind == .Fill {
 			
 			// selection started
-			if (lmb_held || rmb_held) && !selection_started {
+			if (map_editor_lmb_held || rmb_held) && !selection_started {
 				selection_started = true;
 				selection_tile_start = tile_pos;
 			}
@@ -176,7 +189,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
 				
 				// selection in progress
-				if (lmb_held || rmb_held) {
+				if (map_editor_lmb_held || rmb_held) {
 					//print("selectioning ...\n");
 					
 					selection_tile_end = tile_pos;
@@ -210,7 +223,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		else if tool.kind == .Select {
 			
 			// selection started
-			if lmb_held && !selection_started {
+			if map_editor_lmb_held && !selection_started {
 				selection_started = true;
 				selection_tile_start = tile_pos;
 			}
@@ -226,7 +239,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
 				
 				// selection in progress
-				if lmb_held {
+				if map_editor_lmb_held {
 					//print("selectioning ...\n");
 					
 					selection_tile_end = tile_pos;
@@ -266,12 +279,12 @@ editor_update :: (delta : float32, events : *os.EventList,
 			}
 		}
 		else if tool.kind == .Move {
-			if lmb_down {
+			if os.event(events, .LMB, .Pressed) {
 				move_start = tile_pos;
 				moving_started = true;
 			}
 			
-			if lmb_up {
+			if os.event(events, .LMB, .Released) {
 				move_end = tile_pos;
 				moving_yes = true;
 				moving_started = false;
@@ -339,7 +352,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	// @panel
-	editor_window_begin(map_editor_window);
+	editor_window_begin(map_editor_window, events);
 	
 	if !map_editor_window.hide {
 		text := tprint("%\nmpos: %\nwmpos:{% %}\ntpos:%\nlayer:%", delta, mpos, cast(s32) wmpos.x, cast(s32) wmpos.y, tile_pos, paint_layer);

@@ -71,6 +71,14 @@ Tile :: struct {
 	entity : *Entity;
 };
 
+// TODO(mizu): Use something like this eventually?
+/*
+Tile :: union {
+	S32 : [4]s32;
+	S64 : [2]s64;
+};
+*/
+
 Tilemap :: struct {
 	// dim
 	row :: 32;

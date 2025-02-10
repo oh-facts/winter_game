@@ -79,7 +79,7 @@ editor_window_end :: (window : *Editor_Window) {
 	ui.pop_parent_node(editor_ui_cxt);
 }
 
-editor_window_begin :: (window : *Editor_Window) {
+editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	window.last_touched = editor_clock;
 	
 	root_id : ui.ID = .{.[100, 100]};
@@ -94,14 +94,16 @@ editor_window_begin :: (window : *Editor_Window) {
 	window.root = root;
 	
 	{
-		if lmb_down && point_in_rect(mpos, window.tb_dst) {
-			window.grabbed = true;
+		if point_in_rect(mpos, window.tb_dst) {
+			
+			if os.event(events, .LMB, .Pressed) {
+				window.grabbed = true;
+			}
 		}
-		
 		if window.grabbed {
 			window.pos += mpos - window.last_mpos;
 			
-			if lmb_up {
+			if os.event(events, .LMB, .Released) {
 				window.grabbed = false;
 			}
 		}
@@ -117,10 +119,9 @@ editor_window_begin :: (window : *Editor_Window) {
 	tb.child_layout_axis = .X;
 	tb.pref_size[0].kind = .ChildrenSum;
 	tb.pref_size[1].kind = .ChildrenSum;
-	window.tb = tb;
 	
 	window.hide = editor_label("hide").toggle;
-	editor_label(window.title);
+	window.tb = editor_label(window.title).widget;
 	ui.pop_parent_node(editor_ui_cxt);
 }
 

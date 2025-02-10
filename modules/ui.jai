@@ -154,7 +154,7 @@ State :: struct {
 	free : *Widget;
 	count : u32;
 	mpos : Vector2;
-	mdown : bool;
+	events : *os.EventList;
 	
 	parent_stack : struct {
 		top : *ParentNode;
@@ -326,7 +326,7 @@ signal :: (state : *State, widget : *Widget) -> Signal {
 	if point_in_rect(state.mpos, widget.dst) {
 		widget.hot = true;
 		
-		if state.mdown {
+		if os.event(state.events, .LMB, .Pressed) {
 			widget.active = true;
 			widget.toggle = !widget.toggle;
 		}
@@ -479,11 +479,11 @@ set_font :: (fonta : *r.Font) {
 	font = fonta;
 }
 
-begin :: (state : *State, mpos : Vector2, mdown : bool) {
+begin :: (state : *State, events : *os.EventList, mpos : Vector2) {
 	//cxt->win = win;
 	state.mpos = mpos;
-	state.mdown = mdown;
 	state.frame_index+=1;
+	state.events = events;
 	
 	widget : *Widget = tzpush_struct(Widget);
 	widget.child_layout_axis = .X;

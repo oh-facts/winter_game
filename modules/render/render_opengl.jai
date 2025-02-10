@@ -1,5 +1,6 @@
 #import "mizu_base";
-
+#import "System";
+#import "String";
 #import "GL" (ENABLE_ALL_EXTENSIONS = true);
 
 os :: #import "os";
@@ -108,20 +109,20 @@ SHADER_PROG :: enum {
 	COUNT;
 };
 
-vert_shader_paths :[SHADER_PROG.COUNT]string: .["shaders/ui.vert",
-																								"shaders/sprite.vert",
-																								"shaders/beam.vert",
-																								"shaders/water.vert",
-																								"shaders/final.vert",
-																								"shaders/blur.vert"
+vert_shader_paths :[SHADER_PROG.COUNT]string: .["ui.vert",
+																								"sprite.vert",
+																								"beam.vert",
+																								"water.vert",
+																								"final.vert",
+																								"blur.vert"
 																								];
 
-frag_shader_paths :[SHADER_PROG.COUNT]string: .["shaders/ui.frag",
-																								"shaders/sprite.frag",
-																								"shaders/beam.frag",
-																								"shaders/water.frag",
-																								"shaders/final.frag",
-																								"shaders/blur.frag"
+frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
+																								"sprite.frag",
+																								"beam.frag",
+																								"water.frag",
+																								"final.frag",
+																								"blur.frag"
 																								];
 
 State :: struct {
@@ -168,11 +169,19 @@ init :: () {
 	
 	SDL_GL_SetSwapInterval(1);
 	
+	base_path := path_strip_filename(get_path_of_running_executable());
+	shaders_folder := join(base_path, "../shaders");
+	
 	for i : 0 .. SHADER_PROG.COUNT - 1 {		
-		vert_shader_file := read_entire_file(vert_shader_paths[i]);
+		
+		vert_abs_path := tprint("%/%", shaders_folder, vert_shader_paths[i]);
+		
+		vert_shader_file := read_entire_file(vert_abs_path);
 		defer free(vert_shader_file);
 		
-		frag_shader_file := read_entire_file(frag_shader_paths[i]);
+		frag_abs_path := tprint("%/%", shaders_folder, frag_shader_paths[i]);
+		
+		frag_shader_file := read_entire_file(frag_abs_path);
 		defer free(frag_shader_file);
 		
 		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
@@ -182,16 +191,16 @@ init :: () {
 		state.inst_buffer[i] = make_buffer(MB(8));
 	}
 	
-	
 	state.scene_buffer = make_buffer(size_of(SceneData));
 	
-	data : []s64 = .[0xFFFFFFFF];
+	data : [1]s64 : .[0xFFFFFFFF];
 	
 	bmp := Bitmap.{data.data, 1, 1, 4};
 	
 	state.white_square = image(bmp);
 	
 	{
+		// NOTE(mizu): :>
 		screen_size : Vector2 = .{1920, 1051};
 		state.draw_fb = framebuffer(screen_size, false);
 		state.water_fb = framebuffer(screen_size, true);
