@@ -61,8 +61,8 @@ auto_row :: 6;
 // 
 
 Tile_Kind :: enum {
-	gfx;
-	occupied;
+	Gfx;
+	Occupied;
 }
 
 Tile :: struct {
@@ -264,7 +264,7 @@ get_neighbours :: (tw : Tileworld, x : int, y : int, z : int, paint_index : s32)
 tile_present :: (tw : Tileworld, x : int, y : int, layer : int) -> bool {
 	
 	out : bool;
-	tile := tile_from_index(tw, .{xx x, xx y}, .gfx);
+	tile := tile_from_index(tw, .{xx x, xx y}, .Gfx);
 	
 	if tile {
 		out = xx tile.v[layer];
@@ -423,8 +423,8 @@ tile_from_index :: (tw : Tileworld, r : Vector2i, kind : Tile_Kind) -> *Tile {
 		
 		if index.x >= 0 && index.y >= 0 && index.x < tm.col && index.y < tm.row {
 			
-			if kind == .gfx out = *tm.gfx[tile_slot];
-			else if kind == .occupied out = *tm.occupied[tile_slot];
+			if kind == .Gfx out = *tm.gfx[tile_slot];
+			else if kind == .Occupied out = *tm.occupied[tile_slot];
 			
 		}
 	}
@@ -438,8 +438,8 @@ tile_from_local_index :: (tm : *Tilemap, l : Vector2i, kind : Tile_Kind) -> *Til
 	tile : *Tile;
 	if l.x >= 0 && l.y >= 0 && l.x < tm.col && l.y < tm.row {
 		
-		if kind == .gfx tile = *tm.gfx[tile_slot];
-		else if kind == .occupied tile = *tm.occupied[tile_slot];
+		if kind == .Gfx tile = *tm.gfx[tile_slot];
+		else if kind == .Occupied tile = *tm.occupied[tile_slot];
 	}
 	
 	return tile;
@@ -471,7 +471,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 				i____t := 0;
 			}
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .Gfx);
 			
 			if tile {
 				for layer : 0 .. Tile.layers - 2 {
@@ -537,7 +537,7 @@ draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
 	for y: 0 .. tm.row - 1{
 		for x: 0 .. tm.col - 1 {
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .Gfx);
 			if tile && tile.v[2] {
 				
 				paint := paints[tile.v[2]];
@@ -637,7 +637,7 @@ generate_collisions :: (tw : *Tileworld, store : Entity_Store) {
 		
 		if entity.flags & .Inactive continue;
 		
-		tile := tile_from_index(tw, entity.tile_pos, .occupied);
+		tile := tile_from_index(tw, entity.tile_pos, .Occupied);
 		tile.v[0] = 1;
 		tile.entity = entity;
 	}
@@ -653,7 +653,7 @@ draw_tilemap_collisions :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List
 	for y: 0 .. tm.row - 1 {
 		for x: 0 .. tm.col - 1 {
 			
-			tile := tile_from_local_index(tm, .{xx x, xx y}, .occupied);
+			tile := tile_from_local_index(tm, .{xx x, xx y}, .Occupied);
 			
 			if tile {
 				

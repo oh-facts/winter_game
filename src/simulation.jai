@@ -6,6 +6,10 @@
 // I think mimic trees will just have
 // a demon shadow ??
 
+// TODO(mizu): entity direction
+// Fix the outline shader. It is starting
+// to annoy me
+
 World_Cmd_Kind :: enum {
 	Eat;
 	Test_Interaction;
@@ -454,7 +458,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		// other entities
 		
-		tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y}, .occupied);
+		tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y}, .Occupied);
 		
 		if tile {
 			valid = !tile.entity;
@@ -684,14 +688,13 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			base += size_of(type_of(<< cmd));
 			
 			case .Start_Attack;
-			print("started attack");
 			
 			cmd : *World_Start_Attack_Cmd = xx base;
 			
 			target_pos := cmd.entity.tile_pos;
 			target_pos.x += 1;
 			
-			target_tile := tile_from_index(world_tileworld, target_pos, .occupied);
+			target_tile := tile_from_index(world_tileworld, target_pos, .Occupied);
 			
 			if target_tile {
 				if target_tile.entity {
@@ -717,7 +720,7 @@ load_entities :: () {
 		for y: 0 .. Tilemap.row - 1{
 			for x: 0 .. Tilemap.col - 1 {
 				
-				tile := tile_from_local_index(tm, .{xx x, xx y}, .gfx);
+				tile := tile_from_local_index(tm, .{xx x, xx y}, .Gfx);
 				paint := paints[tile.v[2]];
 				
 				e : *Entity;
@@ -902,7 +905,7 @@ astar_from_pos :: (tw : *Tileworld, pos : Vector2) -> AStar {
 	tile_pos := index_from_coords(pos);
 	out.pos = tile_pos;
 	
-	tile := tile_from_index(tw, tile_pos, .occupied);
+	tile := tile_from_index(tw, tile_pos, .Occupied);
 	//out.unwalkable = xx tile.v[0];
 	
 	return out;

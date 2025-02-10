@@ -163,11 +163,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 			
 			// paint
 			if map_editor_lmb_held {
-				tile_from_local_index(editor_tilemap, tile_pos, .gfx).v[paint_layer] = xx active_paint_index;
+				tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = xx active_paint_index;
 			}
 			// erase
 			else if rmb_held{
-				tile_from_local_index(editor_tilemap, tile_pos, .gfx).v[paint_layer] = 0;
+				tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = 0;
 			}
 		}
 		else if tool.kind == .Fill {
@@ -214,7 +214,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
-							tile_from_local_index(editor_tilemap, .{xx x, xx y}, .gfx).v[paint_layer] = xx active_paint_index;
+							tile_from_local_index(editor_tilemap, .{xx x, xx y}, .Gfx).v[paint_layer] = xx active_paint_index;
 						}
 					}
 				}
@@ -263,7 +263,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					for y : tile_select_range.min.y .. tile_select_range.max.y {
 						for x : tile_select_range.min.x .. tile_select_range.max.x {
 							
-							tile := tile_from_local_index(editor_tilemap, .{xx x, xx y}, .gfx);
+							tile := tile_from_local_index(editor_tilemap, .{xx x, xx y}, .Gfx);
 							
 							if tile.v[paint_layer] {
 								select_tile : SelectionTile;
@@ -304,10 +304,10 @@ editor_update :: (delta : float32, events : *os.EventList,
 				mv := move_end - move_start;
 				
 				for *selection_buffer {
-					tile1 := tile_from_local_index(editor_tilemap, it.pos, .gfx);
+					tile1 := tile_from_local_index(editor_tilemap, it.pos, .Gfx);
 					tile1.v[it.layer] = 0;
 					
-					tile := tile_from_local_index(editor_tilemap, mv + it.pos, .gfx);
+					tile := tile_from_local_index(editor_tilemap, mv + it.pos, .Gfx);
 					<< tile = it.tile;
 					it.pos = mv + it.pos;
 				}
@@ -337,7 +337,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 				if os.event(events, .DEL, .Pressed) {
 					// empty buffer
 					for selection_buffer {
-						tile := tile_from_local_index(editor_tilemap, it.pos, .gfx);
+						tile := tile_from_local_index(editor_tilemap, it.pos, .Gfx);
 						tile.v[it.layer] = 0;
 					}
 					
