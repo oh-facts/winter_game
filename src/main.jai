@@ -10,6 +10,14 @@
 r :: #import "render";
 ui :: #import "ui";
 
+#load "asset.jai";
+#load "editor.jai";
+#load "simulation.jai";
+#load "map_editor.jai";
+#load "world.jai";
+#load "winter.jai";
+#load "dialogue";
+
 // hee haw camera
 cam_wheld : bool;
 cam_aheld : bool;
@@ -48,24 +56,6 @@ rmb_held : bool;
 
 scroll_up : bool;
 scroll_down : bool;
-
-#load "asset.jai";
-#load "editor.jai";
-#load "simulation.jai";
-#load "map_editor.jai";
-#load "world.jai";
-#load "winter.jai";
-#load "dialogue";
-
-/*
-editor_window_begin(*ui_batches, map_editor_window);
-		if !map_editor_window.hide {
-			
-			editor_label("text");
-			editor_label("text");
-		}
-		editor_window_end(map_editor_window);
-*/
 
 Mode :: enum {
 	Game;

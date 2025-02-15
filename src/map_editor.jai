@@ -24,6 +24,7 @@ tools : [4]Tool : .[.{kind = .Select, name = "select"},
 										];
 
 editor_tileworld : Tileworld;
+editor_entity_store : Entity_Store;
 
 tile_pos : Vector2i;
 paint_layer : int;
@@ -63,7 +64,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	if !ed_initialized {
 		ed_initialized = true;
 		
-		// alloc tilemap memory
+		editor_entity_store = entity_store_init();
 		editor_tileworld = init_tileworld();
 		
 		map_editor_window = editor_init_window("map editor");

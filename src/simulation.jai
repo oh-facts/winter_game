@@ -104,6 +104,7 @@ Entity_Kind :: enum {
 	Siren;
 	Husk;
 	Ball;
+	Tower;
 }
 
 Entity_Flags :: enum_flags u64 {
@@ -150,7 +151,7 @@ animations : [2]Animation : .[.{art = .Impolo, frame_x = 1, frame_y = 1, speed =
 Entity :: struct {
 	next : *Entity;
 	name : string;
-	type : Entity_Kind;
+	kind : Entity_Kind;
 	flags : Entity_Flags;
 	
 	dir : Vector2i;
@@ -166,6 +167,7 @@ Entity :: struct {
 	target_entity : *Entity;
 	chase_state : Chase_State;
 	
+	src : RectF32;
 	art_id : ArtId;
 	frame_x : s32;
 	frame_y : s32;
@@ -180,6 +182,8 @@ Entity :: struct {
 	submerged : float;
 	
 	attack_state : Attack_State;
+	
+	auto : bool;
 };
 
 Entity_Store :: struct {
@@ -210,7 +214,7 @@ Interaction_Id :: enum {
 
 interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
 	
-	if e.type == {
+	if e.kind == {
 		case .Tree; return .Tree;
 		case .Siren; return .Siren;
 		case .Opening; return .Opening;
@@ -253,12 +257,20 @@ world_window : *Editor_Window;
 py : *Entity;
 world_tileworld : Tileworld;
 
+entity_store_init :: () -> Entity_Store {
+	out : Entity_Store;
+	
+	out.arena = arena_init();
+	out.first = push_struct(out.arena, void);
+	
+	return out;
+}
+
 world_update :: (delta : float32, events : *os.EventList, 
 								 passes : *r.Pass_List) {
 	if !world_initialized {
 		world_initialized = true;
-		entity_store.arena = arena_init();
-		entity_store.first = push_struct(entity_store.arena, void);
+		entity_store = entity_store_init();
 		
 		entity_window = editor_init_window("entity inspector");
 		world_window = editor_init_window("world inspector");
@@ -725,18 +737,18 @@ load_entities :: () {
 				
 				e : *Entity;
 				
-				if paint.entity_kind == {
+				if paint.kind == {
 					case .Player;
 					e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
 					e.speed = 200;
-					e.type = .Player;
+					e.kind = .Player;
 					e.submerged = 0.2;
 					py = e;
 					e.color = r.COLOR_WHITE;
 					
 					case .Tree;
 					e = entity_alloc(.Interactable);
-					e.type = .Tree;
+					e.kind = .Tree;
 					e.submerged = 0.28;
 					e.color = r.COLOR_WHITE;
 					e.frame_n = cast(s32) (random_get() % 3);
@@ -749,13 +761,13 @@ load_entities :: () {
 					
 					case .Siren;
 					e = entity_alloc(.Interactable);
-					e.type = .Siren;
+					e.kind = .Siren;
 					e.submerged = 0.08;
 					e.color = r.COLOR_WHITE;
 					
 					case .Husk;
 					e = entity_alloc(.Chase_Entity);
-					e.type = .Husk;
+					e.kind = .Husk;
 					e.color = r.COLOR_BLACK;
 					e.submerged = 0.08;
 				}
@@ -768,7 +780,7 @@ load_entities :: () {
 					e.frame_x = paint.frame_x;
 					e.frame_y = paint.frame_y;
 					
-					if e.type != .Tree {
+					if e.kind != .Tree {
 						e.frame_n = paint.frame_n;
 					}
 					e.test_pos = .{(x + tm.index.x * tm.col) * 32. + 16, (y + tm.index.y * tm.row) * 32. + 16};
