@@ -27,7 +27,7 @@ void main()
 	
 	vec2 pos = a_half_size * 2 * a_norm_uv;
 	
-	float fDist = RectSDF(pos - a_half_size, a_half_size - a_border_thickness/2.0, a_radius);
+	float fDist = RectSDF(pos - a_half_size, a_half_size - (a_border_thickness - 2)/2.0, a_radius);
 	float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - a_border_thickness / 2.0);
   
 	vec4 v4FromColor = a_border_color;

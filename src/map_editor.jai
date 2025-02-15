@@ -83,7 +83,6 @@ editor_update :: (delta : float32, events : *os.EventList,
 	{
 		mv.x -= 1;
 	}
-	
 	if(os.event(events, .D, .Pressed))
 	{
 		mv.x += 1;
@@ -165,6 +164,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 			// paint
 			if map_editor_lmb_held {
 				tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = xx active_paint_index;
+				
 			}
 			// erase
 			else if rmb_held{

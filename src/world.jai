@@ -548,7 +548,7 @@ draw_grid :: (passes : *r.Pass_List) {
 			dst.max.y = dst.min.y + Tilemap.tile_size;
 			
 			tile_rect := r.push_rect2(passes, dst, .{});
-			tile_rect.border_thickness = 4;
+			tile_rect.border_thickness = 2;
 			tile_rect.border_color = r.COLOR_BLACK;
 		}
 	}

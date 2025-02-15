@@ -151,7 +151,7 @@ draw_children :: (passes : *r.Pass_List, root : *ui.Widget) {
 		dst := root.dst;
 		color :: Vector4.{0, 0, 0, 0.8};
 		bg := r.push_rect2(passes, dst, color);
-		bg.border_thickness = 2;
+		bg.border_thickness = 3;
 		bg.border_color = r.COLOR_WHITE;
 		bg.radius = 4;
 	}
