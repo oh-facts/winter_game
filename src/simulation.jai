@@ -226,29 +226,28 @@ interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
 active_interatction : Interaction_Id;
 active_entity : *Entity;
 
-entity_alloc :: (flags : Entity_Flags) -> *Entity {
-	out := entity_store.free;
+entity_alloc :: (es : *Entity_Store) -> *Entity {
+	out := es.free;
 	
 	if out {
-		entity_store.free = entity_store.free.next;
-		entity_store.inactive_count -= 1;
+		es.free = es.free.next;
+		es.inactive_count -= 1;
 	} else {
-		out = push_struct(entity_store.arena, Entity);
+		out = push_struct(es.arena, Entity);
 	}
 	
 	<< out = .{};
 	
-	entity_store.count += 1;
-	out.flags = flags;
+	es.count += 1;
 	
 	return out;
 }
 
-entity_free :: (entity : *Entity) {
-	entity.next = entity_store.free;
-	entity_store.free = entity;
+entity_free :: (es : *Entity_Store, entity : *Entity) {
+	entity.next = es.free;
+	es.free = entity;
 	entity.flags |= .Inactive;
-	entity_store.inactive_count += 1;
+	es.inactive_count += 1;
 }
 
 entity_window : *Editor_Window;
@@ -279,7 +278,7 @@ world_update :: (delta : float32, events : *os.EventList,
 		world_tileworld = init_tileworld();
 		
 		load_tileworld(*world_tileworld);
-		load_entities();
+		//load_entities();
 	}
 	
 	editor_window_begin(world_window, events);
@@ -290,7 +289,7 @@ world_update :: (delta : float32, events : *os.EventList,
 			demo_quest = .{};
 			unload_entities();
 			load_tileworld(*world_tileworld);
-			load_entities();
+			//load_entities();
 		}
 		
 		if py {
@@ -589,21 +588,9 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 	}
 	
-	sort_entitties :: (a : *Entity, b : *Entity) -> int {
-		pos_a := a.pos;
-		pos_b := b.pos;
-		
-		out : int = 1;
-		if pos_a.y < pos_b.y {
-			out = -1;
-		}
-		
-		return out; 
-	}
-	
 	r.push_beam(passes);
 	intro_sort(entity_store.sort_list, sort_entitties);
-	draw_submerged_entities(passes, -1);
+	draw_submerged_entities(entity_store, passes, -1);
 	
 	calculate_beam_pos :: () -> Vector2 {
 		c := py.pos;//tm_index;
@@ -621,7 +608,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	//r.push_beam(passes);
 	r.end_water(passes);
 	
-	draw_submerged_entities(passes, 1);
+	draw_submerged_entities(entity_store, passes, 1);
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
@@ -724,75 +711,65 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	clear_collisions(*world_tileworld);
 }
 
-
-load_entities :: () {
+entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *Entity {
 	
-	for *tm : world_tileworld.tilemaps {
+	out := entity_alloc(es);
+	out.kind = kind;
+	
+	if kind == {
+		case .Player;
+		out.flags |= .Control | .Animated | .Sloppy_Shadow;
+		out.art_id = .Impolo;
+		out.speed = 200;
+		out.submerged = 0.2;
+		out.color = r.COLOR_WHITE;
+		out.size = .{128, 128};
+		out.origin = .{64, 96};
+		out.frame_x = 1;
+		out.frame_y = 1;
 		
-		for y: 0 .. Tilemap.row - 1{
-			for x: 0 .. Tilemap.col - 1 {
-				
-				tile := tile_from_local_index(tm, .{xx x, xx y}, .Gfx);
-				paint := paints[tile.v[2]];
-				
-				e : *Entity;
-				
-				if paint.kind == {
-					case .Player;
-					e = entity_alloc(.Control | .Animated | .Sloppy_Shadow);
-					e.speed = 200;
-					e.kind = .Player;
-					e.submerged = 0.2;
-					py = e;
-					e.color = r.COLOR_WHITE;
-					
-					case .Tree;
-					e = entity_alloc(.Interactable);
-					e.kind = .Tree;
-					e.submerged = 0.28;
-					e.color = r.COLOR_WHITE;
-					e.frame_n = cast(s32) (random_get() % 3);
-					
-					case .Ball;
-					e = entity_alloc(0);
-					e.color = r.COLOR_WHITE;
-					
-					//array_add(*entity_store.apples, e);
-					
-					case .Siren;
-					e = entity_alloc(.Interactable);
-					e.kind = .Siren;
-					e.submerged = 0.08;
-					e.color = r.COLOR_WHITE;
-					
-					case .Husk;
-					e = entity_alloc(.Chase_Entity);
-					e.kind = .Husk;
-					e.color = r.COLOR_BLACK;
-					e.submerged = 0.08;
-				}
-				
-				if e {
-					e.name = paint.name;
-					e.art_id = paint.art_id;
-					e.origin = paint.origin;
-					e.size = paint.size;
-					e.frame_x = paint.frame_x;
-					e.frame_y = paint.frame_y;
-					
-					if e.kind != .Tree {
-						e.frame_n = paint.frame_n;
-					}
-					e.test_pos = .{(x + tm.index.x * tm.col) * 32. + 16, (y + tm.index.y * tm.row) * 32. + 16};
-					e.pos = e.test_pos;
-					
-					e.tile_pos.x = xx (e.pos.x / 32.);
-					e.tile_pos.y = xx (e.pos.y / 32.);
-				}
-				
-			}
-		}
+		case .Tree;
+		out.flags |= .Interactable;
+		out.art_id = .Tree;
+		out.submerged = 0.28;
+		out.color = r.COLOR_WHITE;
+		out.size = .{512, 512};
+		out.frame_n = cast(s32) (random_get() % 3);
+		out.frame_x = 3;
+		out.frame_y = 1;
+		out.origin = .{2545, 386};
+		
+		case .Ball;
+		out.art_id = .Ball;
+		out.color = r.COLOR_WHITE;
+		out.size = .{32, 32};
+		out.origin  = .{16, 32};
+		out.frame_x = 1;
+		out.frame_y = 1;
+		
+		case .Siren;
+		out.flags |= .Interactable;
+		out.art_id = .Siren;
+		out.submerged = 0.08;
+		out.color = r.COLOR_WHITE;
+		out.size = .{512, 512};
+		out.frame_x = 1;
+		out.frame_y = 1;
+		out.origin = .{250, 500};
+		
+		case .Husk;
+		out.art_id = .Impolo;
+		out.flags |= .Chase_Entity;
+		out.color = r.COLOR_BLACK;
+		out.submerged = 0.08;
 	}
+	
+	out.pos = pos;
+	out.test_pos = pos;
+	out.tile_pos.x = xx (pos.x / 32.);
+	out.tile_pos.y = xx (pos.y / 32.);
+	
+	return out;
 }
 
 unload_entities :: () {
@@ -866,9 +843,21 @@ dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -
 	return out;
 }
 
-draw_submerged_entities :: (passes : *r.Pass_List, pass : s32) {
+sort_entitties :: (a : *Entity, b : *Entity) -> int {
+	pos_a := a.pos;
+	pos_b := b.pos;
 	
-	for entity_store.sort_list {
+	out : int = 1;
+	if pos_a.y < pos_b.y {
+		out = -1;
+	}
+	
+	return out; 
+}
+
+draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32) {
+	
+	for es.sort_list {
 		dst : RectF32;
 		dst.min.x = it.pos.x - it.origin.x;
 		dst.min.y = it.pos.y - it.origin.y;

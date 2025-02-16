@@ -1,15 +1,11 @@
 // i was thinking of using this as an offset into an image. So imagine a massive image with .. I don't feel like writing the rest I am particularly sad.
 
-paints : [10]Entity : .[.{},
-												.{auto = true, art_id = .TerrainTemplate, name = "template 1"},
-												.{auto = true, art_id = .TerrainGrass, name = "auto grass"},
-												.{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9},
-												.{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6},
-												.{art_id = .Impolo, name = "player", kind = .Player, size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, },
-												.{art_id = .Tree, name = "tree", kind = .Tree, size = .{512, 512}, src = .{.{0, 0}, .{1, 1}}, frame_x = 3, frame_y = 1, frame_n = 2, origin = .{254, 386}, },
-												.{art_id = .Ball, name = "Ball", size = .{32, 32}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{16, 32} , kind = .Ball},
-												.{art_id = .Siren, name = "Siren", size = .{512, 512}, frame_x = 1, frame_y = 1, frame_n = 0, origin = .{250, 500}, kind = .Siren},
-												.{art_id = .Impolo, name = "husk", size = .{128, 128}, origin = .{64, 96}, src = .{.{0, 0}, .{1, 1}}, frame_x = 1, frame_y = 1, kind = .Husk}];
+paints : [5]Entity : .[.{},
+											 .{auto = true, art_id = .TerrainTemplate, name = "template 1"},
+											 .{auto = true, art_id = .TerrainGrass, name = "auto grass"},
+											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9},
+											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6},
+											 ];
 
 auto_col :: 8;
 auto_row :: 6;
@@ -506,34 +502,6 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 				}
 			}
 			
-		}
-	}
-}
-
-draw_entities :: (tm : *Tilemap, passes : *r.Pass_List) {
-	for y: 0 .. tm.row - 1{
-		for x: 0 .. tm.col - 1 {
-			
-			tile := tile_from_local_index(tm, .{xx x, xx y}, .Gfx);
-			if tile && tile.v[2] {
-				
-				paint := paints[tile.v[2]];
-				
-				if paint.kind {
-					dst : RectF32;
-					dst.min.x = xx ((x + tm.index.x * tm.col) * tm.tile_size - paint.origin.x + 16);
-					dst.min.y = xx ((y + tm.index.y * tm.row) * tm.tile_size - paint.origin.y + 16);
-					dst.max.x = dst.min.x + paint.size.x;
-					dst.max.y = dst.min.y + paint.size.y;
-					
-					tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-					tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
-					
-					width := 1. / paint.frame_x;
-					
-					tile_rect.src = rectF32(paint.frame_n * width, 0, width * (paint.frame_n + 1), 1);
-				}
-			}
 		}
 	}
 }

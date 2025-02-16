@@ -1,3 +1,17 @@
+// TODO(mizu): Make it so that tilemap uses world position instead of local / ...
+
+// Infact, get rid of tilemap world and
+// game world. Just have one. 
+// After that, in load entities, make a load
+// entity and use that fn in the editor
+// to alloc entities
+
+// change all engine imports to load.
+// modules make sense for ext libraries
+// where I can't control the namespace.
+
+// TODO(mizu): Also, fix that annoying map editor bug you've been working around.
+
 #import "Basic";
 #import "System";
 #import "String";
@@ -16,7 +30,7 @@ ui :: #import "ui";
 #load "map_editor.jai";
 #load "world.jai";
 #load "winter.jai";
-#load "dialogue";
+#load "dialogue.jai";
 
 // hee haw camera
 cam_wheld : bool;
