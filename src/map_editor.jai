@@ -16,11 +16,21 @@ Tool_Kind :: enum {
 	Paint;
 	Move;
 	Fill;
+}
+
+Tool_Kind2 :: enum {
+	Select;
 	Create;
+	Move;
 }
 
 Tool :: struct {
 	kind : Tool_Kind;
+	name : string;
+};
+
+Tool2 :: struct {
+	kind : Tool_Kind2;
 	name : string;
 };
 
@@ -30,10 +40,10 @@ tile_tools : [4]Tool : .[.{kind = .Select, name = "select"},
 												 .{kind = .Fill, name = "fill"}
 												 ];
 
-entity_tools : [3]Tool : .[.{kind = .Select, name = "select"},
-													 .{kind = .Create, name = "create"},
-													 .{kind = .Move, name = "move"}
-													 ];
+entity_tools : [3]Tool2 : .[.{kind = .Select, name = "select"},
+														.{kind = .Create, name = "create"},
+														.{kind = .Move, name = "move"}
+														];
 
 editor_tileworld : Tileworld;
 editor_entity_store : Entity_Store;
@@ -373,6 +383,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		}
 	} 
 	
+	// @draw entities
 	for 0 .. editor_entity_store.count - 1 {
 		entity := editor_entity_store.first + it;
 		
@@ -393,13 +404,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 		
 		editor_label(text);
 		
-		padding_x : float = 0;
-		
-		mode_id : [ME_Mode.Count]ui.ID;
+		mode_id : [ME_Mode.Count]UI_ID;
 		
 		for 0 .. ME_Mode.Count - 1 {
 			
 			text = tprint("%", it);
+			
+			editor_col_begin(xx it);
+			defer editor_row_end();
 			
 			signal := editor_label(text, xx it);
 			mode_id[it] = signal.widget.key;
@@ -408,20 +420,47 @@ editor_update :: (delta : float32, events : *os.EventList,
 				me_mode = xx it;
 			}
 			
-			operator == :: (a : ui.ID, b : ui.ID) -> bool {
-				return (memcmp(*a, *b, size_of(ui.ID)) == 0);
+			operator == :: (a : UI_ID, b : UI_ID) -> bool {
+				return (memcmp(*a, *b, size_of(UI_ID)) == 0);
 			}
-			
-			padding_x += 16;
-			ui.push_padding_node(editor_ui_cxt, .{padding_x, 0});
-			defer ui.pop_padding_node(editor_ui_cxt);
-			defer padding_x -= 16;
 			
 			if me_mode == .Tile && (signal.widget.key == mode_id[ME_Mode.Tile]){
 				
-				tool_id : [tile_tools.count]ui.ID;
+				tool_id : [tile_tools.count]UI_ID;
+				
+				editor_row_begin(xx it);
+				defer editor_row_end();
 				
 				for tile_tools {
+					
+					text = tprint("%", it.name);
+					
+					editor_col_begin(xx it_index);
+					defer editor_row_end();
+					
+					signal := editor_label(text, it_index);
+					tool_id[it_index] = signal.widget.key;
+					if(signal.active) {
+						active_tool_index = xx it_index;
+					}
+					
+					if(active_tool_index == xx Tool_Kind.Paint && (signal.widget.key == tool_id[Tool_Kind.Paint]) || (active_tool_index == xx Tool_Kind.Fill && (signal.widget.key == tool_id[Tool_Kind.Fill]))) {
+						
+						for 1 .. paints.count - 1{
+							paint := paints[it];
+							text = tprint("%", paint.name);
+							
+							if(editor_label(text, it).active) {
+								active_paint_index = xx it;
+							}
+						}
+					}
+				}
+			} else if me_mode == .Entity && (signal.widget.key == mode_id[ME_Mode.Entity]){
+				
+				tool_id : [entity_tools.count]UI_ID;
+				
+				for entity_tools {
 					text = tprint("%", it.name);
 					
 					signal := editor_label(text, it_index);
@@ -430,19 +469,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 						active_tool_index = xx it_index;
 					}
 					
-					if(active_tool_index == xx Tool_Kind.Paint && (signal.widget.key == tool_id[Tool_Kind.Paint])) {
+					if(active_tool_index == xx Tool_Kind2.Create && (signal.widget.key == tool_id[Tool_Kind2.Create])) {
 						
-						padding_x += 16;
-						ui.push_padding_node(editor_ui_cxt, .{padding_x, 0});
-						defer ui.pop_padding_node(editor_ui_cxt);
-						defer padding_x -= 16;
 						
-						for 1 .. paints.count - 1{
-							paint := paints[it];
-							text = tprint("%", paint.name);
+						for 1 .. Entity_Kind.Count - 1{
+							text = tprint("%", it);
 							
-							if(editor_label(text, it).active) {
-								active_paint_index = xx it;
+							if(editor_label(text, xx it).active) {
+								//active_paint_index = xx it;
 							}
 						}
 					}

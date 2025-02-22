@@ -11,6 +11,9 @@
 // where I can't control the namespace.
 
 // TODO(mizu): Also, fix that annoying map editor bug you've been working around.
+// also bug in the ui layer. padding doesn't add up for some reason. Fix that first.
+
+// For stuff like picking, I am thinking I just use the per frame entity map.
 
 #import "Basic";
 #import "System";
@@ -22,7 +25,6 @@
 
 #import "mizu_base";
 r :: #import "render";
-ui :: #import "ui";
 
 #load "asset.jai";
 #load "editor.jai";
@@ -31,6 +33,8 @@ ui :: #import "ui";
 #load "world.jai";
 #load "winter.jai";
 #load "dialogue.jai";
+#load "scratch.jai";
+#load "ui.jai";
 
 // hee haw camera
 cam_wheld : bool;
@@ -74,11 +78,13 @@ scroll_down : bool;
 Mode :: enum {
 	Game;
 	Tile_Editor;
+	Scratch;
 	COUNT;
 }
 
-current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Tile_Editor;
 //current_mode : Mode = .Game;
+current_mode : Mode = .Scratch;
 
 arena : *Arena;
 
@@ -102,10 +108,9 @@ main :: () {
 	arena = arena_init(ARENA_COMMIT_SIZE, MB(256));
 	
 	load_all_assets();
-	ui.set_font(font);
 	quit : bool;
 	
-	ui_cxt := ui.init();
+	ui_cxt := ui_init();
 	editor_ui_cxt = ui_cxt;
 	timer : float32;
 	
@@ -150,7 +155,7 @@ main :: () {
 			
 		}
 		
-		ui.begin(ui_cxt, *events, mpos);
+		ui_begin(ui_cxt, *events, mpos);
 		
 		if os.event(*events, .TAB, .Pressed) {
 			current_mode = (current_mode + 1) % .COUNT;
@@ -162,14 +167,21 @@ main :: () {
 			
 			case .Tile_Editor;
 			editor_update(xx delta, *events, *passes);
+			
+			case .Scratch;
+			scratch_update(xx delta, *events, *passes);
 		}
 		
-		ui.layout(ui_cxt.root);
+		ui_layout(ui_cxt.root);
 		
 		//print("----\n");
+		
+		r.push_scissor(*passes, scratch_window.dst);
 		draw_children(*passes, ui_cxt.root);
+		r.pop_scissor(*passes);
+		
 		//print("----\n");
-		ui.end(ui_cxt);
+		ui_end(ui_cxt);
 		
 		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,
 						 arts[xx ArtId.Displacement].tex, beam_pos, camera.pos);

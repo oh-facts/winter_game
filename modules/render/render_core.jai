@@ -70,12 +70,38 @@ Pass :: struct {
 	kind : Pass_Kind;
 	batches : BatchList;
 	beam : Beam;
+	scissor : RectF32;
 }
 
 Pass_List :: struct {
 	first : *Pass;
 	last : *Pass;
 	count : u32;
+	
+	gen : u64;
+	last_gen : u64;
+	
+	scissor_stack : struct {
+		top : *Scissor_Node;
+	}
+}
+
+Scissor_Node :: struct {
+	next : *Scissor_Node;
+	v : RectF32;
+}
+
+push_scissor :: (list : *Pass_List, v : RectF32) {
+	node : *Scissor_Node = xx tpush_struct(Scissor_Node);
+	node.v = v;
+	node.next = list.scissor_stack.top;
+	list.scissor_stack.top = node;
+	list.gen += 1;
+}
+
+pop_scissor :: (list : *Pass_List) {
+	list.scissor_stack.top = list.scissor_stack.top.next;
+	list.gen += 1;
 }
 
 push_batch :: (list : *BatchList, cap : s64) -> *Batch {
@@ -102,6 +128,12 @@ push_batch :: (list : *BatchList, cap : s64) -> *Batch {
 	return out;
 }
 
+null_scissor_node : Scissor_Node = .{
+	v = .{.{0, 0}, .{1920, 1051}}
+};
+
+ooga := 0;
+
 push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
 	out : *Pass = talloc(size_of(Pass));
 	<< out = .{};
@@ -113,6 +145,7 @@ push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
 	} else {
 		list.last = out;
 		list.first = out;
+		//list.scissor_stack.top = *null_scissor_node;
 	}
 	
 	list.count += 1;
@@ -123,8 +156,12 @@ push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
 push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {
 	pass := list.last;
 	
-	if !pass || pass.kind != kind {
+	if !pass || pass.kind != kind || (list.gen != list.last_gen){
 		pass = push_pass(list, kind);
+		
+		// set state params
+		pass.scissor = list.scissor_stack.top.v;
+		list.last_gen = list.gen;
 	}
 	
 	batches := *pass.batches;
@@ -132,7 +169,6 @@ push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : 
 	
 	if !batch || (batch.cap < batch.size + size_of(Rect2)) {
 		batch = push_batch(batches, xx MB(1));
-		// set state params
 	}
 	
 	out :*Rect2= xx (batch.base + batch.size);
@@ -273,6 +309,7 @@ push_text :: (list : *Pass_List, font : Font, text : string, _pos : Vector2, siz
 
 get_text_rect :: (font : Font, text : string, _pos : Vector2, size : float32) -> RectF32{
 	pos := _pos;
+	
 	pos.y += (font.ascent + font.descent) * size;
 	
 	origin := pos;
@@ -317,3 +354,4 @@ get_text_rect :: (font : Font, text : string, _pos : Vector2, size : float32) ->
 	
 	return ext;
 }
+

@@ -261,6 +261,19 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				buffer := state.inst_buffer[INST_BUFFER.UI];
 				shader := state.shader_prog[SHADER_PROG.UI];
 				
+				size : Vector2i;
+				size.x = xx (pass.scissor.max.x - pass.scissor.min.x);
+				size.y = xx (pass.scissor.max.y - pass.scissor.min.y);
+				
+				br: Vector2i;
+				br.x = xx pass.scissor.min.x;
+				br.y = xx (1051 - pass.scissor.max.y);
+				
+				glEnable(GL_SCISSOR_TEST);
+				
+				if size.x >= 0 && size.y >= 0 {
+					glScissor(xx br.x, xx br.y, xx size.x, xx size.y);
+				}
 				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
 				glUseProgram(shader);
 				
@@ -277,6 +290,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					batch = batch.next;
 				}
+				glDisable(GL_SCISSOR_TEST);
 				
 				case .Beam;
 				shader := state.shader_prog[SHADER_PROG.BEAM];

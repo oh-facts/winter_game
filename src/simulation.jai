@@ -7,8 +7,8 @@
 // a demon shadow ??
 
 // TODO(mizu): entity direction
-// Fix the outline shader. It is starting
-// to annoy me
+
+// TODO(mizu):  Work on the ui layer. Make it as close to feature complete as you can. Otherwise iit will be very annoying to work on the map editor and entity inspector, which I will work on next.
 
 World_Cmd_Kind :: enum {
 	Eat;
@@ -105,6 +105,7 @@ Entity_Kind :: enum {
 	Husk;
 	Ball;
 	Tower;
+	Count;
 }
 
 Entity_Flags :: enum_flags u64 {

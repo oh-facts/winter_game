@@ -19,7 +19,11 @@ build :: () {
 		target_options.output_path = ".build/";
 		set_build_options(target_options, w);
 		
+		compiler_begin_intercept(w);
 		add_build_file("src/main.jai", w);
+		
+		message_loop();
+		compiler_end_intercept(w);
 		
 #if OS == .WINDOWS
 			file_link(".build/SDL2.dll", "bin/SDL2.dll");
@@ -44,6 +48,163 @@ build :: () {
 }
 
 #run build();
+render_import : *Message_Import;
+
+message_loop :: () {
+	
+	while true {
+		message := compiler_wait_for_message();
+		if message.kind == {
+			case .IMPORT;
+			import := cast(*Message_Import)message;
+			if import.module_name == "render"
+				render_import = import;
+			
+			case .TYPECHECKED;
+			typechecked := cast(*Message_Typechecked) message;
+			for typechecked.structs
+				note_struct(it.expression);
+			case .PHASE;
+			phase := cast(*Message_Phase) message;
+			if phase.phase == .TYPECHECKED_ALL_WE_CAN {
+				if !generated_code {
+					generate_code(message.workspace);
+					generated_code = true;
+				}
+			}
+			
+			case .COMPLETE;
+			break;
+		}
+	}
+}
+
+generated_code := false;
+
+Style :: struct {
+	name : string;
+	type : string;
+	
+	Name : string;
+}
+
+upper_snake_from_lower_snake :: (name : string) -> string {
+	
+	out := copy_string(name);
+	
+	out.data[0] = to_upper(name.data[0]);
+	
+	for 1 .. out.count - 1 {
+		if out.data[it] == #char "_"{
+			out.data[it] = to_upper(name.data[it]);
+		}
+	}
+	
+	return out;
+}
+
+styles : [8]Style = .[.{"parent", "*UI_Widget", ""},
+											.{"size_x", "UI_Size", ""},
+											.{"size_y", "UI_Size", ""},
+											.{"width", "float", ""},
+											.{"height", "float", ""},
+											.{"offset", "[2]float32", ""},
+											.{"scissor", "RectF32", ""},
+											.{"flags", "UI_Flags", ""},
+											];
+
+STYLES_TEMPLATE :: #string DONE
+UI_%2_Node :: struct {
+	next : *UI_%2_Node;
+	v : %3;
+}
+DONE
+
+PUSH_TEMPLATE :: #string DONE
+ui_push_%1_node :: (state : *UI_State, v : %3) {
+	node : *UI_%2_Node = xx tpush_struct(UI_%2_Node);
+	node.v = v;
+	node.next = state.%1_stack.top;
+	state.%1_stack.top = node;
+}
+DONE
+
+POP_TEMPLATE :: #string DONE
+ui_pop_%1_node :: (state : *UI_State) {
+	state.%1_stack.top = state.%1_stack.top.next;
+}
+DONE
+
+UI_STATE_TEMPLATE :: #string DONE
+UI_State :: struct {
+	arena : *Arena;
+	slots : []Slot;
+	frame_index : u64;
+	free : *UI_Widget;
+	count : u32;
+	mpos : Vector2;
+	events : *os.EventList;
+	
+	%1;
+	
+	root : *UI_Widget;
+}
+DONE
+
+UI_STACKS_TEMPLATE :: #string DONE
+
+%1_stack : struct {
+	top : *UI_%2_Node;
+	free : *UI_%2_Node;
+	auto_pop : bool;
+};
+
+DONE
+
+generate_styles :: () -> string {
+	builder: String_Builder;
+	builder2: String_Builder;
+	
+	for *styles {
+		it.Name = upper_snake_from_lower_snake(it.name);
+		//print("%\n", it.Name);
+	}
+	
+	for styles {
+		
+		print_to_builder(*builder, STYLES_TEMPLATE, it.name, it.Name, it.type);
+		print_to_builder(*builder, PUSH_TEMPLATE, it.name, it.Name, it.type);
+		print_to_builder(*builder, POP_TEMPLATE, it.name, it.Name, it.type);
+		
+		print_to_builder(*builder2, UI_STACKS_TEMPLATE, it.name, it.Name, it.type);
+	}
+	
+	stacks := builder_to_string(*builder2);
+	
+	print_to_builder(*builder2, UI_STATE_TEMPLATE, stacks);
+	
+	state := builder_to_string(*builder2);
+	
+	print_to_builder(*builder, "%", state);
+	
+	return builder_to_string(*builder);
+}
+
+generate_code :: (w : Workspace) {
+	//print("%", generate_styles());
+	
+	if render_import {
+		add_build_string("codex : int = 3;", w,  render_import);
+	} else {
+		print("couldn't find render module\n");
+	}
+	
+	add_build_string(generate_styles(), w);
+}
+
+note_struct :: (code_struct: *Code_Struct) {
+	//print("%\n", << code_struct.block);
+}
 
 init_font :: (path : string, font_size : u32) -> r.Font {
 	
