@@ -181,7 +181,7 @@ main :: () {
 		draw_children(*passes, ui_cxt.root);
 		
 		//print("----\n");
-		ui_end(ui_cxt);
+		ui_end();
 		r.pop_scissor(*passes);
 		
 		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,

@@ -138,9 +138,11 @@ hash_from_key :: (key : UI_ID) -> int {
 	return hash;
 }
 
-widget_lookup :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
-	slot_index := hash_from_key(key) % xx state.slots.count;
-	slot := state.slots.data + slot_index;
+
+
+widget_lookup :: (key : UI_ID) -> *UI_Widget {
+	slot_index := hash_from_key(key) % xx active_cxt.slots.count;
+	slot := active_cxt.slots.data + slot_index;
 	out : *UI_Widget;
 	
 	cur := slot.first;
@@ -161,10 +163,10 @@ key_is_null :: (key : UI_ID) -> bool {
 	return (memcmp(*key, *NULL_UI_ID, size_of(UI_ID)) == 0);
 }
 
-ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
+ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 	
 	// check cache if widget already exists
-	out := widget_lookup(state, key);
+	out := widget_lookup(key);
 	
 	// not found in cache, allocate
 	if !out {
@@ -175,18 +177,18 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 		// don't
 		else {
 			// check free list, or allocate new
-			out = state.free;
+			out = active_cxt.free;
 			if !out {
-				out = push_struct(state.arena, UI_Widget);
+				out = push_struct(active_cxt.arena, UI_Widget);
 			}
 			else {
-				state.free = state.free.next;
+				active_cxt.free = active_cxt.free.next;
 				<<out = .{};
 			}
 			
 			// add to cache
-			slot_index := hash_from_key(key) % xx state.slots.count;
-			slot := state.slots.data + slot_index;
+			slot_index := hash_from_key(key) % xx active_cxt.slots.count;
+			slot := active_cxt.slots.data + slot_index;
 			
 			if !slot.last {
 				slot.first = out;
@@ -201,7 +203,7 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 	else
 	{
 		// duplicate, allocate new from frame arena
-		if(out.last_frame_touched_index == state.frame_index)
+		if(out.last_frame_touched_index == active_cxt.frame_index)
 		{
 			out = tzpush_struct(UI_Widget);
 		}
@@ -214,7 +216,7 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 		out.prev = xx 0;
 		out.last = xx 0;
 		out.next = xx 0;
-		out.last_frame_touched_index = state.frame_index;
+		out.last_frame_touched_index = active_cxt.frame_index;
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
 		
@@ -228,7 +230,7 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 	// tree links
 	
 	{
-		parent := state.parent_stack.top.v;
+		parent := active_cxt.parent_stack.top.v;
 		parent.child_count += 1;
 		out.parent = parent;
 		
@@ -248,19 +250,19 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 	
 	// styling
 	{
-		//out.color = state.color_stack.top.v;
-		//out.border_color = state.border_color_stack.top.v;
-		//out.border_thickness = state.border_thickness_stack.top.v;
-		//out.radius = state.radius_stack.top.v;
-		out.pref_size[0] = state.size_x_stack.top.v;
-		out.pref_size[1] = state.size_y_stack.top.v;
+		//out.color = active_cxt.color_stack.top.v;
+		//out.border_color = active_cxt.border_color_stack.top.v;
+		//out.border_thickness = active_cxt.border_thickness_stack.top.v;
+		//out.radius = active_cxt.radius_stack.top.v;
+		out.pref_size[0] = active_cxt.size_x_stack.top.v;
+		out.pref_size[1] = active_cxt.size_y_stack.top.v;
 		
-		//out.fixed_size.x = state.width_stack.top.v;
-		//out.fixed_size.y = state.height_stack.top.v;
-		out.offset = state.offset_stack.top.v;
-		out.scissor = state.scissor_stack.top.v;
-		out.flags |= state.flags_stack.top.v;
-		out.text_padding = state.text_padding_stack.top.v;
+		//out.fixed_size.x = active_cxt.width_stack.top.v;
+		//out.fixed_size.y = active_cxt.height_stack.top.v;
+		out.offset = active_cxt.offset_stack.top.v;
+		out.scissor = active_cxt.scissor_stack.top.v;
+		out.flags |= active_cxt.flags_stack.top.v;
+		out.text_padding = active_cxt.text_padding_stack.top.v;
 	}
 	
 	//RectF32 extent = rectFromString(out->text, out->scale);
@@ -268,14 +270,14 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 	return out;
 }
 
-ui_signal :: (state : *UI_State, widget : *UI_Widget) -> UI_Signal {
+ui_signal :: (widget : *UI_Widget) -> UI_Signal {
 	out : UI_Signal;
 	out.widget = widget;
 	
-	if point_in_rect(state.mpos, widget.dst) {
+	if point_in_rect(active_cxt.mpos, widget.dst) {
 		widget.hot = true;
 		
-		if os.event(state.events, .LMB, .Pressed) {
+		if os.event(active_cxt.events, .LMB, .Pressed) {
 			widget.active = true;
 			widget.toggle = !widget.toggle;
 		}
@@ -288,13 +290,12 @@ ui_signal :: (state : *UI_State, widget : *UI_Widget) -> UI_Signal {
 	return out;
 }
 
-ui_widget_impl :: (state : *UI_State, text : string, flags : UI_Flags, key : UI_ID) -> UI_Signal {
+ui_widget_impl :: (flags : UI_Flags, key : UI_ID) -> UI_Signal {
 	
-	widget := ui_widget_from_key(state, key);
+	widget := ui_widget_from_key(key);
 	widget.flags |= flags;
-	widget.text = text;
 	
-	out := ui_signal(state, widget);
+	out := ui_signal(widget);
 	
 	return out;
 }
@@ -546,10 +547,13 @@ ui_layout :: (root : *UI_Widget) {
 	//printf("\n");
 }
 
+active_cxt : *UI_State;
+
 ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	state.mpos = mpos;
 	state.frame_index+=1;
 	state.events = events;
+	active_cxt = state;
 	
 	widget : *UI_Widget = tzpush_struct(UI_Widget);
 	widget.child_layout_axis = .X;
@@ -562,11 +566,11 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	
 	state.root.child_count = 0;
 	
-	ui_push_offset_node(state, .[0, 0]);
-	ui_push_size_node(state, ui_size_children_sum());
-	ui_push_scissor_node(state, .{});
-	ui_push_flags_node(state, 0);
-	ui_push_text_padding_node(state, 8);
+	ui_push_offset_node(.[0, 0]);
+	ui_push_size_node(ui_size_children_sum());
+	ui_push_scissor_node(.{});
+	ui_push_flags_node(0);
+	ui_push_text_padding_node(8);
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
@@ -585,16 +589,16 @@ ui_size_children_sum :: (strictness := 1.) -> UI_Size {
 	return UI_Size.{.ChildrenSum, 0, strictness};
 }
 
-ui_end :: (state : *UI_State) {
-	ui_pop_parent_node(state);
-	ui_pop_offset_node(state);
-	ui_pop_size_node(state);
-	ui_pop_scissor_node(state);
-	ui_pop_flags_node(state);
-	ui_pop_text_padding_node(state);
+ui_end :: () {
+	ui_pop_parent_node();
+	ui_pop_offset_node();
+	ui_pop_size_node();
+	ui_pop_scissor_node();
+	ui_pop_flags_node();
+	ui_pop_text_padding_node();
 	
-	for i : 0 .. state.slots.count - 1 {
-		first_hash := (state.slots.data + i).first;
+	for i : 0 .. active_cxt.slots.count - 1 {
+		first_hash := (active_cxt.slots.data + i).first;
 		if !first_hash {
 			continue;
 		}
@@ -603,27 +607,27 @@ ui_end :: (state : *UI_State) {
 			prev : *UI_Widget;
 			
 			while cur {
-				if cur.last_frame_touched_index != state.frame_index {
+				if cur.last_frame_touched_index != active_cxt.frame_index {
 					//print("pruned %\n", cur.text);
 					
 					if prev {
 						prev.hash_next = cur.hash_next;
 						if !cur.hash_next {
-							(state.slots.data + i).last = prev;
+							(active_cxt.slots.data + i).last = prev;
 						}
 					}
 					else {
-						(state.slots.data + i).first = cur.hash_next;
+						(active_cxt.slots.data + i).first = cur.hash_next;
 						if (!cur.hash_next) {
-							(state.slots.data + i).last = xx 0;
+							(active_cxt.slots.data + i).last = xx 0;
 						}
 					}
 					
 					to_free := cur;
 					cur = cur.hash_next;
 					
-					to_free.next = state.free;
-					state.free = to_free;
+					to_free.next = active_cxt.free;
+					active_cxt.free = to_free;
 				}
 				else {
 					prev = cur;
@@ -635,12 +639,12 @@ ui_end :: (state : *UI_State) {
 	//printf("\n");
 }
 
-ui_push_size_node :: (state : *UI_State, v : UI_Size) {
-	ui_push_size_x_node(state, v);
-	ui_push_size_y_node(state, v);
+ui_push_size_node :: (v : UI_Size) {
+	ui_push_size_x_node(v);
+	ui_push_size_y_node(v);
 }
 
-ui_pop_size_node :: (state : *UI_State) {
-	ui_pop_size_x_node(state);
-	ui_pop_size_y_node(state);
+ui_pop_size_node :: () {
+	ui_pop_size_x_node();
+	ui_pop_size_y_node();
 }

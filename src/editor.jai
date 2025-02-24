@@ -100,7 +100,7 @@ editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signa
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	return ui_widget_impl(editor_ui_cxt, text, .Text, id);
+	return ui_widget_impl(.Text, id);
 }
 
 editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
@@ -108,14 +108,14 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	return ui_widget_impl(editor_ui_cxt, text, .Text | .Clickable, id);
+	return ui_widget_impl(.Text | .Clickable, id);
 }
 
 editor_check_box :: (checked : *bool, index := 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	out := ui_widget_impl(editor_ui_cxt, "", .Check_Box, id);
+	out := ui_widget_impl(.Check_Box, id);
 	
 	if out.active {
 		<< checked = ! << checked;
@@ -129,7 +129,7 @@ editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal 
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	out := ui_widget_impl(editor_ui_cxt, "", .Slider, id);
+	out := ui_widget_impl(.Slider, id);
 	
 	out.widget.value = << v;
 	
@@ -140,7 +140,7 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index :=
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	out := ui_widget_impl(editor_ui_cxt, "", .Image, id);
+	out := ui_widget_impl(.Image, id);
 	out.widget.image = image;
 	out.widget.src = src;
 	return out;
@@ -153,13 +153,13 @@ editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id.v[1] = xx index;
 	
 	parent_id : UI_ID = .{.[xx loc.line_number, xx index]};
-	tb := ui_widget_from_key(editor_ui_cxt, parent_id);
-	ui_push_parent_node(editor_ui_cxt, tb);
+	tb := ui_widget_from_key(parent_id);
+	ui_push_parent_node(tb);
 	tb.child_layout_axis = .X;
 	tb.pref_size[0].kind = .ChildrenSum;
 	tb.pref_size[1].kind = .ChildrenSum;
 	
-	return ui_widget_impl(editor_ui_cxt, "", 0, id);
+	return ui_widget_impl(0, id);
 }
 
 editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
@@ -169,17 +169,17 @@ editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id.v[1] = xx index;
 	
 	parent_id : UI_ID = .{.[xx loc.line_number, xx index]};
-	tb := ui_widget_from_key(editor_ui_cxt, parent_id);
-	ui_push_parent_node(editor_ui_cxt, tb);
+	tb := ui_widget_from_key(parent_id);
+	ui_push_parent_node(tb);
 	tb.child_layout_axis = .Y;
 	tb.pref_size[0].kind = .ChildrenSum;
 	tb.pref_size[1].kind = .ChildrenSum;
 	
-	return ui_widget_impl(editor_ui_cxt, "", 0, id);
+	return ui_widget_impl(0, id);
 }
 
 editor_row_end :: () {
-	ui_pop_parent_node(editor_ui_cxt);
+	ui_pop_parent_node();
 }
 
 editor_spacer :: (size : UI_Size, index := 0, loc := #caller_location) -> UI_Signal {
@@ -187,10 +187,10 @@ editor_spacer :: (size : UI_Size, index := 0, loc := #caller_location) -> UI_Sig
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	
-	ui_push_size_node(editor_ui_cxt, size);
+	ui_push_size_node(size);
 	
-	out := ui_widget_impl(editor_ui_cxt, "", 0, id);
-	ui_pop_size_node(editor_ui_cxt);
+	out := ui_widget_impl(0, id);
+	ui_pop_size_node();
 	
 	return out;
 }

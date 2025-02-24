@@ -120,17 +120,17 @@ UI_%2_Node :: struct {
 DONE
 
 PUSH_TEMPLATE :: #string DONE
-ui_push_%1_node :: (state : *UI_State, v : %3) {
+ui_push_%1_node :: (v : %3) {
 	node : *UI_%2_Node = xx tpush_struct(UI_%2_Node);
 	node.v = v;
-	node.next = state.%1_stack.top;
-	state.%1_stack.top = node;
+	node.next = active_cxt.%1_stack.top;
+	active_cxt.%1_stack.top = node;
 }
 DONE
 
 POP_TEMPLATE :: #string DONE
-ui_pop_%1_node :: (state : *UI_State) {
-	state.%1_stack.top = state.%1_stack.top.next;
+ui_pop_%1_node :: () {
+	active_cxt.%1_stack.top = active_cxt.%1_stack.top.next;
 }
 DONE
 
