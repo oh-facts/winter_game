@@ -76,8 +76,8 @@ scroll_up : bool;
 scroll_down : bool;
 
 Mode :: enum {
-	Game;
 	Tile_Editor;
+	Game;
 	Scratch;
 	COUNT;
 }
@@ -155,6 +155,7 @@ main :: () {
 			
 		}
 		
+		r.push_scissor(*passes, rectF32(0, 0, win_size.x, win_size.y));
 		ui_begin(ui_cxt, *events, mpos);
 		
 		if os.event(*events, .TAB, .Pressed) {
@@ -176,12 +177,12 @@ main :: () {
 		
 		//print("----\n");
 		
-		r.push_scissor(*passes, scratch_window.dst);
+		
 		draw_children(*passes, ui_cxt.root);
-		r.pop_scissor(*passes);
 		
 		//print("----\n");
 		ui_end(ui_cxt);
+		r.pop_scissor(*passes);
 		
 		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,
 						 arts[xx ArtId.Displacement].tex, beam_pos, camera.pos);
@@ -193,7 +194,7 @@ main :: () {
 		delta = time_elapsed - time_since_last;
 		
 		// poor man's vsync--------------------------------
-		ifx false {
+#if false {
 			time_left : float64 = (1 / 60.) - delta;
 			if (time_left > 0) 
 			{

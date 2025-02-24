@@ -76,7 +76,7 @@ UI_Widget :: struct {
 	border_thickness : float32;
 	radius : float32;
 	pref_size : [UI_Axis.COUNT]UI_Size;
-	fixed_size : Vector2;
+	text_padding : float32;
 	
 	child_layout_axis : UI_Axis;
 	text : string;
@@ -255,11 +255,12 @@ ui_widget_from_key :: (state : *UI_State, key : UI_ID) -> *UI_Widget {
 		out.pref_size[0] = state.size_x_stack.top.v;
 		out.pref_size[1] = state.size_y_stack.top.v;
 		
-		out.fixed_size.x = state.width_stack.top.v;
-		out.fixed_size.y = state.height_stack.top.v;
+		//out.fixed_size.x = state.width_stack.top.v;
+		//out.fixed_size.y = state.height_stack.top.v;
 		out.offset = state.offset_stack.top.v;
 		out.scissor = state.scissor_stack.top.v;
 		out.flags |= state.flags_stack.top.v;
+		out.text_padding = state.text_padding_stack.top.v;
 	}
 	
 	//RectF32 extent = rectFromString(out->text, out->scale);
@@ -313,12 +314,17 @@ ui_layout_fixed_size :: (root : *UI_Widget, axis : UI_Axis) {
 		case ;
 		case .Null;
 		case .TextContent;
-		dst := r.get_text_rect(font, root.text, .{}, 0.4);
+		dst := r.get_text_rect(font, root.text, .{}, 1);
 		
 		if axis == .X {
 			root.computed_size[axis] = dst.max.x;
+			
 		} else if axis == .Y {
 			root.computed_size[axis] = dst.max.y;
+		}
+		
+		if root.flags & .Clickable {
+			root.computed_size[axis] += root.text_padding;
 		}
 		
 		case .Pixels;
@@ -351,7 +357,6 @@ ui_layout_upward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 		
 	}
 	
-	
 	{
 		child := root.first;
 		while child {
@@ -359,7 +364,6 @@ ui_layout_upward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 			child = child.next;
 		}
 	}
-	
 }
 
 ui_layout_downward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
@@ -381,10 +385,6 @@ ui_layout_downward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 			while child {
 				defer child = child.next;
 				
-				if child.flags & UI_Floating {
-					child.computed_size[1] += 10;
-					continue;
-				}
 				if root.child_layout_axis == axis {
 					size += child.computed_size[axis];
 				}
@@ -395,6 +395,97 @@ ui_layout_downward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 			root.computed_size[axis] += size;
 		}
 		
+	}
+	
+}
+
+ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
+	
+	if axis != root.child_layout_axis {
+		allowed_size := root.computed_size[axis];
+		
+		child := root.first;
+		while child {
+			defer child = child.next;
+			
+			if !(child.flags & UI_Floating) {
+				child_size := child.computed_size[axis];
+				violation := child_size - allowed_size;
+				max_fixup := child_size;
+				fixup := clamp(0., violation, max_fixup);
+				
+				if fixup > 0 {
+					child.computed_size[axis] -= fixup;
+				}
+			}
+		}
+	}
+	
+	if axis == root.child_layout_axis {
+		total_allowed_size := root.computed_size[axis];
+		total_size := 0.;
+		total_weighted_size := 0.;
+		
+		{
+			child := root.first;
+			while child {
+				defer child = child.next;
+				if !(child.flags & UI_Floating) {
+					total_size += child.computed_size[axis];
+					total_weighted_size += child.computed_size[axis] * (1 - child.pref_size[axis].strictness);
+				}
+			}
+		}
+		
+		violation := total_size - total_allowed_size;
+		
+		if violation > 0 {
+			fixup_sum := 0.;
+			fixups :[]float32;
+			fixups.data = talloc(size_of(float32) * root.child_count);
+			fixups.count = root.child_count;
+			
+			{
+				child_idx := 0;
+				child := root.first;
+				while child {
+					defer child = child.next;
+					defer child_idx += 1;
+					if !(child.flags & UI_Floating) {
+						
+						fixed_child_size := child.computed_size[axis] * (1 - child.pref_size[axis].strictness);
+						
+						fixed_child_size = clamp_bot(0., fixed_child_size);
+						fixups[child_idx] = fixed_child_size;
+						fixup_sum += fixed_child_size;
+					}
+				}
+			}
+			
+			{
+				child_idx := 0;
+				child := root.first;
+				while child {
+					defer child = child.next;
+					defer child_idx += 1;
+					
+					if !(child.flags & UI_Floating) {
+						fixup_pct := violation / total_weighted_size;
+						fixup_pct = clamp(0., fixup_pct, 1.);
+						
+						child.computed_size[axis] -= fixups[child_idx] * fixup_pct;
+					}
+				}
+			}
+		}
+	}
+	
+	{
+		child := root.first;
+		while child {
+			ui_enforce_constraints(child, axis);
+			child = child.next;
+		}
 	}
 	
 }
@@ -447,6 +538,7 @@ ui_layout :: (root : *UI_Widget) {
 		ui_layout_fixed_size(root, axis);
 		ui_layout_upward_dependent(root, axis);
 		ui_layout_downward_dependent(root, axis);
+		ui_enforce_constraints(root, axis);
 	}
 	
 	ui_layout_pos(root);
@@ -455,7 +547,6 @@ ui_layout :: (root : *UI_Widget) {
 }
 
 ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
-	//cxt->win = win;
 	state.mpos = mpos;
 	state.frame_index+=1;
 	state.events = events;
@@ -463,7 +554,8 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	widget : *UI_Widget = tzpush_struct(UI_Widget);
 	widget.child_layout_axis = .X;
 	widget_node : *UI_Parent_Node = tzpush_struct(UI_Parent_Node);
-	
+	widget.pref_size[0].kind = .ChildrenSum;
+	widget.pref_size[1].kind = .ChildrenSum;
 	widget_node.v = widget;
 	state.parent_stack.top = widget_node;
 	state.root = widget;
@@ -471,11 +563,10 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	state.root.child_count = 0;
 	
 	ui_push_offset_node(state, .[0, 0]);
-	ui_push_width_node(state, 0);
-	ui_push_height_node(state, 0);
-	ui_push_size_node(state, ui_size_txt());
+	ui_push_size_node(state, ui_size_children_sum());
 	ui_push_scissor_node(state, .{});
 	ui_push_flags_node(state, 0);
+	ui_push_text_padding_node(state, 8);
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
@@ -497,11 +588,10 @@ ui_size_children_sum :: (strictness := 1.) -> UI_Size {
 ui_end :: (state : *UI_State) {
 	ui_pop_parent_node(state);
 	ui_pop_offset_node(state);
-	ui_pop_width_node(state);
-	ui_pop_height_node(state);
 	ui_pop_size_node(state);
 	ui_pop_scissor_node(state);
 	ui_pop_flags_node(state);
+	ui_pop_text_padding_node(state);
 	
 	for i : 0 .. state.slots.count - 1 {
 		first_hash := (state.slots.data + i).first;

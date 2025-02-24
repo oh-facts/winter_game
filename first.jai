@@ -37,7 +37,7 @@ build :: () {
 	
 	set_build_options_dc(.{do_output=false});
 	
-	font := init_font("data/fonts/delius.ttf", 64);
+	font := init_font("data/fonts/cascadia.ttf", 16);
 	
 	str : string;
 	str.data = xx *font;
@@ -103,14 +103,13 @@ upper_snake_from_lower_snake :: (name : string) -> string {
 	return out;
 }
 
-styles : [8]Style = .[.{"parent", "*UI_Widget", ""},
+styles : [7]Style = .[.{"parent", "*UI_Widget", ""},
 											.{"size_x", "UI_Size", ""},
 											.{"size_y", "UI_Size", ""},
-											.{"width", "float", ""},
-											.{"height", "float", ""},
 											.{"offset", "[2]float32", ""},
 											.{"scissor", "RectF32", ""},
 											.{"flags", "UI_Flags", ""},
+											.{"text_padding", "float32", ""}
 											];
 
 STYLES_TEMPLATE :: #string DONE

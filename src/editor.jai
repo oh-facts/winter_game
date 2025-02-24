@@ -3,11 +3,6 @@ editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
 entry_count :: 5;
 
-Editor_Scroll :: struct {
-	entry_start : int;
-	rect : RectF32;
-}
-
 Editor_Window :: struct {
 	hide : bool;
 	events : *os.EventList;
@@ -73,40 +68,14 @@ editor_init_window :: (title : string) -> *Editor_Window {
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
-	out.size = .{400, 512};
+	out.size = .{30, 40};
 	
 	return out;
 }
 
 editor_window_end :: (window : *Editor_Window) {
-	window.dst = window.root.dst;
-	window.tb_dst = window.tb.dst;
 	
-	if !window.hide {
-		editor_spacer(ui_size_px(window.size.y - 206));
-		editor_row_begin();
-		editor_spacer(ui_size_px(window.size.x - 32));
-		ui_push_size_node(editor_ui_cxt, ui_size_px(32, 32));
-		
-		if editor_image(r.get_white_square()).active {
-			window.resize_grabbed = true;
-		}
-		
-		ui_pop_size_node(editor_ui_cxt);
-		editor_row_end();
-	}
-	
-	if window.resize_grabbed {
-		window.size += mpos - window.last_mpos;
-		
-		if os.event(window.events, .LMB, .Released) {
-			window.resize_grabbed = false;
-		}
-		
-	}
-	
-	ui_pop_parent_node(editor_ui_cxt);
-	
+	/*
 	if point_in_rect(mpos, window.root.dst) {
 		os.event(window.events, .LMB, .Pressed);
 		os.event(window.events, .RMB, .Pressed);
@@ -114,80 +83,16 @@ editor_window_end :: (window : *Editor_Window) {
 		os.event(window.events, .LMB, .Released);
 		os.event(window.events, .RMB, .Released);
 	}
-	
+	*/
 	window.last_mpos = mpos;
 	
 }
 
 editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	window.last_touched = editor_clock;
-	
-	root_id : UI_ID = .{.[100, 100]};
-	root := ui_widget_from_key(editor_ui_cxt, root_id);
-	root.bg_color = .{21. / 255, 22. / 255, 23. / 255, 1.};
-	
-	if !window.hide { 
-		root.flags |= .Bg;
-	} else {
-		root.flags &= ~.Bg;
-	}
-	
-	ui_push_parent_node(editor_ui_cxt, root);
-	root.child_layout_axis = .Y;
-	root.pref_size[0].kind = .Pixels;
-	root.pref_size[1].kind = .Pixels;
-	root.pref_size[0].value = window.size.x;
-	root.pref_size[1].value = window.size.y;
-	root.computed_rel_position[0] = window.pos.x;
-	root.computed_rel_position[1] = window.pos.y;
-	
-	window.root = root;
 	window.events = events;
 	
-	{
-		if point_in_rect(mpos, window.tb_dst) {
-			
-			if os.event(events, .LMB, .Pressed) {
-				window.grabbed = true;
-			}
-		}
-		if window.grabbed {
-			window.pos += mpos - window.last_mpos;
-			
-			if os.event(events, .LMB, .Released) {
-				window.grabbed = false;
-			}
-		}
-		
-	}
 	
-	// titlebar
-	tb_id : UI_ID = .{.[200, 200]};
-	tb := ui_widget_from_key(editor_ui_cxt, tb_id);
-	tb.flags |= .Bg;
-	tb.bg_color = .{41 / 255., 74 / 255., 122 / 255., 1.};
-	
-	ui_push_parent_node(editor_ui_cxt, tb);
-	tb.child_layout_axis = .X;
-	
-	tb.pref_size[0].kind = .PercentOfParent;
-	tb.pref_size[0].value = 1;
-	tb.pref_size[1].kind = .ChildrenSum;
-	
-	image := arts[xx ArtId.Editor_Titlebar].tex;
-	src := rectF32(0, 0, 0.25, 1);
-	
-	ui_push_size_node(editor_ui_cxt, ui_size_px(32));
-	window.hide = editor_image(image, src).toggle;
-	ui_pop_size_node(editor_ui_cxt);
-	
-	ui_push_size_y_node(editor_ui_cxt, ui_size_px(32));
-	ui_push_size_x_node(editor_ui_cxt, ui_size_txt());
-	
-	//window.tb = editor_label(window.title).widget;
-	window.tb = editor_label("Hello, World!").widget;
-	ui_pop_size_node(editor_ui_cxt);
-	ui_pop_parent_node(editor_ui_cxt);
 }
 
 editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
@@ -312,10 +217,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		// notch
 		{
 			dst := root.dst;
-			dst.max.x = dst.min.x + 32;
+			dst.max.x = dst.min.x + root.size.y;
 			dst.min.x += root.value * root.size.x;
 			dst.max.x += root.value * root.size.x;
 			
+			dst.min.x -= 8;
+			dst.max.x -= 8;
 			r.push_rect2(passes, dst, .{0.1, 0.4, 0.8, 0.3});
 		}
 		
@@ -323,10 +230,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		{
 			text_pos := root.pos;
 			text_pos.x += root.size.x / 2;
+			text_pos.x -= 13;
+			text_pos.y += 2;
 			text := tprint("%", root.value);
 			
 			//r.push_scissor(passes, root.dst);
-			r.push_text(passes, font, text, text_pos, 0.4, r.COLOR_WHITE);
+			r.push_text(passes, font, text, text_pos, 1., r.COLOR_WHITE);
 			//r.pop_scissor(passes);
 		}
 		
@@ -338,7 +247,14 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Clickable {
 		dst := root.dst;
-		color :: Vector4.{0, 0, 0, 0.8};
+		color := Vector4.{0, 0, 0, 0.8};
+		
+		
+		if root.hot {
+			color = r.COLOR_BLUE;
+		}
+		
+		
 		bg := r.push_rect2(passes, dst, color);
 		bg.border_thickness = 3;
 		bg.border_color = r.COLOR_WHITE;
@@ -346,7 +262,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	}
 	
 	if root.flags & .Image {
-		img := r.push_rect2(passes, root.dst, r.COLOR_WHITE);
+		color := r.COLOR_WHITE;
+		if root.hot {
+			color.y *= 0;
+		}
+		
+		img := r.push_rect2(passes, root.dst, color);
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
 	}
@@ -371,10 +292,16 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		text_color := r.COLOR_WHITE;
 		
 		if root.hot {
-			//text_color = r.COLOR_BLUE;
+			text_color = r.COLOR_BLUE;
 		}
 		
-		text_pos := root.pos;// + .{8, 0};
+		text_pos := root.pos;
+		font_size := 1.;
+		
+		if root.flags & .Clickable {
+			text_pos.x += root.text_padding / 2;
+			font_size = 0.95;
+		}
 		
 		/*
 				if root.size.y >= xx (font.line_height * 0.4){
@@ -385,14 +312,14 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 				}
 				*/
 		
-		text_rect := r.get_text_rect(font, root.text, .{}, 0.4);
+		text_rect := r.get_text_rect(font, root.text, .{}, font_size);
 		text_height := text_rect.max.y - text_rect.min.y;
 		
 		if root.size.y > text_height {
 			text_pos.y += (root.size.y - text_height) / 2;
 		}
 		
-		r.push_text(passes, font, root.text, text_pos, 0.4, text_color);
+		r.push_text(passes, font, root.text, text_pos, font_size, text_color);
 	}
 	
 	{
