@@ -5,7 +5,7 @@
 // i did the write. there are leaks probably. will get to it when i run out of memory / next cleanup pass. whichever comes first.
 
 UI_ID :: struct {
-	v : [2]u64;
+	v : [3]u64;
 }
 
 UI_Axis :: enum {
@@ -26,6 +26,12 @@ UI_Size :: struct {
 	kind : UI_Size_Kind;
 	value : float32;
 	strictness : float32;
+}
+
+UI_Text_Align :: enum {
+	Middle;
+	Left;
+	Right;
 }
 
 UI_Flags :: enum_flags u32 {
@@ -69,8 +75,6 @@ UI_Widget :: struct {
 	last_frame_touched_index : u64;
 	
 	// styling =========
-	
-	// common
 	color : Vector4;
 	bg_color : Vector4;
 	border_thickness : float32;
@@ -78,12 +82,16 @@ UI_Widget :: struct {
 	pref_size : [UI_Axis.COUNT]UI_Size;
 	text_padding : float32;
 	
+	// TODO(mizu): Use a 2d array for x and y align
+	text_align : UI_Text_Align;
+	
 	child_layout_axis : UI_Axis;
 	text : string;
 	font : r.Font;
 	
 	offset : [UI_Axis.COUNT]float32;
 	scissor : RectF32;
+	// ================
 	
 	// checkbox
 	checked : bool;
@@ -95,11 +103,11 @@ UI_Widget :: struct {
 	image : r.Handle;
 	src : RectF32;
 	
-	// calculated after hierearchy pass
-	computed_rel_position : [UI_Axis.COUNT]float32;
+	// calculated during hierearchy pass
+	computed_pos : [UI_Axis.COUNT]float32;
 	computed_size : [UI_Axis.COUNT]float32;
 	
-	// persistant
+	// persistent
 	dst : RectF32;
 	pos : Vector2;
 	size : Vector2;
@@ -220,8 +228,8 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
 		
-		out.computed_rel_position[0] = 0;
-		out.computed_rel_position[1] = 0;
+		out.computed_pos[0] = 0;
+		out.computed_pos[1] = 0;
 		
 		out.hot = false;
 		out.active = false;
@@ -250,6 +258,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 	
 	// styling
 	{
+		out.bg_color = active_cxt.bg_color_stack.top.v;
 		//out.color = active_cxt.color_stack.top.v;
 		//out.border_color = active_cxt.border_color_stack.top.v;
 		//out.border_thickness = active_cxt.border_thickness_stack.top.v;
@@ -257,12 +266,11 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.pref_size[0] = active_cxt.size_x_stack.top.v;
 		out.pref_size[1] = active_cxt.size_y_stack.top.v;
 		
-		//out.fixed_size.x = active_cxt.width_stack.top.v;
-		//out.fixed_size.y = active_cxt.height_stack.top.v;
 		out.offset = active_cxt.offset_stack.top.v;
 		out.scissor = active_cxt.scissor_stack.top.v;
 		out.flags |= active_cxt.flags_stack.top.v;
 		out.text_padding = active_cxt.text_padding_stack.top.v;
+		out.text_align = active_cxt.text_align_stack.top.v;
 	}
 	
 	//RectF32 extent = rectFromString(out->text, out->scale);
@@ -344,8 +352,9 @@ ui_layout_upward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 			p := root.parent;
 			while p {
 				
-				if p.pref_size[axis].kind == .Pixels {
+				if (p.pref_size[axis].kind == .Pixels) || (p.pref_size[axis].kind == .TextContent) || (p.pref_size[axis].kind == .ChildrenSum) {
 					fixed_parent = p;
+					break;
 				}
 				
 				p = p.parent;
@@ -500,18 +509,18 @@ ui_layout_pos :: (root : *UI_Widget) {
 		while child {
 			defer child = child.next;
 			
-			child.computed_rel_position[0] += root.computed_rel_position[0];
-			child.computed_rel_position[1] += root.computed_rel_position[1];
+			child.computed_pos[0] += root.computed_pos[0];
+			child.computed_pos[1] += root.computed_pos[1];
 			
 			if(!(child.flags & UI_Floating)) {
 				axis := root.child_layout_axis;
-				child.computed_rel_position[axis] += lay_pos;
+				child.computed_pos[axis] += lay_pos;
 				
 				lay_pos += child.computed_size[axis];
 				
 			}
 			
-			pos := Vector2.{child.computed_rel_position[0], child.computed_rel_position[1]};
+			pos := Vector2.{child.computed_pos[0], child.computed_pos[1]};
 			size := Vector2.{child.computed_size[0], child.computed_size[1]};
 			
 			dst : RectF32;
@@ -570,7 +579,9 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_size_node(ui_size_children_sum());
 	ui_push_scissor_node(.{});
 	ui_push_flags_node(0);
-	ui_push_text_padding_node(8);
+	ui_push_text_padding_node(0);
+	ui_push_bg_color_node(.{0, 0, 0, 1});
+	ui_push_text_align_node(.Middle);
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
@@ -596,6 +607,8 @@ ui_end :: () {
 	ui_pop_scissor_node();
 	ui_pop_flags_node();
 	ui_pop_text_padding_node();
+	ui_pop_bg_color_node();
+	ui_pop_text_align_node();
 	
 	for i : 0 .. active_cxt.slots.count - 1 {
 		first_hash := (active_cxt.slots.data + i).first;

@@ -103,13 +103,15 @@ upper_snake_from_lower_snake :: (name : string) -> string {
 	return out;
 }
 
-styles : [7]Style = .[.{"parent", "*UI_Widget", ""},
+styles : [9]Style = .[.{"parent", "*UI_Widget", ""},
 											.{"size_x", "UI_Size", ""},
 											.{"size_y", "UI_Size", ""},
 											.{"offset", "[2]float32", ""},
 											.{"scissor", "RectF32", ""},
 											.{"flags", "UI_Flags", ""},
-											.{"text_padding", "float32", ""}
+											.{"text_padding", "float32", ""},
+											.{"bg_color", "Vector4", ""},
+											.{"text_align", "UI_Text_Align", ""},
 											];
 
 STYLES_TEMPLATE :: #string DONE

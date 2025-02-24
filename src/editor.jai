@@ -1,9 +1,40 @@
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
-entry_count :: 5;
+active_window : *Editor_Window;
+
+Editor_File_Id :: enum {
+	Null;
+	Scratch;
+	Map_Editor;
+}
+
+Editor_File_Id_Node :: struct {
+	next : *Editor_File_Id_Node;
+	v : Editor_File_Id;
+}
+
+editor_push_file_id :: (win : *Editor_Window, v : Editor_File_Id) {
+	node : *Editor_File_Id_Node;
+	node = push_struct(win.arena, Editor_File_Id_Node);
+	
+	node.v = v;
+	
+	node.next = win.file_id_stack.top;
+	win.file_id_stack.top = node;
+}
+
+editor_pop_file_id :: (win : *Editor_Window) {
+	to_free := win.file_id_stack.top;
+	
+	win.file_id_stack.top = win.file_id_stack.top.next; 
+	
+	to_free.next = win.file_id_stack.free;
+	win.file_id_stack.free = to_free;
+}
 
 Editor_Window :: struct {
+	arena : *Arena;
 	hide : bool;
 	events : *os.EventList;
 	
@@ -25,6 +56,11 @@ Editor_Window :: struct {
 	size : Vector2;
 	
 	offset : float;
+	
+	file_id_stack : struct {
+		top : *Editor_File_Id_Node;
+		free : *Editor_File_Id_Node;
+	};
 }
 
 editor_clock : int;
@@ -69,12 +105,13 @@ editor_init_window :: (title : string) -> *Editor_Window {
 	editor_windows_count += 1;
 	out.title = title;
 	out.size = .{30, 40};
-	
+	out.arena = arena_init();
 	return out;
 }
 
 editor_window_end :: (window : *Editor_Window) {
-	
+	assert(window == active_window);
+	active_window = xx 0;
 	/*
 	if point_in_rect(mpos, window.root.dst) {
 		os.event(window.events, .LMB, .Pressed);
@@ -91,8 +128,7 @@ editor_window_end :: (window : *Editor_Window) {
 editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	window.last_touched = editor_clock;
 	window.events = events;
-	
-	
+	active_window = window;
 }
 
 editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
@@ -100,6 +136,8 @@ editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signa
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	
 	return ui_widget_impl(.Text, id);
 }
 
@@ -108,13 +146,19 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	return ui_widget_impl(.Text | .Clickable, id);
+	id.v[2] = xx active_window_file_id();
+	
+	out := ui_widget_impl(.Text | .Clickable, id);
+	out.widget.text = text;
+	return out;
 }
 
 editor_check_box :: (checked : *bool, index := 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	
 	out := ui_widget_impl(.Check_Box, id);
 	
 	if out.active {
@@ -129,6 +173,8 @@ editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal 
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	
 	out := ui_widget_impl(.Slider, id);
 	
 	out.widget.value = << v;
@@ -137,9 +183,12 @@ editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal 
 }
 
 editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index := 0, loc := #caller_location) -> UI_Signal {
+	
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	
 	out := ui_widget_impl(.Image, id);
 	out.widget.image = image;
 	out.widget.src = src;
@@ -152,14 +201,23 @@ editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	
-	parent_id : UI_ID = .{.[xx loc.line_number, xx index]};
+	parent_id := UI_ID.{};
+	parent_id.v[0] = xx loc.line_number;
+	parent_id.v[1] = xx index;
+	parent_id.v[2] = xx active_window_file_id();
+	
 	tb := ui_widget_from_key(parent_id);
 	ui_push_parent_node(tb);
 	tb.child_layout_axis = .X;
-	tb.pref_size[0].kind = .ChildrenSum;
-	tb.pref_size[1].kind = .ChildrenSum;
+	
+	tb.pref_size[0].strictness = 0;
+	tb.pref_size[1].strictness = 0;
 	
 	return ui_widget_impl(0, id);
+}
+
+active_window_file_id :: () -> Editor_File_Id {
+	return active_window.file_id_stack.top.v;
 }
 
 editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
@@ -167,13 +225,11 @@ editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
-	
-	parent_id : UI_ID = .{.[xx loc.line_number, xx index]};
+	id.v[2] = xx active_window_file_id();
+	parent_id : UI_ID = .{.[xx loc.line_number, xx index, xx active_window_file_id()]};
 	tb := ui_widget_from_key(parent_id);
 	ui_push_parent_node(tb);
 	tb.child_layout_axis = .Y;
-	tb.pref_size[0].kind = .ChildrenSum;
-	tb.pref_size[1].kind = .ChildrenSum;
 	
 	return ui_widget_impl(0, id);
 }
@@ -186,6 +242,7 @@ editor_spacer :: (size : UI_Size, index := 0, loc := #caller_location) -> UI_Sig
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
 	
 	ui_push_size_node(size);
 	
@@ -247,13 +304,16 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Clickable {
 		dst := root.dst;
-		color := Vector4.{0, 0, 0, 0.8};
+		color := root.bg_color;
 		
 		
 		if root.hot {
 			color = r.COLOR_BLUE;
 		}
 		
+		if root.toggle {
+			color = r.COLOR_ORANGE;
+		}
 		
 		bg := r.push_rect2(passes, dst, color);
 		bg.border_thickness = 3;
@@ -266,6 +326,11 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		if root.hot {
 			color.y *= 0;
 		}
+		
+		bg := r.push_rect2(passes, root.dst, r.COLOR_BLACK);
+		bg.border_thickness = 3;
+		bg.border_color = r.COLOR_WHITE;
+		bg.radius = 4;
 		
 		img := r.push_rect2(passes, root.dst, color);
 		img.tex_id = root.image.U64[1];
@@ -299,7 +364,6 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		font_size := 1.;
 		
 		if root.flags & .Clickable {
-			text_pos.x += root.text_padding / 2;
 			font_size = 0.95;
 		}
 		
@@ -314,9 +378,14 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		
 		text_rect := r.get_text_rect(font, root.text, .{}, font_size);
 		text_height := text_rect.max.y - text_rect.min.y;
+		text_width := text_rect.max.x - text_rect.min.x;
 		
 		if root.size.y > text_height {
 			text_pos.y += (root.size.y - text_height) / 2;
+		}
+		
+		if root.size.x > text_width {
+			text_pos.x += (root.size.x - text_width) / 2;
 		}
 		
 		r.push_text(passes, font, root.text, text_pos, font_size, text_color);
