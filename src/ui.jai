@@ -77,6 +77,7 @@ UI_Widget :: struct {
 	// styling =========
 	color : Vector4;
 	bg_color : Vector4;
+	border_color : Vector4;
 	border_thickness : float32;
 	radius : float32;
 	pref_size : [UI_Axis.COUNT]UI_Size;
@@ -218,12 +219,14 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 	}
 	
 	// per frame
+	// NOTE(mizu): Which of these should be zeroed out, and which doesn't???
 	{
 		out.key = key;
 		out.child_count = 0;
-		out.prev = xx 0;
+		out.first = xx 0;
 		out.last = xx 0;
 		out.next = xx 0;
+		out.prev = xx 0;
 		out.last_frame_touched_index = active_cxt.frame_index;
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
@@ -260,7 +263,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 	{
 		out.bg_color = active_cxt.bg_color_stack.top.v;
 		//out.color = active_cxt.color_stack.top.v;
-		//out.border_color = active_cxt.border_color_stack.top.v;
+		out.border_color = active_cxt.border_color_stack.top.v;
 		//out.border_thickness = active_cxt.border_thickness_stack.top.v;
 		//out.radius = active_cxt.radius_stack.top.v;
 		out.pref_size[0] = active_cxt.size_x_stack.top.v;
@@ -273,7 +276,21 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.text_align = active_cxt.text_align_stack.top.v;
 	}
 	
-	//RectF32 extent = rectFromString(out->text, out->scale);
+	// auto pop
+	{
+		if active_cxt.border_color_stack.top.auto {
+			ui_pop_border_color_node();
+		}
+		
+		if active_cxt.size_x_stack.top.auto {
+			ui_pop_size_x_node();
+		}
+		
+		if active_cxt.size_y_stack.top.auto {
+			ui_pop_size_y_node();
+		}
+		
+	}
 	
 	return out;
 }
@@ -581,6 +598,7 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_text_padding_node(0);
 	ui_push_bg_color_node(.{0, 0, 0, 1});
 	ui_push_text_align_node(.Middle);
+	ui_push_border_color_node(r.COLOR_WHITE);
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
@@ -608,6 +626,7 @@ ui_end :: () {
 	ui_pop_text_padding_node();
 	ui_pop_bg_color_node();
 	ui_pop_text_align_node();
+	ui_pop_border_color_node();
 	
 	for i : 0 .. active_cxt.slots.count - 1 {
 		first_hash := (active_cxt.slots.data + i).first;
@@ -651,9 +670,9 @@ ui_end :: () {
 	//printf("\n");
 }
 
-ui_push_size_node :: (v : UI_Size) {
-	ui_push_size_x_node(v);
-	ui_push_size_y_node(v);
+ui_push_size_node :: (v : UI_Size, auto : bool = false) {
+	ui_push_size_x_node(v, auto);
+	ui_push_size_y_node(v, auto);
 }
 
 ui_pop_size_node :: () {

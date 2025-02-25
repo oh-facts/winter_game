@@ -79,6 +79,10 @@ editor_in_focus :: (window : Editor_Window) -> bool {
 		return false;
 	}
 	
+	if window.resize_grabbed || window.grabbed {
+		return true;
+	}
+	
 	return point_in_rect(mpos, window.dst);
 }
 
@@ -118,11 +122,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	editor_push_file_id(window, .Editor);
 	
-	ui_push_flags_node(UI_Floating | .Bg);
+	ui_push_flags_node(UI_Floating | .Bg | .Scissor);
 	ui_push_size_x_node(ui_size_px(window.size.x));
 	ui_push_size_y_node(ui_size_px(window.size.y));
 	//ui_push_size_y_node(ui_size_children_sum());
 	root := ui_widget_from_key(.{.[199, 99, 99]});
+	root.scissor = root.dst;
 	root.child_layout_axis = .Y;
 	root.computed_pos = window.pos.component;
 	window.dst = root.dst;
@@ -135,15 +140,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	// titlebar
 	{
 		ui_push_flags_node(.Bg);
-		ui_push_size_x_node(ui_size_pct(1.));
-		ui_push_size_y_node(ui_size_px(32));
-		titlebar := ui_widget_from_key(.{.[99, 99, 99]});
-		titlebar.child_layout_axis = .X;
-		titlebar.bg_color = r.COLOR_MAGENTA;
-		ui_pop_size_node();
+		ui_push_size_x_node(ui_size_pct(1.), true);
+		ui_push_size_y_node(ui_size_px(32), true);
+		ui_push_bg_color_node(r.COLOR_MAGENTA);
+		editor_row_begin();
+		ui_pop_bg_color_node();
 		ui_pop_flags_node();
-		
-		ui_push_parent_node(titlebar);
 		
 		ui_push_size_x_node(ui_size_pct(0.25, 0));
 		ui_push_size_y_node(ui_size_pct(1, 0));
@@ -162,7 +164,6 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		ui_pop_size_node();
 		
 		ui_pop_parent_node();
-		
 	}
 	
 	editor_pop_file_id(window);
@@ -181,22 +182,19 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_push_file_id(window, .Editor);
 	
-	if !window.hide {
-		editor_spacer(ui_size_pct(1, 0));
-		
-		ui_push_size_x_node(ui_size_pct(1, 1));
-		editor_row_begin();
-		ui_pop_size_x_node();
-		
-		editor_spacer(ui_size_pct(1, 0));
-		ui_push_size_node(ui_size_px(32, 1));
-		if editor_image(r.get_white_square()).active {
-			window.resize_grabbed = true;
-		}
-		
-		ui_pop_size_node();
-		editor_row_end();
+	editor_spacer(ui_size_pct(1, 0));
+	
+	ui_push_size_x_node(ui_size_pct(1, 1), true);
+	editor_row_begin();
+	
+	editor_spacer(ui_size_pct(1, 0));
+	ui_push_size_node(ui_size_px(32, 1));
+	if editor_image(r.get_white_square()).active {
+		window.resize_grabbed = true;
 	}
+	
+	ui_pop_size_node();
+	editor_row_end();
 	
 	if window.resize_grabbed {
 		window.size += mpos - window.last_mpos;
@@ -204,7 +202,6 @@ editor_window_end :: (window : *Editor_Window) {
 		if os.event(window.events, .LMB, .Released) {
 			window.resize_grabbed = false;
 		}
-		
 	}
 	
 	ui_pop_parent_node();
@@ -292,6 +289,10 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index :=
 	return out;
 }
 
+active_window_file_id :: () -> Editor_File_Id {
+	return active_window.file_id_stack.top.v;
+}
+
 editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
@@ -303,10 +304,6 @@ editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	out.child_layout_axis = .X;
 	
 	return .{};
-}
-
-active_window_file_id :: () -> Editor_File_Id {
-	return active_window.file_id_stack.top.v;
 }
 
 editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
@@ -394,18 +391,13 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		dst := root.dst;
 		color := root.bg_color;
 		
-		
 		if root.hot {
 			color = r.COLOR_BLUE;
 		}
 		
-		if root.toggle {
-			color = r.COLOR_ORANGE;
-		}
-		
 		bg := r.push_rect2(passes, dst, color);
 		bg.border_thickness = 3;
-		bg.border_color = r.COLOR_WHITE;
+		bg.border_color = root.border_color;
 		bg.radius = 4;
 	}
 	

@@ -103,29 +103,31 @@ upper_snake_from_lower_snake :: (name : string) -> string {
 	return out;
 }
 
-styles : [9]Style = .[.{"parent", "*UI_Widget", ""},
-											.{"size_x", "UI_Size", ""},
-											.{"size_y", "UI_Size", ""},
-											.{"offset", "[2]float32", ""},
-											.{"scissor", "RectF32", ""},
-											.{"flags", "UI_Flags", ""},
-											.{"text_padding", "float32", ""},
-											.{"bg_color", "Vector4", ""},
-											.{"text_align", "UI_Text_Align", ""},
-											];
+styles : [10]Style = .[.{"parent", "*UI_Widget", ""},
+											 .{"size_x", "UI_Size", ""},
+											 .{"size_y", "UI_Size", ""},
+											 .{"offset", "[2]float32", ""},
+											 .{"scissor", "RectF32", ""},
+											 .{"flags", "UI_Flags", ""},
+											 .{"text_padding", "float32", ""},
+											 .{"bg_color", "Vector4", ""},
+											 .{"text_align", "UI_Text_Align", ""},
+											 .{"border_color", "Vector4", ""},];
 
 STYLES_TEMPLATE :: #string DONE
 UI_%2_Node :: struct {
 	next : *UI_%2_Node;
 	v : %3;
+	auto : bool;
 }
 DONE
 
 PUSH_TEMPLATE :: #string DONE
-ui_push_%1_node :: (v : %3) {
+ui_push_%1_node :: (v : %3, auto : bool = false) {
 	node : *UI_%2_Node = xx tpush_struct(UI_%2_Node);
 	node.v = v;
 	node.next = active_cxt.%1_stack.top;
+	node.auto = auto;
 	active_cxt.%1_stack.top = node;
 }
 DONE

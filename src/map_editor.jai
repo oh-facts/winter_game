@@ -400,6 +400,10 @@ editor_update :: (delta : float32, events : *os.EventList,
 	editor_window_begin(map_editor_window, events);
 	editor_push_file_id(map_editor_window, .Map_Editor);
 	
+	ui_push_size_node(ui_size_pct(1, 0));
+	editor_col_begin();
+	ui_pop_size_node();
+	
 	if !map_editor_window.hide {
 		ui_push_size_x_node(ui_size_pct(0.4, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));
@@ -426,12 +430,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 		ui_push_size_x_node(ui_size_pct(1, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));
 		
-		if editor_button("Entity").active {
-			me_mode = .Entity;
-		}
-		
-		if editor_button("Tile").active {
-			me_mode = .Tile;
+		for 0 .. ME_Mode.Count - 1 {
+			if me_mode == it {
+				ui_push_border_color_node(r.COLOR_ORANGE, true);
+			}
+			text = tprint("%", it); 
+			if editor_button(text, xx it).active {
+				me_mode = it;
+			}
 		}
 		
 		ui_pop_size_node();
@@ -439,47 +445,55 @@ editor_update :: (delta : float32, events : *os.EventList,
 		
 		if me_mode == .Tile {
 			
-			ui_push_size_node(ui_size_children_sum(1));
-			editor_row_begin();
-			ui_pop_size_node();
+			ui_push_size_x_node(ui_size_pct(1, 0), true);
+			ui_push_size_y_node(ui_size_px(24, 1), true);
 			
-			ui_push_size_x_node(ui_size_px(256, 0));
+			editor_row_begin();
+			
+			ui_push_size_x_node(ui_size_pct(1, 0));
 			ui_push_size_y_node(ui_size_px(24, 1));
 			
 			for tile_tools {
 				text = tprint("%", it.name);
+				
+				if it_index == active_tool_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
+				}
+				
 				if editor_button(text, it_index).active {
 					active_tool_index = xx it_index;
 				}
+				
 			}
 			
 			ui_pop_size_node();
-			
 			editor_row_end();
 			
 			if active_tool_index == xx Tool_Kind.Paint {
-				ui_push_size_node(ui_size_children_sum(1));
+				ui_push_size_node(ui_size_children_sum(1), true);
 				editor_row_begin();
-				ui_pop_size_node();
 				
 				ui_push_size_x_node(ui_size_px(256, 0));
 				ui_push_size_y_node(ui_size_px(24, 1));
 				
 				for paints {
 					text = tprint("%", it.name);
+					
+					if it_index == active_paint_index {
+						ui_push_border_color_node(r.COLOR_ORANGE, true);
+					}
+					
 					if editor_button(text, it_index).active {
 						active_paint_index = it_index;
 					}
 				}
 				
 				ui_pop_size_node();
-				
 				editor_row_end();
 			}
 			
-			
 		} else if me_mode == .Entity {
-			for 0 .. Entity_Kind.Count {
+			for 0 .. Entity_Kind.Count - 1 {
 				text = tprint("%", it);
 				if editor_button(text, xx it).active {
 					active_entity_index = xx it;
@@ -488,6 +502,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 		}
 		ui_pop_size_node();
 	}
+	
+	editor_row_end();
 	
 	editor_pop_file_id(map_editor_window);
 	editor_window_end(map_editor_window);
