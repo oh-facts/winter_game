@@ -421,6 +421,18 @@ editor_update :: (delta : float32, events : *os.EventList,
 		editor_label(text);
 		ui_pop_text_align_node();
 		
+		editor_spacer(ui_size_px(8));
+		
+		if editor_button("save").active {
+			save_tileworld(editor_tileworld);
+		}
+		
+		if editor_button("load").active {
+			load_tileworld(*editor_tileworld);
+		}
+		
+		editor_spacer(ui_size_px(8));
+		
 		ui_push_size_x_node(ui_size_pct(1, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));
 		

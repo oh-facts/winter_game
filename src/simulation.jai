@@ -279,32 +279,19 @@ world_update :: (delta : float32, events : *os.EventList,
 		world_tileworld = init_tileworld();
 		
 		load_tileworld(*world_tileworld);
+		
+		entity_store = editor_entity_store;
+		
+		for 0 .. entity_store.count - 1{
+			e := entity_store.first + it;
+			if e.kind == .Player {
+				py = e;
+				break;
+			}
+		}
+		
 		//load_entities();
 	}
-	
-	editor_window_begin(world_window, events);
-	
-	if !world_window.hide {
-		text := "restart";
-		if editor_label(text).active {
-			demo_quest = .{};
-			unload_entities();
-			load_tileworld(*world_tileworld);
-			//load_entities();
-		}
-		
-		if py {
-			text = tprint("%", tm_index);
-			editor_label(text);
-			
-			text = tprint("%", py.tile_pos);
-			editor_label(text);
-		}
-		
-		text = tprint("%", delta);
-		editor_label(text);
-	}
-	editor_window_end(world_window);
 	
 	tick(events, passes, delta);
 }

@@ -596,7 +596,7 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_scissor_node(.{});
 	ui_push_flags_node(0);
 	ui_push_text_padding_node(0);
-	ui_push_bg_color_node(.{0, 0, 0, 1});
+	ui_push_bg_color_node(.{0, 0, 0, 0.5});
 	ui_push_text_align_node(.Middle);
 	ui_push_border_color_node(r.COLOR_WHITE);
 }

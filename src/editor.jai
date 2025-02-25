@@ -123,16 +123,21 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	editor_push_file_id(window, .Editor);
 	
 	ui_push_flags_node(UI_Floating | .Bg | .Scissor);
-	ui_push_size_x_node(ui_size_px(window.size.x));
-	ui_push_size_y_node(ui_size_px(window.size.y));
-	//ui_push_size_y_node(ui_size_children_sum());
+	ui_push_size_x_node(ui_size_px(window.size.x), true);
+	ui_push_border_color_node(r.COLOR_MAGENTA, true);
+	
+	if window.hide {
+		ui_push_size_y_node(ui_size_children_sum(), true);
+	} else {
+		ui_push_size_y_node(ui_size_px(window.size.y), true);
+	}
+	
 	root := ui_widget_from_key(.{.[199, 99, 99]});
 	root.scissor = root.dst;
 	root.child_layout_axis = .Y;
 	root.computed_pos = window.pos.component;
 	window.dst = root.dst;
 	
-	ui_pop_size_node();
 	ui_pop_flags_node();
 	
 	ui_push_parent_node(root);
@@ -198,6 +203,9 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	if window.resize_grabbed {
 		window.size += mpos - window.last_mpos;
+		
+		window.size.x = clamp_bot(32., window.size.x);
+		window.size.y = clamp_bot(64., window.size.y);
 		
 		if os.event(window.events, .LMB, .Released) {
 			window.resize_grabbed = false;
@@ -385,6 +393,8 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Bg {
 		img := r.push_rect2(passes, root.dst, root.bg_color);
+		img.border_color = root.border_color;//r.COLOR_WHITE;
+		img.border_thickness = 3.5;;
 	}
 	
 	if root.flags & .Clickable {
@@ -392,13 +402,13 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		color := root.bg_color;
 		
 		if root.hot {
-			color = r.COLOR_BLUE;
+			color *= 1.1;
 		}
 		
 		bg := r.push_rect2(passes, dst, color);
 		bg.border_thickness = 3;
 		bg.border_color = root.border_color;
-		bg.radius = 4;
+		//bg.radius = 4;
 	}
 	
 	if root.flags & .Image {
@@ -408,9 +418,9 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		}
 		
 		bg := r.push_rect2(passes, root.dst, r.COLOR_BLACK);
-		bg.border_thickness = 3;
+		bg.border_thickness = 1;
 		bg.border_color = r.COLOR_WHITE;
-		bg.radius = 4;
+		//bg.radius = 4;
 		
 		img := r.push_rect2(passes, root.dst, color);
 		img.tex_id = root.image.U64[1];
@@ -468,6 +478,8 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			if root.size.x > text_width {
 				text_pos.x += (root.size.x - text_width) / 2;
 			}
+		} else {
+			text_pos.x += 4;
 		}
 		
 		r.push_text(passes, font, root.text, text_pos, font_size, text_color);
