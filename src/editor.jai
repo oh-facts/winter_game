@@ -2,10 +2,12 @@ editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
 active_window : *Editor_Window;
+// TODO(mizu): in case text doesnt fit in a certain width, render ...
 
 Editor_File_Id :: enum {
 	Null;
 	Scratch;
+	Editor;
 	Map_Editor;
 }
 
@@ -104,13 +106,112 @@ editor_init_window :: (title : string) -> *Editor_Window {
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
-	out.size = .{30, 40};
+	out.size = .{400, 300};
 	out.arena = arena_init();
 	return out;
 }
 
+editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
+	window.last_touched = editor_clock;
+	window.events = events;
+	active_window = window;
+	
+	editor_push_file_id(window, .Editor);
+	
+	ui_push_flags_node(UI_Floating | .Bg);
+	ui_push_size_x_node(ui_size_px(window.size.x));
+	ui_push_size_y_node(ui_size_px(window.size.y));
+	//ui_push_size_y_node(ui_size_children_sum());
+	root := ui_widget_from_key(.{.[199, 99, 99]});
+	root.child_layout_axis = .Y;
+	root.computed_pos = window.pos.component;
+	window.dst = root.dst;
+	
+	ui_pop_size_node();
+	ui_pop_flags_node();
+	
+	ui_push_parent_node(root);
+	
+	// titlebar
+	{
+		ui_push_flags_node(.Bg);
+		ui_push_size_x_node(ui_size_pct(1.));
+		ui_push_size_y_node(ui_size_px(32));
+		titlebar := ui_widget_from_key(.{.[99, 99, 99]});
+		titlebar.child_layout_axis = .X;
+		titlebar.bg_color = r.COLOR_MAGENTA;
+		ui_pop_size_node();
+		ui_pop_flags_node();
+		
+		ui_push_parent_node(titlebar);
+		
+		ui_push_size_x_node(ui_size_pct(0.25, 0));
+		ui_push_size_y_node(ui_size_pct(1, 0));
+		
+		if editor_button("hide").active {
+			window.hide = !window.hide;
+		}
+		
+		if editor_label("Title").active {
+			window.grabbed = true;
+		}
+		
+		editor_spacer(ui_size_pct(1, 0));
+		
+		editor_button("close");
+		ui_pop_size_node();
+		
+		ui_pop_parent_node();
+		
+	}
+	
+	editor_pop_file_id(window);
+	
+	if window.grabbed {
+		window.pos += mpos - window.last_mpos;
+		if os.event(events, .LMB, .Released) {
+			window.grabbed = false;
+		}
+	}
+	
+}
+
 editor_window_end :: (window : *Editor_Window) {
 	assert(window == active_window);
+	
+	editor_push_file_id(window, .Editor);
+	
+	if !window.hide {
+		editor_spacer(ui_size_pct(1, 0));
+		
+		ui_push_size_x_node(ui_size_pct(1, 1));
+		editor_row_begin();
+		ui_pop_size_x_node();
+		
+		editor_spacer(ui_size_pct(1, 0));
+		ui_push_size_node(ui_size_px(32, 1));
+		if editor_image(r.get_white_square()).active {
+			window.resize_grabbed = true;
+		}
+		
+		ui_pop_size_node();
+		editor_row_end();
+	}
+	
+	if window.resize_grabbed {
+		window.size += mpos - window.last_mpos;
+		
+		if os.event(window.events, .LMB, .Released) {
+			window.resize_grabbed = false;
+		}
+		
+	}
+	
+	ui_pop_parent_node();
+	
+	editor_pop_file_id(window);
+	
+	
 	active_window = xx 0;
 	/*
 	if point_in_rect(mpos, window.root.dst) {
@@ -122,13 +223,6 @@ editor_window_end :: (window : *Editor_Window) {
 	}
 	*/
 	window.last_mpos = mpos;
-	
-}
-
-editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
-	window.last_touched = editor_clock;
-	window.events = events;
-	active_window = window;
 }
 
 editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
@@ -138,7 +232,10 @@ editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signa
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
 	
-	return ui_widget_impl(.Text, id);
+	out := ui_widget_impl(.Text, id);
+	out.widget.text = text;
+	
+	return out;
 }
 
 editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
@@ -196,24 +293,16 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index :=
 }
 
 editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
-	
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
 	
-	parent_id := UI_ID.{};
-	parent_id.v[0] = xx loc.line_number;
-	parent_id.v[1] = xx index;
-	parent_id.v[2] = xx active_window_file_id();
+	out := ui_widget_from_key(id);
+	ui_push_parent_node(out);
+	out.child_layout_axis = .X;
 	
-	tb := ui_widget_from_key(parent_id);
-	ui_push_parent_node(tb);
-	tb.child_layout_axis = .X;
-	
-	tb.pref_size[0].strictness = 0;
-	tb.pref_size[1].strictness = 0;
-	
-	return ui_widget_impl(0, id);
+	return .{};
 }
 
 active_window_file_id :: () -> Editor_File_Id {
@@ -221,17 +310,16 @@ active_window_file_id :: () -> Editor_File_Id {
 }
 
 editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
-	
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
-	parent_id : UI_ID = .{.[xx loc.line_number, xx index, xx active_window_file_id()]};
-	tb := ui_widget_from_key(parent_id);
-	ui_push_parent_node(tb);
-	tb.child_layout_axis = .Y;
 	
-	return ui_widget_impl(0, id);
+	out := ui_widget_from_key(id);
+	ui_push_parent_node(out);
+	out.child_layout_axis = .Y;
+	
+	return .{};
 }
 
 editor_row_end :: () {
@@ -378,14 +466,16 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		
 		text_rect := r.get_text_rect(font, root.text, .{}, font_size);
 		text_height := text_rect.max.y - text_rect.min.y;
-		text_width := text_rect.max.x - text_rect.min.x;
 		
 		if root.size.y > text_height {
 			text_pos.y += (root.size.y - text_height) / 2;
 		}
 		
-		if root.size.x > text_width {
-			text_pos.x += (root.size.x - text_width) / 2;
+		if root.text_align == .Middle {
+			text_width := text_rect.max.x - text_rect.min.x;
+			if root.size.x > text_width {
+				text_pos.x += (root.size.x - text_width) / 2;
+			}
 		}
 		
 		r.push_text(passes, font, root.text, text_pos, font_size, text_color);

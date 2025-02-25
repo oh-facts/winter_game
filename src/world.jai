@@ -1,6 +1,6 @@
 // i was thinking of using this as an offset into an image. So imagine a massive image with .. I don't feel like writing the rest I am particularly sad.
 
-paints : [5]Entity : .[.{},
+paints : [5]Entity : .[.{name = "empty"},
 											 .{auto = true, art_id = .TerrainTemplate, name = "template 1"},
 											 .{auto = true, art_id = .TerrainGrass, name = "auto grass"},
 											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9},

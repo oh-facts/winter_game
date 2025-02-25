@@ -332,12 +332,12 @@ ui_layout_fixed_size :: (root : *UI_Widget, axis : UI_Axis) {
 			root.computed_size[axis] = dst.max.y;
 		}
 		
-		if root.flags & .Clickable {
-			root.computed_size[axis] += root.text_padding;
-		}
-		
 		case .Pixels;
 		root.computed_size[axis] = root.pref_size[axis].value;
+	}
+	
+	if root.flags & .Text {
+		root.computed_size[axis] += root.text_padding;
 	}
 	
 }
@@ -502,7 +502,7 @@ ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 
 ui_layout_pos :: (root : *UI_Widget) {
 	
-	lay_pos : float32 = root.offset[root.child_layout_axis];
+	lay_pos : float32;// = root.offset[root.child_layout_axis];
 	
 	{
 		child := root.first;
@@ -517,7 +517,6 @@ ui_layout_pos :: (root : *UI_Widget) {
 				child.computed_pos[axis] += lay_pos;
 				
 				lay_pos += child.computed_size[axis];
-				
 			}
 			
 			pos := Vector2.{child.computed_pos[0], child.computed_pos[1]};

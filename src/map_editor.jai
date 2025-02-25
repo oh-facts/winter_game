@@ -377,7 +377,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		else if me_mode == .Entity {
 			
 			if lmbdown_event {
-				entity_from_kind(*editor_entity_store, .Player, wmpos);
+				entity_from_kind(*editor_entity_store, xx active_entity_index, wmpos);
 			}
 			
 		}
@@ -398,6 +398,97 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	// @panel
 	editor_window_begin(map_editor_window, events);
+	editor_push_file_id(map_editor_window, .Map_Editor);
 	
+	if !map_editor_window.hide {
+		ui_push_size_x_node(ui_size_pct(0.4, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		ui_push_text_align_node(.Left);
+		text := tprint("mpos %", mpos);
+		editor_label(text);
+		
+		text = tprint("wmpos %", wmpos);
+		editor_label(text);
+		
+		text = tprint("tile_pos %", tile_pos);
+		editor_label(text);
+		
+		text = tprint("tilemap %", active_tilemap_index);
+		editor_label(text);
+		ui_pop_text_align_node();
+		
+		ui_push_size_x_node(ui_size_pct(1, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		
+		editor_row_begin();
+		ui_pop_size_node();
+		
+		ui_push_size_x_node(ui_size_pct(1, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		
+		if editor_button("Entity").active {
+			me_mode = .Entity;
+		}
+		
+		if editor_button("Tile").active {
+			me_mode = .Tile;
+		}
+		
+		ui_pop_size_node();
+		editor_row_end();
+		
+		if me_mode == .Tile {
+			
+			ui_push_size_node(ui_size_children_sum(1));
+			editor_row_begin();
+			ui_pop_size_node();
+			
+			ui_push_size_x_node(ui_size_px(256, 0));
+			ui_push_size_y_node(ui_size_px(24, 1));
+			
+			for tile_tools {
+				text = tprint("%", it.name);
+				if editor_button(text, it_index).active {
+					active_tool_index = xx it_index;
+				}
+			}
+			
+			ui_pop_size_node();
+			
+			editor_row_end();
+			
+			if active_tool_index == xx Tool_Kind.Paint {
+				ui_push_size_node(ui_size_children_sum(1));
+				editor_row_begin();
+				ui_pop_size_node();
+				
+				ui_push_size_x_node(ui_size_px(256, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				for paints {
+					text = tprint("%", it.name);
+					if editor_button(text, it_index).active {
+						active_paint_index = it_index;
+					}
+				}
+				
+				ui_pop_size_node();
+				
+				editor_row_end();
+			}
+			
+			
+		} else if me_mode == .Entity {
+			for 0 .. Entity_Kind.Count {
+				text = tprint("%", it);
+				if editor_button(text, xx it).active {
+					active_entity_index = xx it;
+				}
+			}
+		}
+		ui_pop_size_node();
+	}
+	
+	editor_pop_file_id(map_editor_window);
 	editor_window_end(map_editor_window);
 }
