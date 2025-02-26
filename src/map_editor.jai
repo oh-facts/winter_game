@@ -18,7 +18,7 @@ Tool_Kind :: enum {
 	Fill;
 }
 
-Tool_Kind2 :: enum {
+Entity_Tool_Kind :: enum {
 	Select;
 	Create;
 	Move;
@@ -29,8 +29,8 @@ Tool :: struct {
 	name : string;
 };
 
-Tool2 :: struct {
-	kind : Tool_Kind2;
+Entity_Tool :: struct {
+	kind : Entity_Tool_Kind;
 	name : string;
 };
 
@@ -40,10 +40,10 @@ tile_tools : [4]Tool : .[.{kind = .Select, name = "select"},
 												 .{kind = .Fill, name = "fill"}
 												 ];
 
-entity_tools : [3]Tool2 : .[.{kind = .Select, name = "select"},
-														.{kind = .Create, name = "create"},
-														.{kind = .Move, name = "move"}
-														];
+entity_tools : [3]Entity_Tool : .[.{kind = .Select, name = "select"},
+																	.{kind = .Create, name = "create"},
+																	.{kind = .Move, name = "move"}
+																	];
 
 editor_tileworld : Tileworld;
 editor_entity_store : Entity_Store;
@@ -54,6 +54,7 @@ paint_layer : int;
 grid_toggle : bool = true;
 active_tool_index := 0;
 active_paint_index := 0;
+active_entity_tool_index := 0;
 active_entity_index := 0;
 me_mode := ME_Mode.Tile;
 
@@ -505,13 +506,56 @@ editor_update :: (delta : float32, events : *os.EventList,
 			}
 			
 		} else if me_mode == .Entity {
-			for 0 .. Entity_Kind.Count - 1 {
-				text = tprint("%", it);
-				if editor_button(text, xx it).active {
-					active_entity_index = xx it;
+			
+			ui_push_size_x_node(ui_size_pct(1, 0), true);
+			ui_push_size_y_node(ui_size_px(24, 1), true);
+			
+			editor_row_begin();
+			
+			ui_push_size_x_node(ui_size_pct(1, 0));
+			ui_push_size_y_node(ui_size_px(24, 1));
+			
+			for entity_tools {
+				text = tprint("%", it.name);
+				
+				if it_index == active_entity_tool_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
 				}
+				
+				if editor_button(text, xx it_index).active {
+					active_entity_tool_index = xx it_index;
+				}
+				
+			}
+			
+			ui_pop_size_node();
+			editor_row_end();
+			
+			if active_entity_tool_index == xx Entity_Tool_Kind.Create {
+				
+				ui_push_size_node(ui_size_children_sum(1), true);
+				editor_row_begin();
+				
+				ui_push_size_x_node(ui_size_px(256, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				for 0 .. Entity_Kind.Count - 1 {
+					text = tprint("%", it);
+					
+					if it == xx active_entity_index {
+						ui_push_border_color_node(r.COLOR_ORANGE, true);
+					}
+					
+					if editor_button(text, xx it).active {
+						active_entity_index = xx it;
+					}
+				}
+				
+				ui_pop_size_node();
+				editor_row_end();
 			}
 		}
+		
 		ui_pop_size_node();
 	}
 	
