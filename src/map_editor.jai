@@ -26,23 +26,21 @@ Entity_Tool_Kind :: enum {
 
 Tool :: struct {
 	kind : Tool_Kind;
-	name : string;
 };
 
 Entity_Tool :: struct {
 	kind : Entity_Tool_Kind;
-	name : string;
 };
 
-tile_tools : [4]Tool : .[.{kind = .Select, name = "select"},
-												 .{kind = .Paint, name = "paint"},
-												 .{kind = .Move, name = "move"},
-												 .{kind = .Fill, name = "fill"}
+tile_tools : [4]Tool : .[.{kind = .Select},
+												 .{kind = .Paint},
+												 .{kind = .Move},
+												 .{kind = .Fill}
 												 ];
 
-entity_tools : [3]Entity_Tool : .[.{kind = .Select, name = "select"},
-																	.{kind = .Create, name = "create"},
-																	.{kind = .Move, name = "move"}
+entity_tools : [3]Entity_Tool : .[.{kind = .Select},
+																	.{kind = .Create},
+																	.{kind = .Move}
 																	];
 
 editor_tileworld : Tileworld;
@@ -467,7 +465,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 			ui_push_size_y_node(ui_size_px(24, 1));
 			
 			for tile_tools {
-				text = tprint("%", it.name);
+				text = tprint("%", it.kind);
 				
 				if it_index == active_tool_index {
 					ui_push_border_color_node(r.COLOR_ORANGE, true);
@@ -516,7 +514,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 			ui_push_size_y_node(ui_size_px(24, 1));
 			
 			for entity_tools {
-				text = tprint("%", it.name);
+				text = tprint("%", it.kind);
 				
 				if it_index == active_entity_tool_index {
 					ui_push_border_color_node(r.COLOR_ORANGE, true);
