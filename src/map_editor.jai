@@ -11,52 +11,14 @@ ME_Mode :: enum {
 	Count;
 }
 
-Tool_Kind :: enum {
+ME_Tool_Kind :: enum {
 	Select;
 	Paint;
 	Move;
 	Fill;
-}
-
-Entity_Tool_Kind :: enum {
-	Select;
 	Create;
-	Move;
+	Inspect;
 }
-
-Tool :: struct {
-	kind : Tool_Kind;
-	name : string;
-};
-
-Entity_Tool :: struct {
-	kind : Entity_Tool_Kind;
-	name : string;
-};
-
-tile_tools : [4]Tool : .[.{kind = .Select, name = "select"},
-												 .{kind = .Paint, name = "paint"},
-												 .{kind = .Move, name = "move"},
-												 .{kind = .Fill, name = "fill"}
-												 ];
-
-entity_tools : [3]Entity_Tool : .[.{kind = .Select, name = "select"},
-																	.{kind = .Create, name = "create"},
-																	.{kind = .Move, name = "move"}
-																	];
-
-editor_tileworld : Tileworld;
-editor_entity_store : Entity_Store;
-
-tile_pos : Vector2i;
-paint_layer : int;
-
-grid_toggle : bool = true;
-active_tool_index := 0;
-active_paint_index := 0;
-active_entity_tool_index := 0;
-active_entity_index := 0;
-me_mode := ME_Mode.Tile;
 
 SelectionTile :: struct {
 	tile : Tile;
@@ -64,16 +26,39 @@ SelectionTile :: struct {
 	layer : int;
 }
 
-selection_started : bool;
-selection_tile_start : Vector2i;
-selection_tile_end : Vector2i;
-selection_buffer : [..]SelectionTile;
-selection_yes : bool;
+ME_Tool :: struct {
+	kind : ME_Tool_Kind;
+	filter : ME_Mode;
+	entity_kind : Entity_Kind;
+	paint_index : s32;
+	
+	// used by selection and moving
+	started : bool;
+	start : Vector2i;
+	end : Vector2i;
+	buffer : [..]SelectionTile;
+	in_progress : bool;
+};
 
-move_start : Vector2i;
-move_end : Vector2i;
-moving_started := false;
-moving_yes := false;
+// which layer to modify
+paint_layer : int;
+
+me_tools : [6]ME_Tool : .[.{kind = .Select, filter = .Tile},
+													.{kind = .Paint, filter = .Tile},
+													.{kind = .Move, filter = .Tile},
+													.{kind = .Fill, filter = .Tile},
+													.{kind = .Create, filter = .Entity},
+													.{kind = .Inspect, filter = .Entity},
+													];
+
+editor_tileworld : Tileworld;
+editor_entity_store : Entity_Store;
+
+tile_pos : Vector2i;
+
+grid_toggle : bool = true;
+active_tool_index := 0;
+
 active_tilemap_index : Vector2i;
 map_editor_lmb_held : bool;
 
@@ -152,6 +137,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos, Tilemap.rect);
 	
+	tool := *me_tools[active_tool_index];
+	
 	if tilemap_in_focus {
 		
 		// collect input events
@@ -180,206 +167,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 			rmb_held = false;
 		}
 		
-		if me_mode == .Tile {
-			
-			
-			tool := *tile_tools[active_tool_index];
-			
-			if tool.kind == .Paint {
-				// paint
-				if map_editor_lmb_held {
-					tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = xx active_paint_index;
-					
-				}
-				// erase
-				else if rmb_held{
-					tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = 0;
-				}
-			}
-			else if tool.kind == .Fill {
-				
-				// selection started
-				if (map_editor_lmb_held || rmb_held) && !selection_started {
-					selection_started = true;
-					selection_tile_start = tile_pos;
-				}
-				
-				if selection_started {
-					tile_select_range : RectS32;
-					
-					// tile selection range
-					tile_select_range.min.x = min(selection_tile_start.x, selection_tile_end.x);
-					tile_select_range.min.y = min(selection_tile_start.y, selection_tile_end.y);
-					
-					tile_select_range.max.x = max(selection_tile_start.x, selection_tile_end.x);
-					tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
-					
-					// selection in progress
-					if (map_editor_lmb_held || rmb_held) {
-						//print("selectioning ...\n");
-						
-						selection_tile_end = tile_pos;
-						
-						// draw selection outline
-						dst : RectF32;
-						dst.min.x = tile_select_range.min.x * 32.;
-						dst.min.y = tile_select_range.min.y * 32.;
-						dst.max.x = (tile_select_range.max.x + 1) * 32.;
-						dst.max.y = (tile_select_range.max.y + 1) * 32.;
-						
-						r.push_rect2(passes, dst, r.COLOR_CYAN);
-					}
-					// selection ended
-					else {
-						//print("selection ended\n");
-						
-						selection_started = false;
-						selection_yes = true;
-						
-						
-						for y : tile_select_range.min.y .. tile_select_range.max.y {
-							
-							for x : tile_select_range.min.x .. tile_select_range.max.x {
-								tile_from_local_index(editor_tilemap, .{xx x, xx y}, .Gfx).v[paint_layer] = xx active_paint_index;
-							}
-						}
-					}
-				}
-			}
-			else if tool.kind == .Select {
-				// selection started
-				if map_editor_lmb_held && !selection_started {
-					selection_started = true;
-					selection_tile_start = tile_pos;
-				}
-				
-				if selection_started {
-					tile_select_range : RectS32;
-					
-					// tile selection range
-					tile_select_range.min.x = min(selection_tile_start.x, selection_tile_end.x);
-					tile_select_range.min.y = min(selection_tile_start.y, selection_tile_end.y);
-					
-					tile_select_range.max.x = max(selection_tile_start.x, selection_tile_end.x);
-					tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
-					
-					// selection in progress
-					if map_editor_lmb_held {
-						//print("selectioning ...\n");
-						
-						selection_tile_end = tile_pos;
-						
-						// draw selection outline
-						dst : RectF32;
-						dst.min.x = tile_select_range.min.x * 32.;
-						dst.min.y = tile_select_range.min.y * 32.;
-						dst.max.x = (tile_select_range.max.x + 1) * 32.;
-						dst.max.y = (tile_select_range.max.y + 1) * 32.;
-						
-						r.push_rect2(passes, dst, r.COLOR_CYAN);
-					}
-					// selection ended
-					else {
-						//print("selection ended\n");
-						selection_started = false;
-						selection_yes = true;
-						
-						// add valid tiles in the selection rect to the selection buffer 
-						for y : tile_select_range.min.y .. tile_select_range.max.y {
-							for x : tile_select_range.min.x .. tile_select_range.max.x {
-								
-								tile := tile_from_local_index(editor_tilemap, .{xx x, xx y}, .Gfx);
-								
-								if tile.v[paint_layer] {
-									select_tile : SelectionTile;
-									select_tile.tile = << tile;
-									select_tile.pos = .{x, y};
-									select_tile.layer = paint_layer;
-									
-									array_add(*selection_buffer, select_tile);
-								}
-							}
-						}
-					}
-				}
-			}
-			else if tool.kind == .Move {
-				if lmbdown_event {
-					move_start = tile_pos;
-					moving_started = true;
-				}
-				
-				if lmbup_event {
-					move_end = tile_pos;
-					moving_yes = true;
-					moving_started = false;
-				}
-				
-				if moving_started {
-					mv := tile_pos - move_start;
-					
-					for selection_buffer {
-						
-						dst := tile_rect_from_index(it.pos + mv);
-						r.push_rect2(passes, dst, r.COLOR_ORANGE);
-					}
-				}
-				
-				if moving_yes {
-					mv := move_end - move_start;
-					
-					for *selection_buffer {
-						tile1 := tile_from_local_index(editor_tilemap, it.pos, .Gfx);
-						tile1.v[it.layer] = 0;
-						
-						tile := tile_from_local_index(editor_tilemap, mv + it.pos, .Gfx);
-						<< tile = it.tile;
-						it.pos = mv + it.pos;
-					}
-					
-					moving_yes = false;
-				}
-			}
-			
-			if (tool.kind == .Move) || (tool.kind == .Select) {
-				if rmbdown_event {
-					selection_yes = false;
-					
-					array_reset_keeping_memory(*selection_buffer);
-				}
-				
-				// preview selection
-				if selection_yes {
-					
-					for selection_buffer {
-						
-						dst := tile_rect_from_index(it.pos);
-						r.push_rect2(passes, dst, .{0, 0, 1, 0.3});
-						
-					}
-					
-					// delete selection
-					if os.event(events, .DEL, .Pressed) {
-						// empty buffer
-						for selection_buffer {
-							tile := tile_from_local_index(editor_tilemap, it.pos, .Gfx);
-							tile.v[it.layer] = 0;
-						}
-						
-						array_reset_keeping_memory(*selection_buffer);
-						selection_yes = false;
-					}
-				}
-			}
-			
-			// preview tile pos
-			r.push_rect2(passes, tile_rect_from_index(tile_pos), .{0, 0, 0, 1});
-		}
-		else if me_mode == .Entity {
-			
-			if lmbdown_event {
-				entity_from_kind(*editor_entity_store, xx active_entity_index, wmpos);
-			}
+		if tool.filter  == .Tile {
 			
 		}
 	} 
@@ -444,7 +232,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		ui_push_size_y_node(ui_size_px(24, 1));
 		
 		for 0 .. ME_Mode.Count - 1 {
-			if me_mode == it {
+			if tool.filter == it {
 				ui_push_border_color_node(r.COLOR_ORANGE, true);
 			}
 			text = tprint("%", it); 
