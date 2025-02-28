@@ -25,6 +25,7 @@
 
 #import "mizu_base";
 r :: #import "render";
+tex :: #import "texture";
 
 #load "asset.jai";
 #load "editor.jai";
@@ -82,9 +83,9 @@ Mode :: enum {
 	COUNT;
 }
 
-current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Tile_Editor;
 //current_mode : Mode = .Game;
-//current_mode : Mode = .Scratch;
+current_mode : Mode = .Scratch;
 
 arena : *Arena;
 
@@ -113,6 +114,8 @@ main :: () {
 	ui_cxt := ui_init();
 	editor_ui_cxt = ui_cxt;
 	timer : float32;
+	
+	tex.hash(.{});
 	
 	while !quit {
 		timer += xx delta;

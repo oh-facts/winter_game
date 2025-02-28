@@ -206,6 +206,10 @@ arena_push_impl :: (arena : *Arena, size : u64) -> *void {
 	return memory;
 }
 
+arena_free :: (arena : *Arena) {
+	
+}
+
 push_struct :: (arena : *Arena, type : Type) -> *void #expand{
 	return arena_push_impl(arena, size_of(type));
 }

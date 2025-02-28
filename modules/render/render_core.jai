@@ -63,6 +63,7 @@ Pass_Kind :: enum {
 	Beam;
 	Begin_Water;
 	End_Water;
+	Voxel;
 }
 
 Pass :: struct {
@@ -89,6 +90,14 @@ Pass_List :: struct {
 Scissor_Node :: struct {
 	next : *Scissor_Node;
 	v : RectF32;
+}
+
+push_voxel :: (list :*Pass_List) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .Voxel || (list.gen != list.last_gen){
+		pass = push_pass(list, .Voxel);
+	}
 }
 
 push_scissor :: (list : *Pass_List, v : RectF32) {

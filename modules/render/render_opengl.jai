@@ -106,6 +106,7 @@ SHADER_PROG :: enum {
 	WATER;
 	FINAL;
 	BLUR;
+	VOXEL;
 	COUNT;
 };
 
@@ -114,7 +115,8 @@ vert_shader_paths :[SHADER_PROG.COUNT]string: .["ui.vert",
 																								"beam.vert",
 																								"water.vert",
 																								"final.vert",
-																								"blur.vert"
+																								"blur.vert",
+																								"voxel.vert"
 																								];
 
 frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
@@ -122,7 +124,8 @@ frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
 																								"beam.frag",
 																								"water.frag",
 																								"final.frag",
-																								"blur.frag"
+																								"blur.frag",
+																								"voxel.frag"
 																								];
 
 State :: struct {
@@ -138,6 +141,9 @@ State :: struct {
 	blur_fb : [2]Framebuffer;
 	
 	last_screen_size : Vector2;
+	
+	voxel_prog : GLuint;
+	voxel_tex : Handle;
 };
 
 state : *State;
@@ -186,6 +192,20 @@ init :: () {
 		
 		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
 	}
+	
+	cs_shader_file := read_entire_file(tprint("%/%", shaders_folder, "voxel.cs"));
+	
+	vox_shader := glCreateShader(GL_COMPUTE_SHADER);
+	glShaderSource(vox_shader, 1, *cs_shader_file.data, xx 0);
+	glCompileShader(vox_shader);
+	check_compile_errors(vox_shader, "cs shader");
+	
+	state.voxel_prog = glCreateProgram();
+	glAttachShader(state.voxel_prog, vox_shader);
+	glLinkProgram(state.voxel_prog);
+	check_link_errors(state.voxel_prog, "cs shader linking");
+	
+	state.voxel_tex = image(.{w = 1920, h = 1080});
 	
 	for i : 0 .. INST_BUFFER.COUNT - 1 {		
 		state.inst_buffer[i] = make_buffer(MB(8));
@@ -306,6 +326,22 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				glClear(GL_COLOR_BUFFER_BIT);
 				
+				case .Voxel;
+				
+				voxel_draw : *Image = xx state.voxel_tex.U64[0];
+				glUseProgram(state.voxel_prog);
+				
+				glBindImageTexture(0, voxel_draw.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+				
+				glDispatchCompute(xx ceil(screen_size.x / 8), xx ceil(screen_size.y / 4), 1);
+				glMemoryBarrier(GL_ALL_BARRIER_BITS);
+				
+				shader := state.shader_prog[SHADER_PROG.VOXEL];
+				
+				glUseProgram(shader);
+				glBindTextureUnit(0, voxel_draw.id);
+				glUniform1i(glGetUniformLocation(shader, "screen"), 0);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
 				case .End_Water;
 				shader := state.shader_prog[SHADER_PROG.WATER];
 				glUseProgram(shader);
@@ -453,9 +489,10 @@ image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 	
-	glTextureStorage2D(id, 1, GL_SRGB8_ALPHA8, xx bmp.w, xx bmp.h);
-	glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
-	
+	glTextureStorage2D(id, 1, GL_RGBA32F, xx bmp.w, xx bmp.h);
+	if bmp.data {
+		glTextureSubImage2D(id, 0, 0, 0, xx bmp.w, xx bmp.h, GL_RGBA, GL_UNSIGNED_BYTE, bmp.data);
+	}
 	glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	
