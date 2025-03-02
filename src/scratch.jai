@@ -10,8 +10,8 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		scratch_initialized = true;
 		
 		paths : [4]string = .[
-													"art/fat/1.png",
 													"art/impolo-idle.png",
+													"art/fat/1.png",
 													"art/ball.png",
 													"art/siren.png"
 													];
@@ -48,7 +48,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	ell := r.push_rect2(passes, rectF32(0, 0, 1920, 1080), r.COLOR_WHITE);
 	scope := tex.scope_open();
 	
-	ell.tex_id = tex.handle_from_hash(scope, hash[(counter / 165) % 4]).U64[1];
+	ell.tex_id = tex.handle_from_hash(scope, hash[(counter / 165) % 2]).U64[1];
 	
 	tex.scope_close(scope);
 	

@@ -1,10 +1,4 @@
-// TODO(mizu): complete texture hash
-// Make it async
-// Let art be a higher level layer that handles
-// the frame x, frame y, etc. kind of stuff
-// make an editor for it too?
-// Later. Just ahrdcode for now.
-// Look at other engines rq
+// TODO(mizu):
 
 // keys map to hashes and data
 // hashes map to keys
@@ -13,6 +7,11 @@
 // I think I want to evolve this into an all purpose cache.
 
 // Concepts borrowed (stolen) from the RAD debugger. I am trying to explore some ideas so I can make enough discoveries / possible improvements to be less of a leech.
+
+// It is only so "async"
+// submitting calls from different threads in opengl is pointless because they are still collected then submitted as one. The reading and freeing happens on a bg thread. For now, the worker loading happens on one bg thread, and the way the code works, I don't really need snyc.
+
+// When I use vulkan, I will try again. For testing, I just use a very big image (40mb as png, 1.5gb loaded), and I see if the main thread stalls at all.
 
 #import "Basic";
 #import "String";
@@ -55,6 +54,7 @@ Node :: struct {
 	work_next : *Node;
 	loaded_in_ram : bool;
 	bmp : Bitmap;
+	work_kind : Work_Kind;
 }
 
 Slot :: struct {
@@ -332,13 +332,15 @@ handle_from_hash :: (scope : *Scope, hash : u128) -> r.Handle {
 		
 		if !node.loaded && !node.is_loading && !node.loaded_in_ram {
 			node.is_loading = true;
-			print("Started Loading %", node.tag);
-			push_work(node);
+			//print("CPU Load Request %\n", node.tag);
+			push_work(node, .Load_From_Disk);
 		}
 		
 		if node.loaded_in_ram && !node.loaded {
 			node.v = r.image(node.bmp);
-			bitmap_free(*node.bmp);
+			
+			//print("CPU Free Request%\n", node.tag);
+			push_work(node, .Free_From_Ram);
 			node.loaded = true;
 		}
 		
@@ -355,10 +357,16 @@ handle_from_hash :: (scope : *Scope, hash : u128) -> r.Handle {
 
 clock_tick :: () {
 	state.ticks += 1;
-	print("%\n", state.ticks);
+	//print("%\n", state.ticks);
 }
 
-push_work :: (node : *Node) {
+Work_Kind ::enum {
+	Null;
+	Load_From_Disk;
+	Free_From_Ram;
+}
+
+push_work :: (node : *Node, work_kind : Work_Kind) {
 	using state;
 	
 	if !work_queue_first {
@@ -368,6 +376,8 @@ push_work :: (node : *Node) {
 		work_queue_last.work_next = node;
 		work_queue_last = node;
 	}
+	
+	node.work_kind = work_kind;
 	
 	work_count += 1;
 }
@@ -393,11 +403,22 @@ load_texture :: (thread : *Thread) -> int {
 			
 			work_node := pop_work();
 			
-			work_node.bmp = bitmap(work_node.data);
+			if work_node.work_kind == {
+				case .Load_From_Disk;
+				work_node.bmp = bitmap(work_node.data);
+				
+				work_node.is_loading = false;
+				work_node.loaded_in_ram = true;
+				//print("loaded to ram %\n", work_node.tag);
+				
+				case .Free_From_Ram;
+				bitmap_free(*work_node.bmp);
+				work_node.loaded_in_ram = false;
+				//print("Freed from ram %\n", work_node.tag);
+				case;
+				assert(false);
+			}
 			
-			work_node.is_loading = false;
-			work_node.loaded_in_ram = true;
-			print("loaded to ram%\n", work_node.tag);
 		}
 	}
 	return 1;
@@ -414,7 +435,7 @@ evict_textures :: (thread : *Thread) -> int {
 				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) && !node.is_loading {
 					r.free_image(node.v);
 					node.loaded = false;
-					print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);
+					//print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);
 				}
 			}
 		}

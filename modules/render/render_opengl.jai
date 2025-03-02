@@ -29,6 +29,7 @@ Image :: struct {
 	resident : GLuint64;
 	w : u32;
 	h : u32;
+	next : *Image;
 };
 
 Framebuffer :: struct {
@@ -144,6 +145,8 @@ State :: struct {
 	
 	voxel_prog : GLuint;
 	voxel_tex : Handle;
+	
+	free_images : *Image;
 };
 
 state : *State;
@@ -476,7 +479,15 @@ make_buffer :: (size : u64) -> GLuint {
 }
 
 image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
-	img : *Image = push_struct(state.arena, Image);
+	img : *Image = state.free_images;
+	
+	if img {
+		state.free_images = state.free_images.next;
+	} else {
+		img = push_struct(state.arena, Image);
+	}
+	
+	<< img = .{};
 	
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
@@ -510,8 +521,12 @@ image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 	return out;
 }
 
+// store free image node
 free_image :: (handle : Handle) {
 	image : *Image = xx handle.U64[0];
 	glMakeTextureHandleNonResidentARB(image.resident);
 	glDeleteTextures(1, *image.id);
+	
+	image.next = state.free_images;
+	state.free_images = image;
 }

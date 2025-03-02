@@ -263,5 +263,5 @@ bitmap :: (data : string) -> Bitmap {
 }
 
 bitmap_free :: (bmp : *Bitmap) {
-	//stbi_image_free(bmp.data);
+	stbi_image_free(bmp.data);
 }
