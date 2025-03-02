@@ -845,6 +845,9 @@ sort_entitties :: (a : *Entity, b : *Entity) -> int {
 
 draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32) {
 	
+	scope := tex.scope_open();
+	
+	
 	for es.sort_list {
 		dst : RectF32;
 		dst.min.x = it.pos.x - it.origin.x;
@@ -859,7 +862,10 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		if it.flags & .Animated {
 			
 			anim := animations[it.anim_state];
-			sprite.tex_id = arts[anim.art].tex.U64[1];
+			
+			tex_id := tex.handle_from_hash(scope, arts[anim.art].hash).U64[1];
+			
+			sprite.tex_id = tex_id;
 			
 			width := 1. / anim.frame_x;
 			
@@ -869,12 +875,17 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 			
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		} else {
-			sprite.tex_id = arts[it.art_id].tex.U64[1];
+			
+			tex_id := tex.handle_from_hash(scope, arts[it.art_id].hash).U64[1];
+			
+			sprite.tex_id = tex_id;
 			width := 1. / it.frame_x;
 			
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		}
 	}
+	
+	tex.scope_close(scope);
 }
 
 AStar :: struct {

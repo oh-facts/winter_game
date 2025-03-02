@@ -44,7 +44,7 @@ Node :: struct {
 	v : r.Handle;
 	tag : string;
 	data : string;
-	data_arena : *Arena;
+	
 	scope_ref_count : int;
 	key_ref_count : int;
 	loaded : bool;
@@ -110,7 +110,7 @@ init :: () {
 		key_slots.data = push_array(arena, Key_Slot, xx key_slots.count);
 		
 		
-		thread_init(*load_tex_thread, load_texture);
+		thread_init(*load_tex_thread, do_work);
 		thread_start(*load_tex_thread);
 	}
 }
@@ -170,7 +170,7 @@ scope_close :: (scope : *Scope) {
 	state.free_scope = scope;
 }
 
-hash_from_key_data :: (tag : string, key : u128, data : string, data_arena : *Arena) -> u128 {
+hash_from_key_data :: (tag : string, key : u128, data : string) -> u128 {
 	out := hash_string(data);
 	slot_index := out.U64[1] % xx state.slots.count;
 	slot := state.slots.data + slot_index;
@@ -192,8 +192,9 @@ hash_from_key_data :: (tag : string, key : u128, data : string, data_arena : *Ar
 	
 	// duplicate, so delete
 	if node {
-		arena_free(data_arena);
+		free(data);
 	}
+	
 	// store
 	else {
 		node = state.free;
@@ -397,7 +398,7 @@ pop_work :: () -> *Node {
 	return out;
 }
 
-load_texture :: (thread : *Thread) -> int {
+do_work :: (thread : *Thread) -> int {
 	while true {
 		if state.work_count {
 			
@@ -435,7 +436,7 @@ evict_textures :: (thread : *Thread) -> int {
 				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) && !node.is_loading {
 					r.free_image(node.v);
 					node.loaded = false;
-					//print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);
+					print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);
 				}
 			}
 		}

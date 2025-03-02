@@ -146,6 +146,9 @@ State :: struct {
 	voxel_prog : GLuint;
 	voxel_tex : Handle;
 	
+	noise_id : Handle;
+	displacement_id : Handle;
+	
 	free_images : *Image;
 };
 
@@ -231,12 +234,35 @@ init :: () {
 		state.blur_fb[0] = framebuffer(screen_size, false);
 		state.blur_fb[1] = framebuffer(screen_size, false);
 	}
+	
+	{
+		base_path := path_strip_filename(get_path_of_running_executable());
+		data_folder := join(base_path, "../data/renderer");
+		
+		renderer_art_paths : [2]string = .["displacement.png",
+																			 "noise.png"];
+		
+		for renderer_art_paths {
+			
+			filename := tprint("%/%", data_folder, it);
+			data := read_entire_file(filename);
+			defer free(data);
+			
+			bmp := bitmap(data);
+			img := image(bmp);
+			
+			if it_index == 0 {
+				state.displacement_id = img;
+			} else {
+				state.noise_id = img;
+			}
+			
+		}
+	}
 }
 
 submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
-					 passes : Pass_List,
-					 noise : Handle,
-					 displacement : Handle, ophset : Vector2,
+					 passes : Pass_List, ophset : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
 	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
@@ -252,8 +278,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data : SceneData;
 		scene_data.screen_size = .{screen_size.x, screen_size.y};
 		scene_data.screen_offset = screen_offset;
-		scene_data.noise_id = noise.U64[1];
-		scene_data.displacement_id = displacement.U64[1];
+		scene_data.noise_id = state.noise_id.U64[1];
+		scene_data.displacement_id = state.displacement_id.U64[1];
 		scene_data.delta = delta;
 		scene_data.offset = ophset;
 		scene_data.draw_id = state.draw_fb.resident;

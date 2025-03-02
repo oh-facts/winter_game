@@ -83,9 +83,9 @@ Mode :: enum {
 	COUNT;
 }
 
-//current_mode : Mode = .Tile_Editor;
+current_mode : Mode = .Tile_Editor;
 //current_mode : Mode = .Game;
-current_mode : Mode = .Scratch;
+//current_mode : Mode = .Scratch;
 
 arena : *Arena;
 
@@ -95,8 +95,8 @@ main :: () {
 	
 	os.init();
 	win := os.open_window("winter steam game", 960, 540);
-	
 	r.init();
+	tex.init();
 	
 	start := os.get_perf_counter();
 	freq := os.get_perf_freq();
@@ -114,8 +114,6 @@ main :: () {
 	ui_cxt := ui_init();
 	editor_ui_cxt = ui_cxt;
 	timer : float32;
-	
-	tex.init();
 	
 	while !quit {
 		timer += xx delta;
@@ -187,8 +185,7 @@ main :: () {
 		ui_end();
 		r.pop_scissor(*passes);
 		
-		r.submit(timer, win, camera.size, passes, arts[xx ArtId.Noise].tex,
-						 arts[xx ArtId.Displacement].tex, beam_pos, camera.pos);
+		r.submit(timer, win, camera.size, passes, beam_pos, camera.pos);
 		
 		//editor_tick_clock();
 		tex.clock_tick();

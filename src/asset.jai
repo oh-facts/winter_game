@@ -17,14 +17,15 @@ ArtId :: enum {
 	Displacement;
 	Noise;
 	Editor_Titlebar;
+	COUNT;
 }
 
 Art :: struct {
 	id : ArtId;
-	name : string;
+	frame_x : int;
+	frame_y : int;
+	hash : u128;
 	path : string;
-	tex : r.Handle;
-	bmp : Bitmap;
 }
 
 arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
@@ -46,16 +47,12 @@ load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
 	data_folder = join(base_path, "../data");
 	
-	
 	// load sprites
 	for *arts {
 		filename := tprint("%/%", data_folder, it.path);
 		
-		temp_file_data := read_entire_file(filename);
-		defer free(temp_file_data);
-		
-		it.bmp = bitmap(temp_file_data);
-		it.tex = r.image(it.bmp, .NEAREST);
+		data := read_entire_file(filename);
+		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
 	}
 	
 	// load font

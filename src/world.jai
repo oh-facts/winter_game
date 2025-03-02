@@ -435,6 +435,8 @@ index_from_coords :: (pos : Vector2) -> Vector2i {
 }
 
 draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
+	scope := tex.scope_open();
+	
 	// draw tilemap
 	//r.push_beam(passes);
 	for y: 0 .. tm.row - 1 {
@@ -460,6 +462,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 						
 						src : RectF32;
 						
+						tex_id := tex.handle_from_hash(scope, arts[paint.art_id].hash).U64[1];
 						// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
 						if paint.auto {
 							
@@ -481,7 +484,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 							//print("%\n", src);
 							
 							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-							tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+							tile_rect.tex_id = tex_id;
 							tile_rect.src = src;
 						}
 						else {
@@ -495,7 +498,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 							//print("%\n", src);
 							
 							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
-							tile_rect.tex_id = arts[paint.art_id].tex.U64[1];
+							tile_rect.tex_id = tex_id;
 							tile_rect.src = src;
 						}
 					}
@@ -504,6 +507,8 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 			
 		}
 	}
+	
+	tex.scope_close(scope);
 }
 
 draw_grid :: (passes : *r.Pass_List) {
