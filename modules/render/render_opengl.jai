@@ -511,7 +511,7 @@ image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 }
 
 free_image :: (handle : Handle) {
-	image : *Image = handle.U64[0];
+	image : *Image = xx handle.U64[0];
 	glMakeTextureHandleNonResidentARB(image.resident);
 	glDeleteTextures(1, *image.id);
 }

@@ -236,21 +236,32 @@ Bitmap :: struct {
 	n : s32;
 }
 
-bitmap :: (arena : *Arena, path : string) -> Bitmap {
+bitmap_dim :: (data : string) -> Vector2i {
+	
+	out : Vector2i;
+	comp : int;
+	
+	stbi_info_from_memory(data.data, xx data.count, *out.x, *out.y, *comp);
+	
+	return out;
+}
+
+bitmap :: (data : string) -> Bitmap {
 	out : Bitmap;
 	stbi_set_flip_vertically_on_load(1);
 	
 	w, h, n : s32;
 	
-	bytes := stbi_load(path.data, *w, *h, *n, 4);
+	bytes := stbi_load_from_memory(data.data, xx data.count, *w, *h, *n, 4);
 	
 	out.w = w;
 	out.h = h;
 	out.n = 4;
-	out.data = push_array(arena, u8, xx (out.w * out.h * out.n));
-	memcpy(out.data, bytes, out.w * out.h * out.n);
-	
-	stbi_image_free(bytes);
+	out.data = bytes;
 	
 	return out;
+}
+
+bitmap_free :: (bmp : *Bitmap) {
+	//stbi_image_free(bmp.data);
 }

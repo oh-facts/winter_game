@@ -46,10 +46,15 @@ load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
 	data_folder = join(base_path, "../data");
 	
+	
 	// load sprites
 	for *arts {
 		filename := tprint("%/%", data_folder, it.path);
-		it.bmp = bitmap(arena, filename);
+		
+		temp_file_data := read_entire_file(filename);
+		defer free(temp_file_data);
+		
+		it.bmp = bitmap(temp_file_data);
 		it.tex = r.image(it.bmp, .NEAREST);
 	}
 	
@@ -59,7 +64,11 @@ load_all_assets :: () {
 		data := read_entire_file(filename);
 		font = xx data.data;
 		filename = tprint("%/%", data_folder, "fonts/font.png");
-		font.bmp = bitmap(arena, filename);
+		
+		temp_file_data := read_entire_file(filename);
+		defer free(temp_file_data);
+		
+		font.bmp = bitmap(temp_file_data);
 		font.img = r.image(font.bmp);
 	}
 }

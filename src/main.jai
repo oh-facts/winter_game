@@ -22,7 +22,7 @@
 #import "File";
 #import "IntroSort";
 #import "Random";
-
+#import "Thread";
 #import "mizu_base";
 r :: #import "render";
 tex :: #import "texture";
@@ -32,7 +32,7 @@ tex :: #import "texture";
 #load "simulation.jai";
 #load "map_editor.jai";
 #load "world.jai";
-#load "winter.jai";
+
 #load "dialogue.jai";
 #load "scratch.jai";
 #load "ui.jai";
@@ -115,7 +115,7 @@ main :: () {
 	editor_ui_cxt = ui_cxt;
 	timer : float32;
 	
-	tex.hash(.{});
+	tex.init();
 	
 	while !quit {
 		timer += xx delta;
@@ -191,6 +191,8 @@ main :: () {
 						 arts[xx ArtId.Displacement].tex, beam_pos, camera.pos);
 		
 		//editor_tick_clock();
+		tex.clock_tick();
+		tex.evict_textures(xx 0);
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
