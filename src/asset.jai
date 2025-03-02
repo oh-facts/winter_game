@@ -49,6 +49,29 @@ load_all_assets :: () {
 		
 		data := read_entire_file(filename);
 		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
+		
+		if it.id == {
+			case .Impolo;
+			it.frame_x = 1;
+			it.frame_y = 1;
+			
+			case .TilesForest;
+			it.frame_x = 8;
+			it.frame_y = 15;
+			
+			case .Tree;
+			it.frame_x = 3;
+			it.frame_y = 1;
+			
+			case .Ball;
+			it.frame_x = 1;
+			it.frame_y = 1;
+			
+			case .Siren;
+			it.frame_x = 1;
+			it.frame_y = 1;
+		}
+		
 	}
 	
 	// load font

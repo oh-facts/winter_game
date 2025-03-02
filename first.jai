@@ -226,7 +226,7 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 	out.descent = face.size.metrics.descender >> 6;
 	out.line_height = (face.size.metrics.ascender - face.size.metrics.descender) >> 6;
 	
-	padding : int;
+	padding : int = 1;
 	row : int;
 	col := padding;
 	

@@ -170,8 +170,6 @@ Entity :: struct {
 	
 	src : RectF32;
 	art_id : ArtId;
-	frame_x : s32;
-	frame_y : s32;
 	frame_n : s32;
 	flipped : bool;
 	
@@ -713,8 +711,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.color = r.COLOR_WHITE;
 		out.size = .{128, 128};
 		out.origin = .{64, 96};
-		out.frame_x = 1;
-		out.frame_y = 1;
 		
 		case .Tree;
 		out.flags |= .Interactable;
@@ -723,8 +719,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.color = r.COLOR_WHITE;
 		out.size = .{512, 512};
 		out.frame_n = cast(s32) (random_get() % 3);
-		out.frame_x = 3;
-		out.frame_y = 1;
 		out.origin = .{2545, 386};
 		
 		case .Ball;
@@ -732,8 +726,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.color = r.COLOR_WHITE;
 		out.size = .{32, 32};
 		out.origin  = .{16, 32};
-		out.frame_x = 1;
-		out.frame_y = 1;
 		
 		case .Siren;
 		out.flags |= .Interactable;
@@ -741,8 +733,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.submerged = 0.08;
 		out.color = r.COLOR_WHITE;
 		out.size = .{512, 512};
-		out.frame_x = 1;
-		out.frame_y = 1;
 		out.origin = .{250, 500};
 		
 		case .Husk;
@@ -847,7 +837,6 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 	
 	scope := tex.scope_open();
 	
-	
 	for es.sort_list {
 		dst : RectF32;
 		dst.min.x = it.pos.x - it.origin.x;
@@ -876,10 +865,12 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		} else {
 			
-			tex_id := tex.handle_from_hash(scope, arts[it.art_id].hash).U64[1];
+			tex_id:= tex.handle_from_hash(scope, arts[it.art_id].hash).U64[1];
+			
+			frame_x := arts[it.art_id].frame_x;
 			
 			sprite.tex_id = tex_id;
-			width := 1. / it.frame_x;
+			width := 1. / frame_x;
 			
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		}

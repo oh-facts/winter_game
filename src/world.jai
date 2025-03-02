@@ -3,8 +3,8 @@
 paints : [5]Entity : .[.{name = "empty"},
 											 .{auto = true, art_id = .TerrainTemplate, name = "template 1"},
 											 .{auto = true, art_id = .TerrainGrass, name = "auto grass"},
-											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 9},
-											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_x = 8, frame_y = 15, frame_n = 6},
+											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_n = 9},
+											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_n = 6},
 											 ];
 
 auto_col :: 8;
@@ -463,6 +463,9 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 						src : RectF32;
 						
 						tex_id := tex.handle_from_hash(scope, arts[paint.art_id].hash).U64[1];
+						frame_x := arts[paint.art_id].frame_x;
+						frame_y := arts[paint.art_id].frame_y;
+						
 						// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
 						if paint.auto {
 							
@@ -488,10 +491,10 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 							tile_rect.src = src;
 						}
 						else {
-							src.min.x = (cast(float32) (paint.frame_n % paint.frame_x) / paint.frame_x);
-							src.max.y = (cast(float32)((paint.frame_n / paint.frame_x)) / paint.frame_y);
-							src.max.x = src.min.x + 1. / paint.frame_x;
-							src.min.y = src.max.y + 1. / paint.frame_y;
+							src.min.x = (cast(float32) (paint.frame_n % frame_x) / frame_x);
+							src.max.y = (cast(float32)((paint.frame_n / frame_x)) / frame_y);
+							src.max.x = src.min.x + 1. / frame_x;
+							src.min.y = src.max.y + 1. / frame_y;
 							
 							src.min.y = 1 - src.min.y;
 							src.max.y = 1 - src.max.y;
