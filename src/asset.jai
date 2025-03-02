@@ -14,8 +14,6 @@ ArtId :: enum {
 	Tree;
 	Ball;
 	Siren;
-	Displacement;
-	Noise;
 	Editor_Titlebar;
 	COUNT;
 }
@@ -28,7 +26,7 @@ Art :: struct {
 	path : string;
 }
 
-arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [12]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
@@ -39,8 +37,6 @@ arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Tree, path = "art/tree.png"},
 									 .{id = .Ball, path = "art/ball.png"},
 									 .{id = .Siren, path = "art/siren.png"},
-									 .{id = .Displacement, path = "art/displacement.png"},
-									 .{id = .Noise, path = "art/noise.png"},
 									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"}];
 
 load_all_assets :: () {
@@ -66,6 +62,6 @@ load_all_assets :: () {
 		defer free(temp_file_data);
 		
 		font.bmp = bitmap(temp_file_data);
-		font.img = r.image(font.bmp);
+		font.img = r.image(font.bmp, .Linear);
 	}
 }

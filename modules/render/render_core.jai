@@ -16,9 +16,9 @@ COLOR_MAGENTA :: Vector4.{1, 0, 1, 1};
 
 COLOR_ORANGE :: Vector4.{0.79, 0.33, 0, 1};
 
-TexParams :: enum {
-	LINEAR;
-	NEAREST;
+Tex_Params :: enum {
+	Linear;
+	Nearest;
 }
 
 Handle :: struct {

@@ -41,7 +41,9 @@ Node :: struct {
 	next : *Node;
 	prev : *Node;
 	hash : u128;
+	
 	v : r.Handle;
+	
 	tag : string;
 	data : string;
 	
@@ -294,7 +296,7 @@ hash_from_key :: (scope : *Scope, key : u128) -> u128 {
 	return out;
 }
 
-handle_from_hash :: (scope : *Scope, hash : u128) -> r.Handle {
+handle_from_hash :: (scope : *Scope, hash : u128, params := r.Tex_Params.Nearest) -> r.Handle {
 	out : r.Handle;
 	
 	slot_index := hash.U64[1] % xx state.slots.count;
@@ -338,7 +340,7 @@ handle_from_hash :: (scope : *Scope, hash : u128) -> r.Handle {
 		}
 		
 		if node.loaded_in_ram && !node.loaded {
-			node.v = r.image(node.bmp);
+			node.v = r.image(node.bmp, params);
 			
 			//print("CPU Free Request%\n", node.tag);
 			push_work(node, .Free_From_Ram);

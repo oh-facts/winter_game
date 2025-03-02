@@ -504,7 +504,7 @@ make_buffer :: (size : u64) -> GLuint {
 	return ssbo;
 }
 
-image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
+image :: (bmp : Bitmap, params := Tex_Params.Nearest) -> Handle {
 	img : *Image = state.free_images;
 	
 	if img {
@@ -518,7 +518,7 @@ image :: (bmp : Bitmap, params := TexParams.LINEAR) -> Handle {
 	id : GLuint;
 	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
 	
-	if params == .LINEAR {
+	if params == .Linear {
 		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	} else {
