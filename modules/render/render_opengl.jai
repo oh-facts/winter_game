@@ -150,6 +150,9 @@ State :: struct {
 	displacement_id : Handle;
 	
 	free_images : *Image;
+	
+	base_path : string;
+	shaders_folder : string;
 };
 
 state : *State;
@@ -181,35 +184,10 @@ init :: () {
 	
 	SDL_GL_SetSwapInterval(1);
 	
-	base_path := path_strip_filename(get_path_of_running_executable());
-	shaders_folder := join(base_path, "../shaders");
+	state.base_path = path_strip_filename(get_path_of_running_executable());
+	state.shaders_folder = join(state.base_path, "../shaders");
 	
-	for i : 0 .. SHADER_PROG.COUNT - 1 {		
-		
-		vert_abs_path := tprint("%/%", shaders_folder, vert_shader_paths[i]);
-		
-		vert_shader_file := read_entire_file(vert_abs_path);
-		defer free(vert_shader_file);
-		
-		frag_abs_path := tprint("%/%", shaders_folder, frag_shader_paths[i]);
-		
-		frag_shader_file := read_entire_file(frag_abs_path);
-		defer free(frag_shader_file);
-		
-		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
-	}
-	
-	cs_shader_file := read_entire_file(tprint("%/%", shaders_folder, "voxel.cs"));
-	
-	vox_shader := glCreateShader(GL_COMPUTE_SHADER);
-	glShaderSource(vox_shader, 1, *cs_shader_file.data, xx 0);
-	glCompileShader(vox_shader);
-	check_compile_errors(vox_shader, "cs shader");
-	
-	state.voxel_prog = glCreateProgram();
-	glAttachShader(state.voxel_prog, vox_shader);
-	glLinkProgram(state.voxel_prog);
-	check_link_errors(state.voxel_prog, "cs shader linking");
+	compile_shaders();
 	
 	state.voxel_tex = image(.{w = 1920, h = 1080});
 	
@@ -236,8 +214,7 @@ init :: () {
 	}
 	
 	{
-		base_path := path_strip_filename(get_path_of_running_executable());
-		data_folder := join(base_path, "../data/renderer");
+		data_folder := join(state.base_path, "../data/renderer");
 		
 		renderer_art_paths : [2]string = .["displacement.png",
 																			 "noise.png"];
@@ -558,4 +535,41 @@ free_image :: (handle : Handle) {
 	
 	image.next = state.free_images;
 	state.free_images = image;
+}
+
+free_shaders :: () {
+	for i : 0 .. SHADER_PROG.COUNT - 1 {
+		glDeleteShader(state.shader_prog[i]);
+	}
+}
+
+compile_shaders :: () {
+	for i : 0 .. SHADER_PROG.COUNT - 1 {		
+		
+		vert_abs_path := tprint("%/%", state.shaders_folder, vert_shader_paths[i]);
+		
+		vert_shader_file := read_entire_file(vert_abs_path);
+		defer free(vert_shader_file);
+		
+		frag_abs_path := tprint("%/%", state.shaders_folder, frag_shader_paths[i]);
+		
+		frag_shader_file := read_entire_file(frag_abs_path);
+		defer free(frag_shader_file);
+		
+		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
+	}
+	
+	/*
+	cs_shader_file := read_entire_file(tprint("%/%", state.shaders_folder, "voxel.cs"));
+	
+	vox_shader := glCreateShader(GL_COMPUTE_SHADER);
+	glShaderSource(vox_shader, 1, *cs_shader_file.data, xx 0);
+	glCompileShader(vox_shader);
+	check_compile_errors(vox_shader, "cs shader");
+	
+	state.voxel_prog = glCreateProgram();
+	glAttachShader(state.voxel_prog, vox_shader);
+	glLinkProgram(state.voxel_prog);
+	check_link_errors(state.voxel_prog, "cs shader linking");
+*/
 }

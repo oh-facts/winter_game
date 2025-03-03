@@ -11,6 +11,8 @@
 // Hmm. Some extra rendering like cursor required tho.
 // Still, I can offload those to flags.
 
+// Make this a module?
+
 UI_ID :: struct {
 	v : [3]u64;
 }

@@ -130,6 +130,11 @@ main :: () {
 			quit = true;
 		}
 		
+		if os.event(*events, .R, .Pressed) {
+			r.free_shaders();
+			r.compile_shaders();
+		}
+		
 		passes : r.Pass_List;
 		
 		mm_event := os.event(*events, .NULL, .MouseMove);

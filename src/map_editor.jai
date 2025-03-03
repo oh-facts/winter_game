@@ -1,3 +1,5 @@
+// TODO(mizu): At some point closely review the tools.
+
 text_size := 1.;
 
 // I don't have the energy to add text edit.

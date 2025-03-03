@@ -705,7 +705,7 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.flags |= .Control | .Animated | .Sloppy_Shadow;
 		out.art_id = .Impolo;
 		out.speed = 200;
-		out.submerged = 0.2;
+		out.submerged = 0.3;
 		out.color = r.COLOR_WHITE;
 		
 		case .Tree;
