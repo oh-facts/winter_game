@@ -192,8 +192,10 @@ editor_window_end :: (window : *Editor_Window) {
 	ui_push_size_x_node(ui_size_pct(1, 1), true);
 	editor_row_begin();
 	
+	// NOTE(mizu): Fix ui bug. Set size node to 32px or 16px instead of 24px to find out
+	
 	editor_spacer(ui_size_pct(1, 0));
-	ui_push_size_node(ui_size_px(32, 1));
+	ui_push_size_node(ui_size_px(24, 1));
 	if editor_image(r.get_white_square()).active {
 		window.resize_grabbed = true;
 	}
@@ -252,6 +254,28 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 	
 	out := ui_widget_impl(.Text | .Clickable, id);
 	out.widget.text = text;
+	return out;
+}
+
+editor_text_edit :: (text : *string, display_text : string, index := 0, loc := #caller_location) -> UI_Signal {
+	id := UI_ID.{};
+	id.v[0] = xx loc.line_number;
+	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	
+	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
+	w := out.widget;
+	
+	memcpy(text.data, display_text.data, display_text.count);
+	
+	if os.event(active_window.events, .L, .Pressed) {
+		text.data[w.text_edit_pos] = #char "L";
+		
+		w.text_edit_pos += 1;
+	}
+	
+	out.widget.text = display_text;
+	
 	return out;
 }
 
@@ -349,6 +373,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Scissor {
 		r.push_scissor(passes, root.scissor);
+	}
+	
+	if root.flags & .Text_Edit {
+		//rect := r.push_rect2(passes, root.dst, .{});
+		//rect.border_color = r.COLOR_WHITE;
+		//rect.border_thickness = 4;
 	}
 	
 	if root.flags & .Slider {

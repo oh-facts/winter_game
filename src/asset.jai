@@ -15,6 +15,7 @@ ArtId :: enum {
 	Ball;
 	Siren;
 	Editor_Titlebar;
+	Fat;
 	COUNT;
 }
 
@@ -24,9 +25,10 @@ Art :: struct {
 	frame_y : int;
 	hash : u128;
 	path : string;
+	origin : Vector2;
 }
 
-arts : [12]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [13]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
@@ -37,7 +39,8 @@ arts : [12]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Tree, path = "art/tree.png"},
 									 .{id = .Ball, path = "art/ball.png"},
 									 .{id = .Siren, path = "art/siren.png"},
-									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"}];
+									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"},
+									 .{id = .Fat, path = "art/fat/1.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
@@ -54,6 +57,7 @@ load_all_assets :: () {
 			case .Impolo;
 			it.frame_x = 1;
 			it.frame_y = 1;
+			it.origin = .{64, 96};
 			
 			case .TilesForest;
 			it.frame_x = 8;
@@ -62,13 +66,20 @@ load_all_assets :: () {
 			case .Tree;
 			it.frame_x = 3;
 			it.frame_y = 1;
+			it.origin = .{256, 380};
 			
 			case .Ball;
 			it.frame_x = 1;
 			it.frame_y = 1;
+			it.origin  = .{16, 32};
 			
 			case .Siren;
 			it.frame_x = 1;
+			it.frame_y = 1;
+			it.origin = .{250, 500};
+			
+			case .Impolo_East;
+			it.frame_x = 8;
 			it.frame_y = 1;
 		}
 		

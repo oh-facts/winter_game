@@ -21,6 +21,10 @@ Tex_Params :: enum {
 	Nearest;
 }
 
+// NOTE(mizu):
+// U32 : w, h
+// U64 : ptr, tex_id
+
 Handle :: struct {
 	U32 : [2]u32;
 	U64 : [2]u64;
@@ -248,8 +252,8 @@ Font :: struct {
 	descent : s32;
 	
 	using bmp : Bitmap;
-	bmp.w = 512;
-	bmp.h = 512;
+	bmp.w = 128;
+	bmp.h = 128;
 	bmp.n = 4;
 };
 

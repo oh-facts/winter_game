@@ -9,7 +9,7 @@
 // Concepts borrowed (stolen) from the RAD debugger. I am trying to explore some ideas so I can make enough discoveries / possible improvements to be less of a leech.
 
 // It is only so "async"
-// submitting calls from different threads in opengl is pointless because they are still collected then submitted as one. The reading and freeing happens on a bg thread. For now, the worker loading happens on one bg thread, and the way the code works, I don't really need snyc.
+// submitting calls from different threads in opengl is pointless because they are still collected then submitted as one. The reading and freeing happens on a bg thread. For now, the worker loading (disk->ram) and freeing happens on one bg thread, and the way the code works, I don't really need much sync. I am probably wrong because I haven't explored multi threading alot and I have 0 people to discuss programming with. Everything I know about programming links back to RAD.
 
 // When I use vulkan, I will try again. For testing, I just use a very big image (40mb as png, 1.5gb loaded), and I see if the main thread stalls at all.
 
@@ -52,7 +52,7 @@ Node :: struct {
 	loaded : bool;
 	last_touched_tick : u64;
 	
-	is_loading : bool;
+	is_working : bool;
 	work_next : *Node;
 	loaded_in_ram : bool;
 	bmp : Bitmap;
@@ -93,6 +93,9 @@ State :: struct {
 	work_queue_last: *Node;
 	
 	work_count : int;
+	
+	cv : Condition_Variable;
+	mutex : Mutex;
 }
 
 state : *State;
@@ -114,7 +117,10 @@ init :: () {
 		
 		thread_init(*load_tex_thread, do_work);
 		thread_start(*load_tex_thread);
+		init(*cv);
+		init(*mutex);
 	}
+	
 }
 
 hash_string :: (data : string) -> u128 {
@@ -333,8 +339,8 @@ handle_from_hash :: (scope : *Scope, hash : u128, params := r.Tex_Params.Nearest
 		touch.next = scope.top_touch;
 		scope.top_touch = touch;
 		
-		if !node.loaded && !node.is_loading && !node.loaded_in_ram {
-			node.is_loading = true;
+		if !node.loaded && !node.is_working && !node.loaded_in_ram {
+			node.is_working = true;
 			//print("CPU Load Request %\n", node.tag);
 			push_work(node, .Load_From_Disk);
 		}
@@ -372,6 +378,8 @@ Work_Kind ::enum {
 push_work :: (node : *Node, work_kind : Work_Kind) {
 	using state;
 	
+	lock(*mutex);
+	
 	if !work_queue_first {
 		work_queue_last = node;
 		work_queue_first = node;
@@ -383,6 +391,9 @@ push_work :: (node : *Node, work_kind : Work_Kind) {
 	node.work_kind = work_kind;
 	
 	work_count += 1;
+	
+	wake(*cv);
+	unlock(*mutex);
 }
 
 pop_work :: () -> *Node {
@@ -402,51 +413,53 @@ pop_work :: () -> *Node {
 
 do_work :: (thread : *Thread) -> int {
 	while true {
-		if state.work_count {
-			
-			work_node := pop_work();
-			
-			if work_node.work_kind == {
-				case .Load_From_Disk;
-				work_node.bmp = bitmap(work_node.data);
-				
-				work_node.is_loading = false;
-				work_node.loaded_in_ram = true;
-				//print("loaded to ram %\n", work_node.tag);
-				
-				case .Free_From_Ram;
-				bitmap_free(*work_node.bmp);
-				work_node.loaded_in_ram = false;
-				//print("Freed from ram %\n", work_node.tag);
-				case;
-				assert(false);
-			}
-			
+		lock(*state.mutex);
+		
+		while (state.work_count == 0) {
+			wait(*state.cv, *state.mutex);
 		}
+		
+		work_node := pop_work();
+		
+		if work_node.work_kind == {
+			case .Load_From_Disk;
+			work_node.bmp = bitmap(work_node.data);
+			
+			work_node.is_working = false;
+			work_node.loaded_in_ram = true;
+			//print("loaded to ram %\n", work_node.tag);
+			
+			case .Free_From_Ram;
+			bitmap_free(*work_node.bmp);
+			work_node.loaded_in_ram = false;
+			//print("Freed from ram %\n", work_node.tag);
+			case;
+			assert(false);
+		}
+		
+		unlock(*state.mutex);
 	}
 	return 1;
 }
 
-evict_textures :: (thread : *Thread) -> int {
-	while true {
+evict_textures :: () -> int {
+	
+	if (state.ticks % 1650) == 0 {
+		
 		for slot : state.slots {
 			node := slot.first;
 			
 			while node {
 				defer node = node.next;
 				
-				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) && !node.is_loading {
+				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) && !node.is_working {
 					r.free_image(node.v);
 					node.loaded = false;
 					print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);
 				}
 			}
 		}
-		
-		if !thread {
-			break;
-		}
-		
 	}
+	
 	return 1;
 }

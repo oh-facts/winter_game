@@ -544,6 +544,9 @@ image :: (bmp : Bitmap, params := Tex_Params.Nearest) -> Handle {
 	out.U64[0] = xx img;
 	out.U64[1] = xx resident;
 	
+	out.U32[0] = xx bmp.w;
+	out.U32[1] = xx bmp.h;
+	
 	return out;
 }
 

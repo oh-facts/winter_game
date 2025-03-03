@@ -189,7 +189,8 @@ main :: () {
 		
 		//editor_tick_clock();
 		tex.clock_tick();
-		tex.evict_textures(xx 0);
+		
+		tex.evict_textures();
 		
 		end := os.get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);

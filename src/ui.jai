@@ -4,6 +4,13 @@
 
 // i did the write. there are leaks probably. will get to it when i run out of memory / next cleanup pass. whichever comes first.
 
+// Ok, so I need to make discrete non composable types there own "kind"
+
+// also, i have erraneously referred to some widgets as discrete
+// Based on usage code, a text edit is really just a bg + border + label.
+// Hmm. Some extra rendering like cursor required tho.
+// Still, I can offload those to flags.
+
 UI_ID :: struct {
 	v : [3]u64;
 }
@@ -47,6 +54,7 @@ UI_Flags :: enum_flags u32 {
 	Image;
 	Slider;
 	Scissor;
+	Text_Edit;
 }
 
 UI_Floating :: UI_Flags.FloatingX | UI_Flags.FloatingY;
@@ -103,6 +111,9 @@ UI_Widget :: struct {
 	// image
 	image : r.Handle;
 	src : RectF32;
+	
+	// text edit
+	text_edit_pos : int;
 	
 	// calculated during hierearchy pass
 	computed_pos : [UI_Axis.COUNT]float32;

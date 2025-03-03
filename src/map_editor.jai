@@ -1,4 +1,4 @@
-text_size := 0.4;
+text_size := 1.;
 
 // I don't have the energy to add text edit.
 // Therefore, we will use pre-written names
@@ -54,6 +54,9 @@ active_tool_index := 0;
 active_paint_index := 0;
 active_entity_tool_index := 0;
 active_entity_index := 0;
+active_edit_index := 0;
+test_entity : *Entity;
+
 me_mode := ME_Mode.Tile;
 
 SelectionTile :: struct {
@@ -93,6 +96,9 @@ editor_update :: (delta : float32, events : *os.EventList,
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		load_tileworld(*editor_tileworld);
 		//active_tilemap_index = Vector2i.{0, 10};
+		
+		test_entity = entity_alloc(*editor_entity_store);
+		test_entity.name = sprint("ella");
 	}
 	
 	mv : Vector2i;
@@ -552,6 +558,47 @@ editor_update :: (delta : float32, events : *os.EventList,
 				ui_pop_size_node();
 				editor_row_end();
 			}
+			
+			ui_push_size_node(ui_size_children_sum(1), true);
+			editor_col_begin();
+			
+			ti := type_info(type_of(<< test_entity));
+			
+			for member: ti.members {
+				ui_push_size_node(ui_size_children_sum(1), true);
+				editor_row_begin();
+				
+				ui_push_text_align_node(.Left);
+				ui_push_size_x_node(ui_size_px(160, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				text = tprint("%", member.name);
+				editor_label(text, it_index);
+				
+				if it_index == xx active_edit_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
+				}
+				
+				field := get_field(ti, member.name);
+				
+				text.data = talloc(32);
+				text.count = 32;
+				
+				data := cast(*u8)test_entity + field.offset_in_bytes;
+				
+				value_text := tprint("%", << cast(*string)data);
+				
+				if editor_text_edit(*text, value_text, it_index).active {
+					active_edit_index = it_index;
+					test_entity.name = value_text;
+				}
+				
+				editor_row_end();
+			}
+			
+			ui_pop_text_align_node();
+			ui_pop_size_node();
+			editor_row_end();
 		}
 		
 		ui_pop_size_node();

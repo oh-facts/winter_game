@@ -140,14 +140,12 @@ Attack_State :: enum {
 }
 
 Animation :: struct {
-	art : ArtId;
-	frame_x : s32;
-	frame_y : s32;
+	art_id : ArtId;
 	speed : float32;
 }
 
-animations : [2]Animation : .[.{art = .Impolo, frame_x = 1, frame_y = 1, speed = 0},
-															.{art = .Impolo_East, frame_x = 8, frame_y = 1, speed = 7}];
+animations : [2]Animation : .[.{art_id = .Impolo, speed = 0},
+															.{art_id = .Impolo_East, speed = 7}];
 
 Entity :: struct {
 	next : *Entity;
@@ -157,13 +155,11 @@ Entity :: struct {
 	
 	dir : Vector2i;
 	speed : float32;
-	size : Vector2i;
 	
 	test_pos : Vector2;
 	
 	pos : Vector2;
 	tile_pos : Vector2i;
-	origin : Vector2;
 	
 	target_entity : *Entity;
 	chase_state : Chase_State;
@@ -514,8 +510,10 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			anim := animations[entity.anim_state];
 			
+			frame_x := arts[anim.art_id].frame_x;
+			
 			entity.anim_counter += xx delta;
-			entity.frame_n = (xx (entity.anim_counter * anim.speed)) % anim.frame_x;
+			entity.frame_n = (cast(s32)(entity.anim_counter * anim.speed)) % xx frame_x;
 		}
 	}
 	
@@ -709,31 +707,23 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 		out.speed = 200;
 		out.submerged = 0.2;
 		out.color = r.COLOR_WHITE;
-		out.size = .{128, 128};
-		out.origin = .{64, 96};
 		
 		case .Tree;
 		out.flags |= .Interactable;
 		out.art_id = .Tree;
 		out.submerged = 0.28;
 		out.color = r.COLOR_WHITE;
-		out.size = .{512, 512};
 		out.frame_n = cast(s32) (random_get() % 3);
-		out.origin = .{2545, 386};
 		
 		case .Ball;
 		out.art_id = .Ball;
 		out.color = r.COLOR_WHITE;
-		out.size = .{32, 32};
-		out.origin  = .{16, 32};
 		
 		case .Siren;
 		out.flags |= .Interactable;
 		out.art_id = .Siren;
 		out.submerged = 0.08;
 		out.color = r.COLOR_WHITE;
-		out.size = .{512, 512};
-		out.origin = .{250, 500};
 		
 		case .Husk;
 		out.art_id = .Impolo;
@@ -833,16 +823,49 @@ sort_entitties :: (a : *Entity, b : *Entity) -> int {
 	return out; 
 }
 
+// TODO(mizu): Needs cleanup
+
 draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32) {
 	
 	scope := tex.scope_open();
 	
 	for es.sort_list {
+		
+		if it.kind == .Tree {
+			iteresdasds : int;
+		}
+		
+		origin := arts[it.art_id].origin;
+		
+		art_id : int;
+		
+		if it.flags & .Animated {
+			anim := animations[it.anim_state];
+			art_id = xx anim.art_id;
+		} else {
+			art_id = xx it.art_id;
+		}
+		
+		bmp := tex.handle_from_hash(scope, arts[art_id].hash);
+		
+		size : Vector2;
+		size.x = xx bmp.U32[0];
+		size.y = xx bmp.U32[1];
+		
+		frame_x := arts[art_id].frame_x;
+		
+		width := 1. / frame_x;
+		
+		size.x *= width;
+		
+		size.x *= 2;
+		size.y *= 2;
+		
 		dst : RectF32;
-		dst.min.x = it.pos.x - it.origin.x;
-		dst.min.y = it.pos.y - it.origin.y;
-		dst.max.x = dst.min.x + it.size.x;
-		dst.max.y = dst.min.y + it.size.y;
+		dst.min.x = it.pos.x - origin.x;
+		dst.min.y = it.pos.y - origin.y;
+		dst.max.x = dst.min.x + size.x;
+		dst.max.y = dst.min.y + size.y;
 		
 		sprite := r.push_sprite(passes, dst, it.color);
 		sprite.pad2[0] = xx pass;
@@ -850,13 +873,7 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		
 		if it.flags & .Animated {
 			
-			anim := animations[it.anim_state];
-			
-			tex_id := tex.handle_from_hash(scope, arts[anim.art].hash).U64[1];
-			
-			sprite.tex_id = tex_id;
-			
-			width := 1. / anim.frame_x;
+			sprite.tex_id = bmp.U64[1];
 			
 			if it.flipped {
 				width = -width;
@@ -865,12 +882,7 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		} else {
 			
-			tex_id:= tex.handle_from_hash(scope, arts[it.art_id].hash).U64[1];
-			
-			frame_x := arts[it.art_id].frame_x;
-			
-			sprite.tex_id = tex_id;
-			width := 1. / frame_x;
+			sprite.tex_id = bmp.U64[1];
 			
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		}
