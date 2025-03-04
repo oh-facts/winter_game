@@ -38,6 +38,7 @@ Key :: enum {
 	ENTER;
 	SPACE;
 	DEL;
+	BACK;
 	
 	ESC;
 };
@@ -59,6 +60,8 @@ Event :: struct {
 	win : Handle;
 	mpos : Vector2;
 	wheel : int;
+	text : bool;
+	char : u8;
 };
 
 EventList :: struct {
@@ -129,6 +132,20 @@ event :: (list : *EventList, key : Key, kind : EventKind) -> *Event {
 	return out;
 }
 
+event_any_text :: (list : *EventList) -> *Event {
+	out : *Event;
+	cur := list.first;
+	while cur {
+		if (cur.kind == .Pressed) && (cur.text == true){
+			out = eat_event(list, cur);
+			break;
+		}
+		cur = cur.next;
+	}
+	
+	return out;
+}
+
 init :: () {
 	SDL_Init(SDL_INIT_VIDEO);
 	
@@ -164,11 +181,17 @@ poll_events :: () -> EventList {
 			event.key = .NULL;
 			
 			case SDL_KEYDOWN;
-			if sdl_event.key.repeat == 0 {
-				event := push_event(*out);
-				event.kind = .Pressed;
-				event.key = key_from_sym(xx sdl_event.key.keysym.sym);
+			//if sdl_event.key.repeat == 0 {
+			event := push_event(*out);
+			event.kind = .Pressed;
+			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
+			
+			if (sdl_event.key.keysym.sym >= SDLK_a && sdl_event.key.keysym.sym <= SDLK_z) || (sdl_event.key.keysym.sym >= SDLK_0 && sdl_event.key.keysym.sym <= SDLK_9) || (sdl_event.key.keysym.sym == SDLK_SPACE){
+				event.char = xx sdl_event.key.keysym.sym;
+				event.text = true;
 			}
+			
+			//}
 			
 			case SDL_KEYUP;
 			event := push_event(*out);
@@ -237,6 +260,17 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 		case SDLK_y; out = .Y;
 		case SDLK_z; out = .Z;
 		
+		case SDLK_0; out = ._0;
+		case SDLK_1; out = ._1;
+		case SDLK_2; out = ._2;
+		case SDLK_3; out = ._3;
+		case SDLK_4; out = ._4;
+		case SDLK_5; out = ._5;
+		case SDLK_6; out = ._6;
+		case SDLK_7; out = ._7;
+		case SDLK_8; out = ._8;
+		case SDLK_9; out = ._9;
+		
 		case SDL_BUTTON_LEFT; out = .LMB;
 		case SDL_BUTTON_RIGHT; out = .RMB;
 		
@@ -244,6 +278,9 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 		case SDLK_LCTRL; out = .LCTRL;
 		case SDLK_TAB; out = .TAB;
 		case SDLK_DELETE; out = .DEL;
+		case SDLK_BACKSPACE; out = .BACK;
+		case SDLK_LEFT; out = .LEFT;
+		case SDLK_RIGHT; out = .RIGHT;
 	}
 	
 	return out;

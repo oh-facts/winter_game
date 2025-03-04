@@ -59,6 +59,8 @@ active_entity_index := 0;
 active_edit_index := 0;
 test_entity : *Entity;
 
+text_edit_buffer : string;
+
 me_mode := ME_Mode.Tile;
 
 SelectionTile :: struct {
@@ -100,8 +102,266 @@ editor_update :: (delta : float32, events : *os.EventList,
 		//active_tilemap_index = Vector2i.{0, 10};
 		
 		test_entity = entity_alloc(*editor_entity_store);
-		test_entity.name = sprint("ella");
+		test_entity.name = sprint("");
+		
+		count :: 32;
+		text_edit_buffer.data = alloc(count);
+		memset(text_edit_buffer.data, 0, count);
+		text_edit_buffer.count = count;
 	}
+	
+	// @panel
+	editor_window_begin(map_editor_window, events);
+	editor_push_file_id(map_editor_window, .Map_Editor);
+	
+	ui_push_size_node(ui_size_pct(1, 0));
+	editor_col_begin();
+	ui_pop_size_node();
+	
+	if !map_editor_window.hide {
+		ui_push_size_x_node(ui_size_pct(0.4, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		ui_push_text_align_node(.Left);
+		
+		text := tprint("mpos %", mpos);
+		editor_label(text);
+		
+		text = tprint("wmpos %", wmpos);
+		editor_label(text);
+		
+		text = tprint("tile_pos %", tile_pos);
+		editor_label(text);
+		
+		text = tprint("tilemap %", active_tilemap_index);
+		editor_label(text);
+		ui_pop_text_align_node();
+		
+		editor_spacer(ui_size_px(8));
+		
+		if editor_button("reload shaders").active {
+			r.free_shaders();
+			r.compile_shaders();
+		}
+		
+		if editor_button("save").active {
+			save_tileworld(editor_tileworld);
+		}
+		
+		if editor_button("load").active {
+			load_tileworld(*editor_tileworld);
+		}
+		
+		editor_spacer(ui_size_px(8));
+		
+		ui_push_size_x_node(ui_size_pct(1, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		
+		editor_row_begin();
+		ui_pop_size_node();
+		
+		ui_push_size_x_node(ui_size_pct(1, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		
+		for 0 .. ME_Mode.Count - 1 {
+			if me_mode == it {
+				ui_push_border_color_node(r.COLOR_ORANGE, true);
+			}
+			text = tprint("%", it); 
+			if editor_button(text, xx it).active {
+				me_mode = it;
+			}
+		}
+		
+		ui_pop_size_node();
+		editor_row_end();
+		
+		if me_mode == .Tile {
+			
+			ui_push_size_x_node(ui_size_pct(1, 0), true);
+			ui_push_size_y_node(ui_size_px(24, 1), true);
+			
+			editor_row_begin();
+			
+			ui_push_size_x_node(ui_size_pct(1, 0));
+			ui_push_size_y_node(ui_size_px(24, 1));
+			
+			for tile_tools {
+				text = tprint("%", it.kind);
+				
+				if it_index == active_tool_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
+				}
+				
+				if editor_button(text, it_index).active {
+					active_tool_index = xx it_index;
+				}
+				
+			}
+			
+			ui_pop_size_node();
+			editor_row_end();
+			
+			if active_tool_index == xx Tool_Kind.Paint {
+				ui_push_size_node(ui_size_children_sum(1), true);
+				editor_row_begin();
+				
+				ui_push_size_x_node(ui_size_px(256, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				for paints {
+					text = tprint("%", it.name);
+					
+					if it_index == active_paint_index {
+						ui_push_border_color_node(r.COLOR_ORANGE, true);
+					}
+					
+					if editor_button(text, it_index).active {
+						active_paint_index = it_index;
+					}
+				}
+				
+				ui_pop_size_node();
+				editor_row_end();
+			}
+			
+		} else if me_mode == .Entity {
+			
+			ui_push_size_x_node(ui_size_pct(1, 0), true);
+			ui_push_size_y_node(ui_size_px(24, 1), true);
+			
+			editor_row_begin();
+			
+			ui_push_size_x_node(ui_size_pct(1, 0));
+			ui_push_size_y_node(ui_size_px(24, 1));
+			
+			for entity_tools {
+				text = tprint("%", it.kind);
+				
+				if it_index == active_entity_tool_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
+				}
+				
+				if editor_button(text, xx it_index).active {
+					active_entity_tool_index = xx it_index;
+				}
+				
+			}
+			
+			ui_pop_size_node();
+			editor_row_end();
+			
+			if active_entity_tool_index == xx Entity_Tool_Kind.Create {
+				
+				ui_push_size_node(ui_size_children_sum(1), true);
+				editor_row_begin();
+				
+				ui_push_size_x_node(ui_size_px(256, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				for 0 .. Entity_Kind.Count - 1 {
+					text = tprint("%", it);
+					
+					if it == xx active_entity_index {
+						ui_push_border_color_node(r.COLOR_ORANGE, true);
+					}
+					
+					if editor_button(text, xx it).active {
+						active_entity_index = xx it;
+					}
+				}
+				
+				ui_pop_size_node();
+				editor_row_end();
+			}
+			
+			ui_push_size_node(ui_size_children_sum(1), true);
+			editor_col_begin();
+			
+			ti := type_info(type_of(<< test_entity));
+			
+			for member: ti.members {
+				ui_push_size_node(ui_size_children_sum(1), true);
+				editor_row_begin();
+				
+				ui_push_text_align_node(.Left);
+				ui_push_size_x_node(ui_size_px(160, 0));
+				ui_push_size_y_node(ui_size_px(24, 1));
+				
+				text = tprint("%", member.name);
+				editor_label(text, it_index);
+				
+				if it_index == xx active_edit_index {
+					ui_push_border_color_node(r.COLOR_ORANGE, true);
+				}
+				
+				field := get_field(ti, member.name);
+				
+				data := cast(*u8)test_entity + field.offset_in_bytes;
+				
+				if field.type.type == .STRING {
+					text = tprint("%", << cast(*string)data);
+				} else if field.type.type == .FLOAT {
+					text = tprint("%", << cast(*float)data);
+				}
+				
+				focus : bool;
+				
+				if it_index == active_edit_index {
+					focus = true;
+				}
+				
+				memset(text_edit_buffer.data, 0, text_edit_buffer.count);
+				
+				if (field.type.type == .STRING) || field.type.type == .FLOAT {
+					
+					action : Action_Kind;
+					
+					sig := editor_text_edit(*text_edit_buffer, text, focus, *action, it_index);
+					
+					if sig.active {
+						active_edit_index = it_index;
+					}
+					
+					if active_edit_index == it_index {
+						
+						if action != .Null{
+							if field.type.type ==  .STRING {
+								before_count := test_entity.name.count;
+								
+								free(test_entity.name);
+								test_entity.name = copy_string(text_edit_buffer);
+								
+								if action == .Insert {
+									test_entity.name.count = before_count + 1;
+								}
+								else if action == .Delete {
+									test_entity.name.count = before_count - 1;
+								}
+							} else if field.type.type == .FLOAT {
+								
+								f1 := string_to_float(text_edit_buffer);
+								f2 := cast(*float)data;
+								<< f2 = f1;
+								
+							}
+						}
+					}
+				}
+				editor_row_end();
+			}
+			
+			ui_pop_text_align_node();
+			ui_pop_size_node();
+			editor_row_end();
+		}
+		
+		ui_pop_size_node();
+	}
+	
+	editor_row_end();
+	
+	editor_pop_file_id(map_editor_window);
+	editor_window_end(map_editor_window);
 	
 	mv : Vector2i;
 	if(os.event(events, .W, .Pressed))
@@ -402,212 +662,4 @@ editor_update :: (delta : float32, events : *os.EventList,
 	draw_submerged_entities(editor_entity_store, passes, -1);
 	draw_submerged_entities(editor_entity_store, passes, 1);
 	array_reset_keeping_memory(*editor_entity_store.sort_list);
-	
-	// @panel
-	editor_window_begin(map_editor_window, events);
-	editor_push_file_id(map_editor_window, .Map_Editor);
-	
-	ui_push_size_node(ui_size_pct(1, 0));
-	editor_col_begin();
-	ui_pop_size_node();
-	
-	if !map_editor_window.hide {
-		ui_push_size_x_node(ui_size_pct(0.4, 0));
-		ui_push_size_y_node(ui_size_px(24, 1));
-		ui_push_text_align_node(.Left);
-		text := tprint("mpos %", mpos);
-		editor_label(text);
-		
-		text = tprint("wmpos %", wmpos);
-		editor_label(text);
-		
-		text = tprint("tile_pos %", tile_pos);
-		editor_label(text);
-		
-		text = tprint("tilemap %", active_tilemap_index);
-		editor_label(text);
-		ui_pop_text_align_node();
-		
-		editor_spacer(ui_size_px(8));
-		
-		if editor_button("save").active {
-			save_tileworld(editor_tileworld);
-		}
-		
-		if editor_button("load").active {
-			load_tileworld(*editor_tileworld);
-		}
-		
-		editor_spacer(ui_size_px(8));
-		
-		ui_push_size_x_node(ui_size_pct(1, 0));
-		ui_push_size_y_node(ui_size_px(24, 1));
-		
-		editor_row_begin();
-		ui_pop_size_node();
-		
-		ui_push_size_x_node(ui_size_pct(1, 0));
-		ui_push_size_y_node(ui_size_px(24, 1));
-		
-		for 0 .. ME_Mode.Count - 1 {
-			if me_mode == it {
-				ui_push_border_color_node(r.COLOR_ORANGE, true);
-			}
-			text = tprint("%", it); 
-			if editor_button(text, xx it).active {
-				me_mode = it;
-			}
-		}
-		
-		ui_pop_size_node();
-		editor_row_end();
-		
-		if me_mode == .Tile {
-			
-			ui_push_size_x_node(ui_size_pct(1, 0), true);
-			ui_push_size_y_node(ui_size_px(24, 1), true);
-			
-			editor_row_begin();
-			
-			ui_push_size_x_node(ui_size_pct(1, 0));
-			ui_push_size_y_node(ui_size_px(24, 1));
-			
-			for tile_tools {
-				text = tprint("%", it.kind);
-				
-				if it_index == active_tool_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
-				}
-				
-				if editor_button(text, it_index).active {
-					active_tool_index = xx it_index;
-				}
-				
-			}
-			
-			ui_pop_size_node();
-			editor_row_end();
-			
-			if active_tool_index == xx Tool_Kind.Paint {
-				ui_push_size_node(ui_size_children_sum(1), true);
-				editor_row_begin();
-				
-				ui_push_size_x_node(ui_size_px(256, 0));
-				ui_push_size_y_node(ui_size_px(24, 1));
-				
-				for paints {
-					text = tprint("%", it.name);
-					
-					if it_index == active_paint_index {
-						ui_push_border_color_node(r.COLOR_ORANGE, true);
-					}
-					
-					if editor_button(text, it_index).active {
-						active_paint_index = it_index;
-					}
-				}
-				
-				ui_pop_size_node();
-				editor_row_end();
-			}
-			
-		} else if me_mode == .Entity {
-			
-			ui_push_size_x_node(ui_size_pct(1, 0), true);
-			ui_push_size_y_node(ui_size_px(24, 1), true);
-			
-			editor_row_begin();
-			
-			ui_push_size_x_node(ui_size_pct(1, 0));
-			ui_push_size_y_node(ui_size_px(24, 1));
-			
-			for entity_tools {
-				text = tprint("%", it.kind);
-				
-				if it_index == active_entity_tool_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
-				}
-				
-				if editor_button(text, xx it_index).active {
-					active_entity_tool_index = xx it_index;
-				}
-				
-			}
-			
-			ui_pop_size_node();
-			editor_row_end();
-			
-			if active_entity_tool_index == xx Entity_Tool_Kind.Create {
-				
-				ui_push_size_node(ui_size_children_sum(1), true);
-				editor_row_begin();
-				
-				ui_push_size_x_node(ui_size_px(256, 0));
-				ui_push_size_y_node(ui_size_px(24, 1));
-				
-				for 0 .. Entity_Kind.Count - 1 {
-					text = tprint("%", it);
-					
-					if it == xx active_entity_index {
-						ui_push_border_color_node(r.COLOR_ORANGE, true);
-					}
-					
-					if editor_button(text, xx it).active {
-						active_entity_index = xx it;
-					}
-				}
-				
-				ui_pop_size_node();
-				editor_row_end();
-			}
-			
-			ui_push_size_node(ui_size_children_sum(1), true);
-			editor_col_begin();
-			
-			ti := type_info(type_of(<< test_entity));
-			
-			for member: ti.members {
-				ui_push_size_node(ui_size_children_sum(1), true);
-				editor_row_begin();
-				
-				ui_push_text_align_node(.Left);
-				ui_push_size_x_node(ui_size_px(160, 0));
-				ui_push_size_y_node(ui_size_px(24, 1));
-				
-				text = tprint("%", member.name);
-				editor_label(text, it_index);
-				
-				if it_index == xx active_edit_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
-				}
-				
-				field := get_field(ti, member.name);
-				
-				text.data = talloc(32);
-				text.count = 32;
-				
-				data := cast(*u8)test_entity + field.offset_in_bytes;
-				
-				value_text := tprint("%", << cast(*string)data);
-				
-				if editor_text_edit(*text, value_text, it_index).active {
-					active_edit_index = it_index;
-					test_entity.name = value_text;
-				}
-				
-				editor_row_end();
-			}
-			
-			ui_pop_text_align_node();
-			ui_pop_size_node();
-			editor_row_end();
-		}
-		
-		ui_pop_size_node();
-	}
-	
-	editor_row_end();
-	
-	editor_pop_file_id(map_editor_window);
-	editor_window_end(map_editor_window);
 }

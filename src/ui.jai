@@ -66,6 +66,7 @@ UI_Signal :: struct {
 	hot : bool;
 	active : bool;
 	toggle : bool;
+	focus : bool;
 }
 
 UI_Widget :: struct {
@@ -129,6 +130,7 @@ UI_Widget :: struct {
 	hot : bool;
 	active : bool;
 	toggle : bool;
+	focus : bool;
 }
 
 Slot :: struct {
@@ -249,6 +251,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		
 		out.hot = false;
 		out.active = false;
+		//out.text_edit_pos = 0;
 	}
 	
 	// tree links
@@ -318,6 +321,7 @@ ui_signal :: (widget : *UI_Widget) -> UI_Signal {
 		if os.event(active_cxt.events, .LMB, .Pressed) {
 			widget.active = true;
 			widget.toggle = !widget.toggle;
+			widget.focus = true;
 		}
 		
 	}
@@ -603,6 +607,8 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	state.root = widget;
 	
 	state.root.child_count = 0;
+	state.frame = arena_init();
+	state.frame.used = ARENA_HEADER_SIZE;
 	
 	ui_push_offset_node(.[0, 0]);
 	ui_push_size_node(ui_size_children_sum());

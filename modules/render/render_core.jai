@@ -258,6 +258,7 @@ Font :: struct {
 };
 
 push_text :: (list : *Pass_List, font : Font, text : string, _pos : Vector2, size : float32, color := Vector4.{1, 1, 1, 1}) {
+	
 	pos := _pos;
 	pos.y += (font.ascent + font.descent) * size;
 	
@@ -340,10 +341,18 @@ get_text_rect :: (font : Font, text : string, _pos : Vector2, size : float32) ->
 		}
 		
 		glyph := font.glyphs[xx c];
+		defer pos.x += glyph.advance.x * size;
+		
+		if c == #char " " {
+			ext.max.x += glyph.advance.x * size;
+			max_width += glyph.advance.x * size;
+			continue;
+		}
 		
 		dst : RectF32;
 		dst.min.x = pos.x + glyph.offset.x * size;
 		dst.min.y = pos.y - glyph.offset.y * size;
+		
 		dst.max.x = dst.min.x + glyph.size.x * size;
 		dst.max.y = dst.min.y + glyph.size.y * size;
 		
@@ -358,9 +367,6 @@ get_text_rect :: (font : Font, text : string, _pos : Vector2, size : float32) ->
 		ext.min.x = min(ext.min.x, dst.min.x);
 		ext.max.x = dst.max.x;
 		max_width = max(max_width, ext.max.x);
-		
-		pos.x += glyph.advance.x * size;
-		
 	}
 	
 	ext.max.x = max_width;

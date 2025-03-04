@@ -147,6 +147,7 @@ UI_State :: struct {
 	count : u32;
 	mpos : Vector2;
 	events : *os.EventList;
+	frame : *Arena;
 	
 	%1;
 	

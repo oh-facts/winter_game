@@ -448,14 +448,15 @@ check_link_errors :: (shader : GLuint, type : *u8) {
 	}
 }
 
-make_shader_program :: (vertexShaderSource : *u8, fragmentShaderSource : *u8) -> GLuint {
+make_shader_program :: (vertexShaderSource : string, fragmentShaderSource : string) -> GLuint {
 	vert_shader := glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vert_shader, 1, *vertexShaderSource, xx 0);
+	glShaderSource(vert_shader, 1, *(vertexShaderSource.data), xx 0);
 	glCompileShader(vert_shader);
+	
 	check_compile_errors(vert_shader, "vertex shader");
 	
 	frag_shader := glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(frag_shader, 1, *fragmentShaderSource, xx 0);
+	glShaderSource(frag_shader, 1, *(fragmentShaderSource.data), xx 0);
 	glCompileShader(frag_shader);
 	check_compile_errors(frag_shader, "fragment shader");
 	
@@ -548,15 +549,15 @@ compile_shaders :: () {
 		
 		vert_abs_path := tprint("%/%", state.shaders_folder, vert_shader_paths[i]);
 		
-		vert_shader_file := read_entire_file(vert_abs_path);
+		vert_shader_file := read_entire_file(vert_abs_path, true);
 		defer free(vert_shader_file);
 		
 		frag_abs_path := tprint("%/%", state.shaders_folder, frag_shader_paths[i]);
 		
-		frag_shader_file := read_entire_file(frag_abs_path);
+		frag_shader_file := read_entire_file(frag_abs_path, true);
 		defer free(frag_shader_file);
 		
-		state.shader_prog[i] = make_shader_program(vert_shader_file.data, frag_shader_file.data);
+		state.shader_prog[i] = make_shader_program(vert_shader_file, frag_shader_file);
 	}
 	
 	/*
