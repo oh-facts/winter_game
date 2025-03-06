@@ -14,7 +14,7 @@
 // Make this a module?
 
 UI_ID :: struct {
-	v : [3]u64;
+	v : [4]u64;
 }
 
 UI_Axis :: enum {
@@ -157,14 +157,12 @@ operator == :: (a : UI_ID, b : UI_ID) -> bool {
 hash_from_key :: (key : UI_ID) -> int {
 	hash := 5381;
 	
-	for 0 .. 1 {
-		hash = ((hash << 5) + hash) + xx key.v[it];
+	for key.v {
+		hash = ((hash << 5) + hash) + xx it;
 	}
 	
 	return hash;
 }
-
-
 
 widget_lookup :: (key : UI_ID) -> *UI_Widget {
 	slot_index := hash_from_key(key) % xx active_cxt.slots.count;

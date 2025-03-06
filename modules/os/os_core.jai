@@ -288,6 +288,7 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 		case SDLK_RIGHT; out = .RIGHT;
 		case SDLK_UP; out = .UP;
 		case SDLK_DOWN; out = .DOWN;
+		case SDLK_RETURN; out = .ENTER;
 	}
 	
 	return out;

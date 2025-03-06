@@ -99,9 +99,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 		load_tileworld(*editor_tileworld);
 		//active_tilemap_index = Vector2i.{0, 10};
 		
-		test_entity = entity_alloc(*editor_entity_store);
-		test_entity.name = sprint("Asuka");
+		test_entity = entity_from_kind(*editor_entity_store, .Player, .{600, 600});
+		
+		//test_entity = entity_alloc(*editor_entity_store);
+		//test_entity.name = sprint("Asuka");
 	}
+	
+	//print("%", << test_entity);
 	
 	// @panel
 	editor_window_begin(map_editor_window, events);
@@ -267,65 +271,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 				editor_row_end();
 			}
 			
-			ui_push_size_node(ui_size_children_sum(1), true);
-			editor_col_begin();
+			//ti := type_info(type_of(<< ));
 			
-			ti := type_info(type_of(<< test_entity));
+			editor_struct_edit(<< test_entity);
 			
-			for member: ti.members {
-				ui_push_size_node(ui_size_children_sum(1), true);
-				editor_row_begin();
-				
-				ui_push_text_align_node(.Left);
-				ui_push_size_x_node(ui_size_px(160, 0));
-				ui_push_size_y_node(ui_size_px(24, 1));
-				
-				text = tprint("%", member.name);
-				editor_label(text, it_index);
-				
-				if it_index == xx active_edit_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
-				}
-				
-				field := get_field(ti, member.name);
-				
-				data := cast(*u8)test_entity + field.offset_in_bytes;
-				
-				if field.type.type == .STRING {
-					text = tprint("%", << cast(*string)data);
-				} 
-				
-				if (field.type.type == .STRING) {
-					
-					action : Action_Kind;
-					
-					sig := editor_text_edit(text, *action, it_index);
-					
-					active_edit_index = -1;
-					
-					if sig.focus {
-						active_edit_index = it_index;
-					}
-					
-					if active_edit_index == it_index {
-						
-						if action == {
-							case .Insert; 
-							free(test_entity.name);
-							test_entity.name = copy_string(sig.text_edit);
-						}
-						
-					}
-					
-				}
-				editor_row_end();
-			}
-			
-			ui_pop_text_align_node();
-			ui_pop_size_node();
-			editor_row_end();
 		}
-		
 		ui_pop_size_node();
 	}
 	
@@ -333,6 +283,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	editor_pop_file_id(map_editor_window);
 	editor_window_end(map_editor_window);
+	
+	//print("%", << test_entity);
 	
 	mv : Vector2i;
 	if(os.event(events, .W, .Pressed))

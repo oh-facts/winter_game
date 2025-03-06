@@ -1,8 +1,13 @@
+// TODO(mizu): in case text doesnt fit in a certain width, render ...
+
+// make editor widgets copy the string. right now it isnt a problem because my strings are always valid for the frame. In my text edit it was a problem so I am doing that there for now.
+
+#import "Compiler";
+
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
 active_window : *Editor_Window;
-// TODO(mizu): in case text doesnt fit in a certain width, render ...
 
 Editor_File_Id :: enum {
 	Null;
@@ -232,12 +237,13 @@ editor_window_end :: (window : *Editor_Window) {
 	window.last_mpos = mpos;
 }
 
-editor_label :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
+editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
 	
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[3] = xx depth;
 	
 	out := ui_widget_impl(.Text, id);
 	out.widget.text = text;
@@ -263,11 +269,13 @@ Action_Kind :: enum {
 	Lost;
 }
 
-editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0, loc := #caller_location) -> UI_Signal {
+editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
+										 depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[3] = xx depth;
 	
 	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
 	w := out.widget;
@@ -297,6 +305,8 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0, l
 		
 		if event {
 			if event.key == {
+				
+				case .ENTER; #through;
 				case .LMB;
 				w.focus = false;
 				
@@ -464,6 +474,112 @@ editor_spacer :: (size : UI_Size, index := 0, loc := #caller_location) -> UI_Sig
 	return out;
 }
 
+// TODO(mizu): Ok, will need a smarter method
+// Depth isnt nearly enough. Member was stupid. Its basically array index lol. I am thinking instead of depth, I do recursion parent?
+// here's another hit, barry bonds??
+
+editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
+	text : string;
+	
+	ui_push_size_node(ui_size_children_sum(1), true);
+	editor_col_begin();
+	
+	ti := cast(*Type_Info_Struct)any.type;
+	
+	for member: ti.members {
+		
+		ui_push_size_node(ui_size_children_sum(1), true);
+		editor_row_begin();
+		
+		ui_push_text_align_node(.Left);
+		ui_push_size_x_node(ui_size_px(64, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		
+		text = tprint("%", member.name);
+		label_sig := editor_label(text, it_index, depth);
+		
+		if label_sig.toggle {
+			
+			if it_index == xx active_edit_index {
+				ui_push_border_color_node(r.COLOR_ORANGE, true);
+			}
+			
+			field := get_field(ti, member.name);
+			
+			data := cast(*u8)any.value_pointer + field.offset_in_bytes;
+			
+			if field.type.type == {
+				case .STRING;
+				text = tprint("%", << cast(*string)data);
+				
+				case .FLOAT;
+				text = tprint("%", << cast(*float)data);
+				ui_push_text_align_node(.Right, true);
+			}
+			
+			if field.type.type == {
+				
+				case .FLOAT; #through;
+				case .STRING;
+				action : Action_Kind;
+				
+				ui_push_size_x_node(ui_size_px(120, 0), true);
+				sig := editor_text_edit(text, *action, it_index, depth);
+				
+				active_edit_index = -1;
+				
+				if sig.focus {
+					active_edit_index = it_index;
+				}
+				
+				if active_edit_index == it_index {
+					
+					if action == {
+						case .Insert;
+						
+						if field.type.type == {
+							case .STRING;
+							string_var := cast(*string) data;
+							
+							free(<< string_var);
+							<< string_var = copy_string(sig.text_edit);
+							
+							case .FLOAT;
+							float_var := cast(*float) data;
+							
+							text_float := string_to_float(sig.text_edit);
+							
+							<< float_var = text_float;
+						}
+					}
+				}
+				
+				case .BOOL;
+				bool_var := cast(*bool) data;
+				
+				ui_push_size_x_node(ui_size_px(24, 0), true);
+				editor_check_box(bool_var, it_index);
+				
+				case .STRUCT;
+				
+				address := (cast(*u8) any.value_pointer) + member.offset_in_bytes;
+				
+				any2: Any = ---;
+				any2.type = member.type;
+				any2.value_pointer = address;
+				
+				editor_struct_edit(any2, *label_sig.widget.key);
+			}
+		}
+		
+		ui_pop_size_node();
+		ui_pop_text_align_node();
+		editor_row_end();
+	}
+	
+	editor_row_end();
+}
+
 draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Scissor {
@@ -562,6 +678,8 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		
 	}
 	
+	text_pos_delta : Vector2;
+	
 	if root.flags & .Text {
 		text_color := r.COLOR_WHITE;
 		
@@ -569,7 +687,6 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			text_color = r.COLOR_BLUE;
 		}
 		
-		text_pos := root.pos;
 		font_size := 1.;
 		
 		if root.flags & .Clickable {
@@ -589,19 +706,26 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		text_height := text_rect.max.y - text_rect.min.y;
 		
 		if root.size.y > text_height {
-			text_pos.y += (root.size.y - text_height) / 2;
+			text_pos_delta.y += (root.size.y - text_height) / 2;
 		}
 		
 		if root.text_align == .Middle {
 			text_width := text_rect.max.x - text_rect.min.x;
 			if root.size.x > text_width {
-				text_pos.x += (root.size.x - text_width) / 2;
+				text_pos_delta.x += (root.size.x - text_width) / 2;
 			}
-		} else {
-			text_pos.x += 4;
+		} else if root.text_align == .Left {
+			text_pos_delta.x += 4;
+		} else if root.text_align == .Right {
+			text_width := text_rect.max.x - text_rect.min.x;
+			
+			if root.size.x > text_width {
+				text_pos_delta.x += root.size.x - text_width - 4;
+			}
+			
 		}
 		
-		r.push_text(passes, font, root.text, text_pos, font_size, text_color);
+		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, text_color);
 	}
 	
 	if root.flags & .Text_Edit {
@@ -612,7 +736,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			text_rect := r.get_text_rect(font, before_cursor_text, .{}, 1);
 			
 			dst := root.dst;
-			dst.min.x += text_rect.max.x + 6;
+			dst.min.x += text_rect.max.x + text_pos_delta.x;
 			dst.max.x = dst.min.x + 4;
 			
 			rect := r.push_rect2(passes, dst, r.COLOR_WHITE);
