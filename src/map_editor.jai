@@ -59,8 +59,6 @@ active_entity_index := 0;
 active_edit_index := 0;
 test_entity : *Entity;
 
-text_edit_buffer : string;
-
 me_mode := ME_Mode.Tile;
 
 SelectionTile :: struct {
@@ -102,12 +100,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		//active_tilemap_index = Vector2i.{0, 10};
 		
 		test_entity = entity_alloc(*editor_entity_store);
-		test_entity.name = sprint("");
-		
-		count :: 32;
-		text_edit_buffer.data = alloc(count);
-		memset(text_edit_buffer.data, 0, count);
-		text_edit_buffer.count = count;
+		test_entity.name = sprint("Asuka");
 	}
 	
 	// @panel
@@ -300,52 +293,30 @@ editor_update :: (delta : float32, events : *os.EventList,
 				
 				if field.type.type == .STRING {
 					text = tprint("%", << cast(*string)data);
-				} else if field.type.type == .FLOAT {
-					text = tprint("%", << cast(*float)data);
-				}
+				} 
 				
-				focus : bool;
-				
-				if it_index == active_edit_index {
-					focus = true;
-				}
-				
-				memset(text_edit_buffer.data, 0, text_edit_buffer.count);
-				
-				if (field.type.type == .STRING) || field.type.type == .FLOAT {
+				if (field.type.type == .STRING) {
 					
 					action : Action_Kind;
 					
-					sig := editor_text_edit(*text_edit_buffer, text, focus, *action, it_index);
+					sig := editor_text_edit(text, *action, it_index);
 					
-					if sig.active {
+					active_edit_index = -1;
+					
+					if sig.focus {
 						active_edit_index = it_index;
 					}
 					
 					if active_edit_index == it_index {
 						
-						if action != .Null{
-							if field.type.type ==  .STRING {
-								before_count := test_entity.name.count;
-								
-								free(test_entity.name);
-								test_entity.name = copy_string(text_edit_buffer);
-								
-								if action == .Insert {
-									test_entity.name.count = before_count + 1;
-								}
-								else if action == .Delete {
-									test_entity.name.count = before_count - 1;
-								}
-							} else if field.type.type == .FLOAT {
-								
-								f1 := string_to_float(text_edit_buffer);
-								f2 := cast(*float)data;
-								<< f2 = f1;
-								
-							}
+						if action == {
+							case .Insert; 
+							free(test_entity.name);
+							test_entity.name = copy_string(sig.text_edit);
 						}
+						
 					}
+					
 				}
 				editor_row_end();
 			}

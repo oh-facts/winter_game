@@ -67,6 +67,7 @@ UI_Signal :: struct {
 	active : bool;
 	toggle : bool;
 	focus : bool;
+	text_edit : string;
 }
 
 UI_Widget :: struct {
@@ -131,6 +132,7 @@ UI_Widget :: struct {
 	active : bool;
 	toggle : bool;
 	focus : bool;
+	focus_last : bool;
 }
 
 Slot :: struct {
@@ -251,6 +253,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		
 		out.hot = false;
 		out.active = false;
+		out.focus_last = out.focus;
 		//out.text_edit_pos = 0;
 	}
 	
@@ -329,6 +332,8 @@ ui_signal :: (widget : *UI_Widget) -> UI_Signal {
 	out.hot = widget.hot;
 	out.active = widget.active;
 	out.toggle = widget.toggle;
+	out.focus = widget.focus;
+	
 	return out;
 }
 

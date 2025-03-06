@@ -260,10 +260,10 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 Action_Kind :: enum {
 	Null;
 	Insert;
-	Delete;
+	Lost;
 }
 
-editor_text_edit :: (buffer : *string, display_text : string, focus : bool, action : *Action_Kind, index := 0, loc := #caller_location) -> UI_Signal {
+editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0, loc := #caller_location) -> UI_Signal {
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
@@ -271,99 +271,105 @@ editor_text_edit :: (buffer : *string, display_text : string, focus : bool, acti
 	
 	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
 	w := out.widget;
-	w.text = display_text;
+	w.text = tprint("%", display_text);
 	
-	if focus {
-		
-		if index == 16 {
-			oooga : int;
+	if w.focus {
+		// first time focus?
+		if w.focus && !w.focus_last {
+			w.text_edit_pos = display_text.count;
 		}
 		
-		//out.widget.text = display_text;
+		events := active_window.events;
+		event : *os.Event;
+		
 		{
-			cur := active_window.events.first;
+			// TODO(mizu): Technically, I should walk through each event instead of taking one and dipping because many events can come per frame
+			cur := events.first;
 			while cur {
-				// text input
+				defer cur = cur.next;
+				
 				if cur.kind == .Pressed {
-					if cur.key == .LMB {
+					event = os.eat_event(events, cur);
+					break;
+				}
+			}
+		}
+		
+		if event {
+			if event.key == {
+				case .LMB;
+				w.focus = false;
+				
+				case .LEFT;
+				w.text_edit_pos -= 1;
+				
+				case .RIGHT;
+				w.text_edit_pos += 1;
+				
+				case .BACK;
+				
+				if display_text.count > 0 {
+					if w.text_edit_pos == display_text.count {
+						out.text_edit.data = display_text.data;
+						out.text_edit.count = display_text.count - 1;
+						w.text = out.text_edit;
 						
-					}
-					else if cur.text == true {
-						os.eat_event(active_window.events, cur);
-						
-						if w.text_edit_pos < buffer.count {
-							<< action = .Insert;
-							
-							memcpy(buffer.data, display_text.data, display_text.count);
-							
-							out.widget.text.data = push_array(editor_ui_cxt.frame, u8, xx display_text.count);
-							out.widget.text.count = display_text.count;
-							
-							memcpy(out.widget.text.data, display_text.data, display_text.count);
-							
-							if w.text_edit_pos == display_text.count {
-								buffer.data[w.text_edit_pos] = cur.char;
-							} else {
-								pre : string;
-								pre.count = w.text_edit_pos;
-								pre.data = push_array(editor_ui_cxt.frame, u8, xx pre.count);
-								memcpy(pre.data, display_text.data, w.text_edit_pos);
-								
-								post : string;
-								post.count = display_text.count - w.text_edit_pos;
-								post.data = push_array(editor_ui_cxt.frame, u8, xx post.count);
-								
-								memcpy(post.data, *display_text.data[w.text_edit_pos], post.count);
-								sext := tprint("%", pre, cur.char, post);
-								memcpy(buffer.data, pre.data, pre.count);
-								memcpy(*buffer.data[pre.count], *cur.char, 1);
-								memcpy(*buffer.data[pre.count + 1], post.data, post.count);
-								rerer : int;
-							}
-							
-							w.text_edit_pos += 1;
-						}
-					}
-					else if cur.key == .BACK {
-						<< action = .Delete;
-						
+						<< action = .Insert;
+						w.text_edit_pos -= 1;
+					} else {
 						pre : string;
+						pre.data = *w.text.data[0];
 						pre.count = w.text_edit_pos - 1;
-						pre.data = push_array(editor_ui_cxt.frame, u8, xx pre.count);
-						memcpy(pre.data, display_text.data, w.text_edit_pos);
 						
 						post : string;
-						post.count = display_text.count - w.text_edit_pos;
-						post.data = push_array(editor_ui_cxt.frame, u8, xx post.count);
+						post.data = *w.text.data[w.text_edit_pos];
+						post.count = w.text.count - w.text_edit_pos;
 						
-						memcpy(post.data, *display_text.data[w.text_edit_pos], post.count);
-						sext := tprint("%", pre, cur.char, post);
-						memcpy(buffer.data, pre.data, pre.count);
-						memcpy(*buffer.data[pre.count], post.data, post.count);
-						rerer : int;
+						out.text_edit = tprint("%0%0", pre, post);
 						
+						<< action = .Insert;
 						w.text_edit_pos -= 1;
-					}
-					else if cur.key == .LEFT {
-						if w.text_edit_pos > 0 {
-							os.eat_event(active_window.events, cur);
-							w.text_edit_pos -= 1;
-						}
-					}
-					else if cur.key == .RIGHT {
-						if w.text_edit_pos < display_text.count {
-							os.eat_event(active_window.events, cur);
-							w.text_edit_pos += 1;
-						}
 					}
 				}
 				
-				cur = cur.next;
+				case;
+				if event.text {
+					
+					char : string;
+					char.data = *event.char;
+					
+					if event.shift_held {
+						<< char.data = << char.data - 32;
+					}
+					
+					char.count = 1;
+					
+					if w.text_edit_pos == display_text.count {
+						out.text_edit = tprint("%0%0", display_text, char);
+						w.text = out.text_edit;
+					} else {
+						pre : string;
+						pre.data = *w.text.data[0];
+						pre.count = w.text_edit_pos;
+						
+						post : string;
+						post.data = *w.text.data[w.text_edit_pos];
+						post.count = w.text.count - w.text_edit_pos;
+						
+						out.text_edit = tprint("%0%0%0", pre, char, post);
+						
+						rerer : int;
+					}
+					<< action = .Insert;
+					w.text_edit_pos += 1;
+				}
 			}
 		}
-	} else {
-		w.text_edit_pos = display_text.count;
 	}
+	
+	w.text_edit_pos = clamp_bot(w.text_edit_pos, 0);
+	
+	w.text_edit_pos = clamp_top(w.text_edit_pos, w.text.count);
 	
 	return out;
 }
@@ -599,19 +605,20 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	}
 	
 	if root.flags & .Text_Edit {
-		
-		before_cursor_text := root.text;
-		before_cursor_text.count = root.text_edit_pos;
-		
-		text_rect := r.get_text_rect(font, before_cursor_text, .{}, 1);
-		
-		dst := root.dst;
-		dst.min.x += text_rect.max.x + 6;
-		dst.max.x = dst.min.x + 4;
-		
-		rect := r.push_rect2(passes, dst, r.COLOR_WHITE);
-		//rect.border_color = r.COLOR_WHITE;
-		//rect.border_thickness = 4;
+		if root.focus {
+			before_cursor_text := root.text;
+			before_cursor_text.count = root.text_edit_pos;
+			
+			text_rect := r.get_text_rect(font, before_cursor_text, .{}, 1);
+			
+			dst := root.dst;
+			dst.min.x += text_rect.max.x + 6;
+			dst.max.x = dst.min.x + 4;
+			
+			rect := r.push_rect2(passes, dst, r.COLOR_WHITE);
+			//rect.border_color = r.COLOR_WHITE;
+			//rect.border_thickness = 4;
+		}
 	}
 	
 	{

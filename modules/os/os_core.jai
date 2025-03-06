@@ -62,6 +62,7 @@ Event :: struct {
 	wheel : int;
 	text : bool;
 	char : u8;
+	shift_held : bool;
 };
 
 EventList :: struct {
@@ -186,9 +187,13 @@ poll_events :: () -> EventList {
 			event.kind = .Pressed;
 			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
 			
-			if (sdl_event.key.keysym.sym >= SDLK_a && sdl_event.key.keysym.sym <= SDLK_z) || (sdl_event.key.keysym.sym >= SDLK_0 && sdl_event.key.keysym.sym <= SDLK_9) || (sdl_event.key.keysym.sym == SDLK_SPACE){
+			if (sdl_event.key.keysym.sym >= 32 && sdl_event.key.keysym.sym <= 126) {
 				event.char = xx sdl_event.key.keysym.sym;
 				event.text = true;
+			}
+			
+			if sdl_event.key.keysym.mod & KMOD_SHIFT {
+				event.shift_held = true;
 			}
 			
 			//}
@@ -281,6 +286,8 @@ key_from_sym :: (sym : SDL_Keycode) -> Key{
 		case SDLK_BACKSPACE; out = .BACK;
 		case SDLK_LEFT; out = .LEFT;
 		case SDLK_RIGHT; out = .RIGHT;
+		case SDLK_UP; out = .UP;
+		case SDLK_DOWN; out = .DOWN;
 	}
 	
 	return out;

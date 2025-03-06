@@ -37,7 +37,7 @@ build :: () {
 	
 	set_build_options_dc(.{do_output=false});
 	
-	font := init_font("data/fonts/cascadia.ttf", 16);
+	font := init_font("data/fonts/delius.ttf", 16);
 	
 	str : string;
 	str.data = xx *font;
