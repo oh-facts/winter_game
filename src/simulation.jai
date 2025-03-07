@@ -247,9 +247,6 @@ entity_free :: (es : *Entity_Store, entity : *Entity) {
 	es.inactive_count += 1;
 }
 
-entity_window : *Editor_Window;
-world_window : *Editor_Window;
-
 py : *Entity;
 world_tileworld : Tileworld;
 
@@ -267,9 +264,6 @@ world_update :: (delta : float32, events : *os.EventList,
 	if !world_initialized {
 		world_initialized = true;
 		entity_store = entity_store_init();
-		
-		entity_window = editor_init_window("entity inspector");
-		world_window = editor_init_window("world inspector");
 		
 		world_tileworld = init_tileworld();
 		
