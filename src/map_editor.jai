@@ -59,6 +59,7 @@ active_entity_index := 0;
 last_active_entity_index := 0;
 active_edit_index := 0;
 edit_entity : Entity;
+selected_entity : *Entity;
 
 me_mode := ME_Mode.Tile;
 
@@ -103,6 +104,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		load_tileworld(*editor_tileworld);
 		//active_tilemap_index = Vector2i.{0, 10};
+		
+		edit_entity.name = sprint("Entity #%", editor_entity_store.count);
 	}
 	
 	// @panel
@@ -269,14 +272,21 @@ editor_update :: (delta : float32, events : *os.EventList,
 				editor_row_end();
 				
 				if active_entity_index != last_active_entity_index {
-					memset(*edit_entity, 0, size_of(Entity));
-					entity_init_from_kind(*edit_entity, xx active_entity_index, .{});
+					
+					if edit_entity.name.count > 0 {
+						free(edit_entity.name);
+						
+						memset(*edit_entity, 0, size_of(Entity));
+						entity_init_from_kind(*edit_entity, xx active_entity_index, .{});
+						edit_entity.name = sprint("Entity #%", editor_entity_store.count);
+					}
 				}
 				
 				if editor_button("Alloc").active {
 					e := entity_alloc(*editor_entity_store);
 					memcpy(e, *edit_entity, size_of(Entity));
 					memset(*edit_entity, 0, size_of(Entity));
+					edit_entity.name = sprint("Entity #%", editor_entity_store.count);
 				}
 				
 				editor_struct_edit(edit_entity);
@@ -307,12 +317,25 @@ editor_update :: (delta : float32, events : *os.EventList,
 		for 0 .. editor_entity_store.count - 1 {
 			e := editor_entity_store.first + it;
 			text := tprint("%", e.name);
-			editor_label(text, it);
+			
+			if selected_entity == e {
+				ui_push_border_color_node(r.COLOR_ORANGE, true);
+			}
+			
+			if editor_button(text, it).active {
+				selected_entity = e;
+			}
+			
+			if selected_entity == e {
+				editor_struct_edit(<< e);
+			}
+			
 		}
 		
 		ui_pop_text_align_node();
 		ui_pop_size_node();
 	}
+	editor_row_end();
 	
 	editor_pop_file_id(entity_tree_window);
 	editor_window_end(entity_tree_window);

@@ -195,9 +195,13 @@ editor_window_end :: (window : *Editor_Window) {
 	editor_row_begin();
 	
 	// NOTE(mizu): Fix ui bug. Set size node to 32px or 16px instead of 24px to find out
+	// NOTE(mizu): Its been weeks. I made it 32 again because I wanted to do a refactor pass.
+	// The bug is gone now? What the fuck? 
+	// I think it didn't have to do with layouting,
+	// but had to do with styling. Because at some point I modified it to get rid of slop
 	
 	editor_spacer(ui_size_pct(1, 0));
-	ui_push_size_node(ui_size_px(24, 1));
+	ui_push_size_node(ui_size_px(32, 1));
 	if editor_image(r.get_white_square()).active {
 		window.resize_grabbed = true;
 	}

@@ -177,6 +177,10 @@ ui_auto_pop :: () {
 }
 DONE
 
+AUTO_STYLING :: #string DONE
+out.
+DONE
+
 generate_styles :: () -> string {
 	builder: String_Builder;
 	builder2: String_Builder;
