@@ -83,8 +83,8 @@ Mode :: enum {
 	COUNT;
 }
 
-//current_mode : Mode = .Tile_Editor;
-current_mode : Mode = .Game;
+current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Game;
 //current_mode : Mode = .Scratch;
 
 arena : *Arena;
