@@ -172,7 +172,7 @@ Entity :: struct {
 	anim_state : Animation_State;
 	anim_counter : float32;
 	
-	color : Vector4;
+	color : Color;
 	interaction_state : Interaction_State;
 	submerged : float;
 	
@@ -180,6 +180,8 @@ Entity :: struct {
 	
 	auto : bool;
 };
+
+Color :: Vector4;
 
 Entity_Store :: struct {
 	arena : *Arena;
@@ -269,7 +271,6 @@ world_update :: (delta : float32, events : *os.EventList,
 		entity_window = editor_init_window("entity inspector");
 		world_window = editor_init_window("world inspector");
 		
-		editor_set_window_pos(world_window, .{1600, 0});
 		world_tileworld = init_tileworld();
 		
 		load_tileworld(*world_tileworld);
@@ -695,48 +696,51 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	clear_collisions(*world_tileworld);
 }
 
-entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *Entity {
-	
-	out := entity_alloc(es);
-	out.kind = kind;
+entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
+	e.kind = kind;
 	
 	if kind == {
 		case .Player;
-		out.flags |= .Control | .Animated | .Sloppy_Shadow;
-		out.art_id = .Impolo;
-		out.speed = 200;
-		out.submerged = 0.3;
-		out.color = r.COLOR_WHITE;
+		e.flags |= .Control | .Animated | .Sloppy_Shadow;
+		e.art_id = .Impolo;
+		e.speed = 200;
+		e.submerged = 0.3;
+		e.color = r.COLOR_WHITE;
 		
 		case .Tree;
-		out.flags |= .Interactable;
-		out.art_id = .Tree;
-		out.submerged = 0.28;
-		out.color = r.COLOR_WHITE;
-		out.frame_n = cast(s32) (random_get() % 3);
+		e.flags |= .Interactable;
+		e.art_id = .Tree;
+		e.submerged = 0.28;
+		e.color = r.COLOR_WHITE;
+		e.frame_n = cast(s32) (random_get() % 3);
 		
 		case .Ball;
-		out.art_id = .Ball;
-		out.color = r.COLOR_WHITE;
+		e.art_id = .Ball;
+		e.color = r.COLOR_WHITE;
 		
 		case .Siren;
-		out.flags |= .Interactable;
-		out.art_id = .Siren;
-		out.submerged = 0.08;
-		out.color = r.COLOR_WHITE;
+		e.flags |= .Interactable;
+		e.art_id = .Siren;
+		e.submerged = 0.08;
+		e.color = r.COLOR_WHITE;
 		
 		case .Husk;
-		out.art_id = .Impolo;
-		out.flags |= .Chase_Entity;
-		out.color = r.COLOR_BLACK;
-		out.submerged = 0.08;
+		e.art_id = .Impolo;
+		e.flags |= .Chase_Entity;
+		e.color = r.COLOR_BLACK;
+		e.submerged = 0.08;
 	}
 	
-	out.pos = pos;
-	out.test_pos = pos;
-	out.tile_pos.x = xx (pos.x / 32.);
-	out.tile_pos.y = xx (pos.y / 32.);
+	e.pos = pos;
+	e.test_pos = pos;
+	e.tile_pos.x = xx (pos.x / 32.);
+	e.tile_pos.y = xx (pos.y / 32.);
+}
+
+entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *Entity {
 	
+	out := entity_alloc(es);
+	entity_init_from_kind(out, kind, pos);
 	return out;
 }
 

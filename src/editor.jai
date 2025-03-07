@@ -95,7 +95,7 @@ any_editor_in_focus :: () -> bool {
 	out : bool;
 	
 	for 0 .. editor_windows_count - 1 {
-		res := editor_in_focus(*editor_windows[it]);
+		res := editor_in_focus(editor_windows[it]);
 		
 		if res {
 			out = true;
@@ -106,17 +106,14 @@ any_editor_in_focus :: () -> bool {
 	return out;
 }
 
-editor_set_window_pos :: (window : *Editor_Window, pos : Vector2) {
-	window.pos = pos;
-}
-
-editor_init_window :: (title : string) -> *Editor_Window {
+editor_init_window :: (title : string, pos : Vector2 = .{}) -> *Editor_Window {
 	out := *editor_windows[0] + editor_windows_count;
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
 	out.size = .{400, 300};
 	out.arena = arena_init();
+	out.pos = pos;
 	return out;
 }
 
@@ -137,7 +134,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		ui_push_size_y_node(ui_size_px(window.size.y), true);
 	}
 	
-	root := ui_widget_from_key(.{.[199, 99, 99]});
+	root := ui_widget_from_key(.{.[199, 99, 99, xx window.id]});
 	root.scissor = root.dst;
 	root.child_layout_axis = .Y;
 	root.computed_pos = window.pos.component;
@@ -164,7 +161,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			window.hide = !window.hide;
 		}
 		
-		if editor_label("Title").active {
+		if editor_label(active_window.title).active {
 			window.grabbed = true;
 		}
 		
@@ -244,6 +241,7 @@ editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #calle
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
 	id.v[3] = xx depth;
+	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_impl(.Text, id);
 	out.widget.text = text;
@@ -257,6 +255,7 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_impl(.Text | .Clickable, id);
 	out.widget.text = text;
@@ -419,6 +418,7 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index :=
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_impl(.Image, id);
 	out.widget.image = image;
@@ -492,13 +492,13 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 		editor_row_begin();
 		
 		ui_push_text_align_node(.Left);
-		ui_push_size_x_node(ui_size_px(64, 0));
+		ui_push_size_x_node(ui_size_px(128, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));
 		
 		text = tprint("%", member.name);
 		label_sig := editor_label(text, it_index, depth);
-		
-		if label_sig.toggle {
+		if !label_sig.toggle {
+			//if true {
 			
 			if it_index == xx active_edit_index {
 				ui_push_border_color_node(r.COLOR_ORANGE, true);
@@ -561,6 +561,21 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 				editor_check_box(bool_var, it_index);
 				
 				case .STRUCT;
+				m_tis := member.type.(*Type_Info_Struct);
+				
+				if m_tis == type_info(Color) {
+					editor_color_picker(0, *label_sig.widget.key);
+				} else {
+					
+					address := (cast(*u8) any.value_pointer) + member.offset_in_bytes;
+					
+					any2: Any = ---;
+					any2.type = member.type;
+					any2.value_pointer = address;
+					
+					editor_struct_edit(any2, *label_sig.widget.key);
+				}
+				case;
 				
 				address := (cast(*u8) any.value_pointer) + member.offset_in_bytes;
 				
@@ -568,7 +583,8 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 				any2.type = member.type;
 				any2.value_pointer = address;
 				
-				editor_struct_edit(any2, *label_sig.widget.key);
+				text := tprint("%", any2);
+				editor_label(text, it_index, *label_sig.widget.key);
 			}
 		}
 		
@@ -578,6 +594,21 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 	}
 	
 	editor_row_end();
+}
+
+editor_color_picker :: (index := 0,
+												depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := UI_ID.{};
+	id.v[0] = xx loc.line_number;
+	id.v[1] = xx index;
+	id.v[2] = xx active_window_file_id();
+	id.v[3] = xx depth;
+	
+	out := ui_widget_impl(.Text, id);
+	
+	out.widget.text = "TODO";
+	
+	return out;
 }
 
 draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {

@@ -13,8 +13,11 @@
 
 // Make this a module?
 
+// take flags out of the widget alloc function
+// then generate the styling function
+
 UI_ID :: struct {
-	v : [4]u64;
+	v : [5]u64;
 }
 
 UI_Axis :: enum {
@@ -57,6 +60,7 @@ UI_Flags :: enum_flags u32 {
 	Slider;
 	Scissor;
 	Text_Edit;
+	Color_Picker;
 }
 
 UI_Floating :: UI_Flags.FloatingX | UI_Flags.FloatingY;
@@ -295,18 +299,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 	
 	// auto pop
 	{
-		if active_cxt.border_color_stack.top.auto {
-			ui_pop_border_color_node();
-		}
-		
-		if active_cxt.size_x_stack.top.auto {
-			ui_pop_size_x_node();
-		}
-		
-		if active_cxt.size_y_stack.top.auto {
-			ui_pop_size_y_node();
-		}
-		
+		ui_auto_pop();
 	}
 	
 	return out;

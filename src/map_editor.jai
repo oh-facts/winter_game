@@ -56,8 +56,9 @@ active_tool_index := 0;
 active_paint_index := 0;
 active_entity_tool_index := 0;
 active_entity_index := 0;
+last_active_entity_index := 0;
 active_edit_index := 0;
-test_entity : *Entity;
+edit_entity : Entity;
 
 me_mode := ME_Mode.Tile;
 
@@ -83,6 +84,8 @@ map_editor_lmb_held : bool;
 ed_initialized : bool;
 
 map_editor_window : *Editor_Window;
+entity_tree_window : *Editor_Window;
+
 editor_tilemap : *Tilemap;
 
 editor_update :: (delta : float32, events : *os.EventList, 
@@ -95,25 +98,19 @@ editor_update :: (delta : float32, events : *os.EventList,
 		editor_tileworld = init_tileworld();
 		
 		map_editor_window = editor_init_window("map editor");
+		entity_tree_window = editor_init_window("entity tree", .{800, 0});
+		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		load_tileworld(*editor_tileworld);
 		//active_tilemap_index = Vector2i.{0, 10};
-		
-		test_entity = entity_from_kind(*editor_entity_store, .Player, .{600, 600});
-		
-		//test_entity = entity_alloc(*editor_entity_store);
-		//test_entity.name = sprint("Asuka");
 	}
-	
-	//print("%", << test_entity);
 	
 	// @panel
 	editor_window_begin(map_editor_window, events);
 	editor_push_file_id(map_editor_window, .Map_Editor);
 	
-	ui_push_size_node(ui_size_pct(1, 0));
+	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_col_begin();
-	ui_pop_size_node();
 	
 	if !map_editor_window.hide {
 		ui_push_size_x_node(ui_size_pct(0.4, 0));
@@ -247,7 +244,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 			ui_pop_size_node();
 			editor_row_end();
 			
-			if active_entity_tool_index == xx Entity_Tool_Kind.Create {
+			if active_entity_tool_index == { 
+				case xx Entity_Tool_Kind.Create;
 				
 				ui_push_size_node(ui_size_children_sum(1), true);
 				editor_row_begin();
@@ -269,11 +267,22 @@ editor_update :: (delta : float32, events : *os.EventList,
 				
 				ui_pop_size_node();
 				editor_row_end();
+				
+				if active_entity_index != last_active_entity_index {
+					memset(*edit_entity, 0, size_of(Entity));
+					entity_init_from_kind(*edit_entity, xx active_entity_index, .{});
+				}
+				
+				if editor_button("Alloc").active {
+					e := entity_alloc(*editor_entity_store);
+					memcpy(e, *edit_entity, size_of(Entity));
+					memset(*edit_entity, 0, size_of(Entity));
+				}
+				
+				editor_struct_edit(edit_entity);
+				case xx Entity_Tool_Kind.Select;
+				
 			}
-			
-			//ti := type_info(type_of(<< ));
-			
-			editor_struct_edit(<< test_entity);
 			
 		}
 		ui_pop_size_node();
@@ -283,6 +292,30 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	editor_pop_file_id(map_editor_window);
 	editor_window_end(map_editor_window);
+	
+	editor_window_begin(entity_tree_window, events);
+	editor_push_file_id(entity_tree_window, .Map_Editor);
+	
+	ui_push_size_node(ui_size_pct(1, 0), true);
+	editor_col_begin();
+	
+	if !entity_tree_window.hide {
+		ui_push_size_x_node(ui_size_pct(0.4, 0));
+		ui_push_size_y_node(ui_size_px(24, 1));
+		ui_push_text_align_node(.Left);
+		
+		for 0 .. editor_entity_store.count - 1 {
+			e := editor_entity_store.first + it;
+			text := tprint("%", e.name);
+			editor_label(text, it);
+		}
+		
+		ui_pop_text_align_node();
+		ui_pop_size_node();
+	}
+	
+	editor_pop_file_id(entity_tree_window);
+	editor_window_end(entity_tree_window);
 	
 	//print("%", << test_entity);
 	
@@ -572,6 +605,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 			
 		}
 	} 
+	
+	last_active_entity_index = active_entity_index;
 	
 	// @draw entities
 	for 0 .. editor_entity_store.count - 1 {

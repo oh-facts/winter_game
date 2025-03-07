@@ -165,9 +165,22 @@ UI_STACKS_TEMPLATE :: #string DONE
 
 DONE
 
+AUTO_POP_TEMPLATE :: #string DONE
+if active_cxt.%_stack.top.auto {
+	ui_pop_%_node();
+}
+DONE
+
+MEGA_AUTO_POP_TEMPLATE :: #string DONE
+ui_auto_pop :: () {
+	%
+}
+DONE
+
 generate_styles :: () -> string {
 	builder: String_Builder;
 	builder2: String_Builder;
+	builder3: String_Builder;
 	
 	for *styles {
 		it.Name = upper_snake_from_lower_snake(it.name);
@@ -181,15 +194,19 @@ generate_styles :: () -> string {
 		print_to_builder(*builder, POP_TEMPLATE, it.name, it.Name, it.type);
 		
 		print_to_builder(*builder2, UI_STACKS_TEMPLATE, it.name, it.Name, it.type);
+		print_to_builder(*builder3, AUTO_POP_TEMPLATE, it.name, it.name);
 	}
 	
 	stacks := builder_to_string(*builder2);
+	auto_pops := builder_to_string(*builder3);
 	
 	print_to_builder(*builder2, UI_STATE_TEMPLATE, stacks);
+	print_to_builder(*builder3, MEGA_AUTO_POP_TEMPLATE, auto_pops);
 	
 	state := builder_to_string(*builder2);
+	mega_auto_pops := builder_to_string(*builder3);
 	
-	print_to_builder(*builder, "%", state);
+	print_to_builder(*builder, "%\n%", state, mega_auto_pops);
 	
 	return builder_to_string(*builder);
 }
