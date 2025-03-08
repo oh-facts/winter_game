@@ -549,7 +549,7 @@ ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 
 ui_layout_pos :: (root : *UI_Widget) {
 	
-	lay_pos : float32;// = root.offset[root.child_layout_axis];
+	lay_pos : float32 = root.offset[root.child_layout_axis];
 	
 	{
 		child := root.first;

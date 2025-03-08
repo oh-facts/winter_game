@@ -2,6 +2,14 @@
 
 // make editor widgets copy the string. right now it isnt a problem because my strings are always valid for the frame. In my text edit it was a problem so I am doing that there for now.
 
+// Make the signal part of the widget impl.
+// That way, you can make most widgets not care for signals
+// and for the ones that do, you can add extra checks so if the widget flows outside
+// its container, its signal can be rejected
+
+// However, it is probably a good idea to make the library not submit draw commands
+// for stuff that is outside its clip.
+
 #import "Compiler";
 
 editor_windows : [5]Editor_Window;
@@ -62,7 +70,7 @@ Editor_Window :: struct {
 	resize_grabbed : bool;
 	size : Vector2;
 	
-	offset : float;
+	scroll_offset : float;
 	
 	file_id_stack : struct {
 		top : *Editor_File_Id_Node;
@@ -124,7 +132,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	editor_push_file_id(window, .Editor);
 	
-	ui_push_flags_node(UI_Floating | .Bg | .Scissor);
+	ui_push_flags_node(UI_Floating);
 	ui_push_size_x_node(ui_size_px(window.size.x), true);
 	ui_push_border_color_node(r.COLOR_MAGENTA, true);
 	
@@ -176,11 +184,26 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		editor_row_end();
 	}
 	
+	if point_in_rect(mpos, window.dst) {
+		
+		if scroll_up {
+			window.scroll_offset -= 4;
+		}
+		
+		if scroll_down {
+			window.scroll_offset += 4;
+		}
+		
+	}
+	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_col_begin();
-	
+	col_parent := editor_ui_cxt.parent_stack.top.v;
+	col_parent.offset[1] = window.scroll_offset;
+	col_parent.flags |= .Bg | .Scissor;
+	col_parent.scissor = col_parent.dst;
 	editor_pop_file_id(window);
 	
 	if window.grabbed {
@@ -202,6 +225,10 @@ editor_window_end :: (window : *Editor_Window) {
 	ui_push_size_x_node(ui_size_px(32, 1), true);
 	ui_push_size_y_node(ui_size_pct(1, 1), true);
 	editor_col_begin();
+	
+	col_parent := editor_ui_cxt.parent_stack.top.v;
+	col_parent.flags |= .Bg;
+	
 	editor_spacer(ui_size_pct(1, 0));
 	
 	ui_push_size_node(ui_size_px(32, 1), true);
@@ -449,6 +476,7 @@ editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
@@ -462,6 +490,7 @@ editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	id.v[0] = xx loc.line_number;
 	id.v[1] = xx index;
 	id.v[2] = xx active_window_file_id();
+	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
