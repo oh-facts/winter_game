@@ -165,45 +165,29 @@ tilemap_from_key_dont_alloc:: (world : Tileworld, key : Vector2i) -> *Tilemap {
 save_tileworld :: (tw : Tileworld) {
 	print("started saving\n");
 	
-	{
-		filename := tprint("%/%", data_folder, "map_data");
-		
-		write_entire_file(filename, tw.tilemaps.data, size_of(Tilemap) * tw.tilemaps.count);
-	}
-	{
-		filename := tprint("%/%", data_folder, "map_meta_data");
-		
-		count := tw.tilemaps.count;
-		write_entire_file(filename, *count, size_of(int));
-	}
+	filename := tprint("%/%", data_folder, "map_data");
+	
+	write_entire_file(filename, tw.tilemaps.data, size_of(Tilemap) * tw.tilemaps.count);
+	
+	
 	print("ended saving\n");
 }
 
 load_tileworld :: (tw : *Tileworld) {
-	loaded := 0;
-	{
-		filename := tprint("%/%", data_folder, "map_meta_data");
-		data : *int = xx read_entire_file(filename).data;
+	filename := tprint("%/%", data_folder, "map_data");
+	
+	file_data := read_entire_file(filename);
+	
+	if file_data {
+		count := file_data.count / size_of(Tilemap);
+		data : *Tilemap = xx file_data.data;
 		
-		if data {
-			loaded = << data;
-			
-			free (data);
+		for 0 .. count - 1 {
+			tm := tilemap_from_key(tw, data[it].index);
+			memcpy(tm.gfx.data, data[it].gfx.data, Tilemap.size);
 		}
-	}
-	{
-		filename := tprint("%/%", data_folder, "map_data");
 		
-		data :*Tilemap= xx read_entire_file(filename).data;
-		
-		if data {
-			for 0 .. loaded - 1{
-				tm := tilemap_from_key(tw, data[it].index);
-				memcpy(tm.gfx.data, data[it].gfx.data, Tilemap.size);
-			}
-			
-			free (data);
-		}
+		free (data);
 	}
 }
 

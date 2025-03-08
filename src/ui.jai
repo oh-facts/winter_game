@@ -6,8 +6,8 @@
 
 // Ok, so I need to make discrete non composable types there own "kind"
 
-// also, i have erraneously referred to some widgets as discrete
-// Based on usage code, a text edit is really just a bg + border + label.
+// also, i have erraneously referred to some widgets as fully discrete
+// Based on usage code, a text edit is really just a bg + border + label + extra stuff.
 // Hmm. Some extra rendering like cursor required tho.
 // Still, I can offload those to flags.
 
@@ -15,6 +15,8 @@
 
 // take flags out of the widget alloc function
 // then generate the styling function
+
+// widgets outside of bounds should not be drawn or process input
 
 UI_ID :: struct {
 	v : [5]u64;

@@ -179,6 +179,8 @@ Entity :: struct {
 	attack_state : Attack_State;
 	
 	auto : bool;
+	
+	editor_hover : bool;
 };
 
 Color :: Vector4;
@@ -251,7 +253,6 @@ entity_window : *Editor_Window;
 world_window : *Editor_Window;
 
 py : *Entity;
-world_tileworld : Tileworld;
 
 entity_store_init :: () -> Entity_Store {
 	out : Entity_Store;
@@ -266,26 +267,17 @@ world_update :: (delta : float32, events : *os.EventList,
 								 passes : *r.Pass_List) {
 	if !world_initialized {
 		world_initialized = true;
-		entity_store = entity_store_init();
 		
 		entity_window = editor_init_window("entity inspector");
 		world_window = editor_init_window("world inspector");
-		
-		world_tileworld = init_tileworld();
-		
-		load_tileworld(*world_tileworld);
-		
-		entity_store = editor_entity_store;
-		
-		for 0 .. entity_store.count - 1{
-			e := entity_store.first + it;
-			if e.kind == .Player {
-				py = e;
-				break;
-			}
+	}
+	
+	for 0 .. entity_store.count - 1{
+		e := entity_store.first + it;
+		if e.kind == .Player {
+			py = e;
+			break;
 		}
-		
-		//load_entities();
 	}
 	
 	tick(events, passes, delta);
@@ -309,13 +301,13 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	set_camera_pos(tm_index);
 	
-	world_tilemap := tilemap_from_key(*world_tileworld, tm_index);
+	world_tilemap := tilemap_from_key(*tileworld, tm_index);
 	
 	r.begin_water(passes);
-	draw_tilemap(world_tileworld, world_tilemap, passes);
+	draw_tilemap(tileworld, world_tilemap, passes);
 	
-	generate_collisions(*world_tileworld, entity_store);
-	draw_tilemap_collisions(world_tileworld, world_tilemap, passes);
+	generate_collisions(*tileworld, entity_store);
+	draw_tilemap_collisions(tileworld, world_tilemap, passes);
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -442,7 +434,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 #if 0 {
 			for 0 .. 1 {
 				
-				tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y, xx it});
+				tile := tile_from_index(tileworld, .{test_tile_pos.x, test_tile_pos.y, xx it});
 				
 				if tile.paint_index {
 					valid = true;
@@ -452,7 +444,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		// other entities
 		
-		tile := tile_from_index(world_tileworld, .{test_tile_pos.x, test_tile_pos.y}, .Occupied);
+		tile := tile_from_index(tileworld, .{test_tile_pos.x, test_tile_pos.y}, .Occupied);
 		
 		if tile {
 			valid = !tile.entity;
@@ -678,7 +670,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			target_pos := cmd.entity.tile_pos;
 			target_pos.x += 1;
 			
-			target_tile := tile_from_index(world_tileworld, target_pos, .Occupied);
+			target_tile := tile_from_index(tileworld, target_pos, .Occupied);
 			
 			if target_tile {
 				if target_tile.entity {
@@ -693,7 +685,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		}
 	}
 	
-	clear_collisions(*world_tileworld);
+	clear_collisions(*tileworld);
 }
 
 entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
@@ -925,3 +917,103 @@ find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
 	//start_node = 
 }
 */
+
+/*
+Entity save file
+
+count
+Entity array
+name strings
+
+*/
+
+Entity_Save_File :: struct {
+	count : int;
+	entities : *Entity;
+	names : *string;
+}
+
+save_entities :: (es : Entity_Store) {
+	filename := tprint("%/%", data_folder, "entity_data");
+	
+	save_arena := arena_init();
+	data := push_array(save_arena, u8, 0);
+	
+	// count
+	count : *int = xx push_struct(save_arena, int);
+	<< count = es.count;
+	
+	// entities
+	entities : *Entity = xx push_array(save_arena, Entity, xx es.count);
+	memcpy(entities, es.first, size_of(Entity) * es.count);
+	
+	// strings
+	
+	for 0 .. es.count - 1 {
+		src := es.first + it;
+		dst := entities + it;
+		push_array(save_arena, u8, xx 0);
+		dst.name.data = xx (save_arena.used - ARENA_HEADER_SIZE);;
+		name : *u8 = push_array(save_arena, u8, xx src.name.count);
+		
+		memcpy(name, src.name.data, src.name.count);
+	}
+	
+	write_entire_file(filename, data, xx save_arena.used - ARENA_HEADER_SIZE);
+	
+	print("ended saving\n");
+	
+	// names
+	/*
+	names : *string = xx entry;
+	
+	for 0 .. es.count - 1 {
+		e := es.first + it;
+		memcpy(names, es.first, es.count);
+	}
+	*/
+}
+
+// TODO(mizu): I am thinking, this just creates a new one and returns and then you free the old one
+
+load_entities :: (es : *Entity_Store) {
+	filename := tprint("%/%", data_folder, "entity_data");
+	
+	file_data := read_entire_file(filename);
+	
+	es.arena.used = ARENA_HEADER_SIZE;
+	es.first = push_array(es.arena, Entity, 0);
+	es.count = 0;
+	es.inactive_count = 0;
+	es.free = xx 0;
+	
+	array_reset_keeping_memory(*es.sort_list);
+	
+	if file_data {
+		head := file_data.data;
+		
+		count : int = << cast(*int) head;
+		head += size_of(int);
+		
+		entities : *Entity = xx head;
+		head += size_of(Entity) * count;
+		
+		es.first = push_array(es.arena, Entity, xx count);
+		memcpy(es.first, entities, size_of(Entity) * count);
+		es.count = count;
+		
+		for 0 .. es.count - 1 {
+			src := entities + it;
+			dst := es.first + it;
+			
+			name := alloc_string(entities.name.count);
+			
+			offset :int= xx src.name.data;
+			
+			memcpy(name.data, file_data.data + offset, src.name.count);
+			dst.name = name;
+		}
+		
+		free (file_data);
+	}
+}

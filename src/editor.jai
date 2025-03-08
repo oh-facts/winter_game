@@ -2,6 +2,8 @@
 
 // make editor widgets copy the string. right now it isnt a problem because my strings are always valid for the frame. In my text edit it was a problem so I am doing that there for now.
 
+// 
+
 #import "Compiler";
 
 editor_windows : [5]Editor_Window;

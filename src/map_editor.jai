@@ -1,11 +1,16 @@
 // TODO(mizu): At some point closely review the tools.
 
+// TODO(mizu): Move entities around
+// select / move / create : remove this shit
+// tilemap editor and entity editor
+// put a '+' symbol in the entity tree, clicking
+// which adds an entity
+
+// After this, do map editor and simulation refactor
+
+// Need to do serious refactor at some point
+
 text_size := 1.;
-
-// I don't have the energy to add text edit.
-// Therefore, we will use pre-written names
-
-//output_levels : [5]string : .[""];
 
 ME_Mode :: enum {
 	Tile;
@@ -45,8 +50,7 @@ entity_tools : [3]Entity_Tool : .[.{kind = .Select},
 																	.{kind = .Move}
 																	];
 
-editor_tileworld : Tileworld;
-editor_entity_store : Entity_Store;
+tileworld : Tileworld;
 
 tile_pos : Vector2i;
 paint_layer : int;
@@ -95,17 +99,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 	if !ed_initialized {
 		ed_initialized = true;
 		
-		editor_entity_store = entity_store_init();
-		editor_tileworld = init_tileworld();
-		
 		map_editor_window = editor_init_window("map editor");
 		entity_tree_window = editor_init_window("entity tree", .{800, 0});
 		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
-		load_tileworld(*editor_tileworld);
+		
 		//active_tilemap_index = Vector2i.{0, 10};
 		
-		edit_entity.name = sprint("Entity #%", editor_entity_store.count);
+		edit_entity.name = sprint("Entity #%", entity_store.count);
 	}
 	
 	// @panel
@@ -141,11 +142,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 		}
 		
 		if editor_button("save").active {
-			save_tileworld(editor_tileworld);
+			save_tileworld(tileworld);
+			save_entities(entity_store);
 		}
 		
 		if editor_button("load").active {
-			load_tileworld(*editor_tileworld);
+			load_tileworld(*tileworld);
+			load_entities(*entity_store);
 		}
 		
 		editor_spacer(ui_size_px(8));
@@ -278,15 +281,15 @@ editor_update :: (delta : float32, events : *os.EventList,
 						
 						memset(*edit_entity, 0, size_of(Entity));
 						entity_init_from_kind(*edit_entity, xx active_entity_index, .{});
-						edit_entity.name = sprint("Entity #%", editor_entity_store.count);
+						edit_entity.name = sprint("Entity #%", entity_store.count);
 					}
 				}
 				
 				if editor_button("Alloc").active {
-					e := entity_alloc(*editor_entity_store);
+					e := entity_alloc(*entity_store);
 					memcpy(e, *edit_entity, size_of(Entity));
 					memset(*edit_entity, 0, size_of(Entity));
-					edit_entity.name = sprint("Entity #%", editor_entity_store.count);
+					edit_entity.name = sprint("Entity #%", entity_store.count);
 				}
 				
 				editor_struct_edit(edit_entity);
@@ -314,8 +317,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 		ui_push_size_y_node(ui_size_px(24, 1));
 		ui_push_text_align_node(.Left);
 		
-		for 0 .. editor_entity_store.count - 1 {
-			e := editor_entity_store.first + it;
+		for 0 .. entity_store.count - 1 {
+			e := entity_store.first + it;
 			text := tprint("%", e.name);
 			
 			if selected_entity == e {
@@ -323,7 +326,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 			}
 			
 			if editor_button(text, it).active {
-				selected_entity = e;
+				
+				if selected_entity == e {
+					selected_entity = xx 0;
+				} else {
+					selected_entity = e;
+				}
+				
 			}
 			
 			if selected_entity == e {
@@ -370,10 +379,10 @@ editor_update :: (delta : float32, events : *os.EventList,
 	active_tilemap_index.y = max(active_tilemap_index.y, 0);
 	
 	
-	editor_tilemap = tilemap_from_key(*editor_tileworld, active_tilemap_index);
+	editor_tilemap = tilemap_from_key(*tileworld, active_tilemap_index);
 	
 	// draw map
-	draw_tilemap(editor_tileworld, editor_tilemap, passes);
+	draw_tilemap(tileworld, editor_tilemap, passes);
 	
 	if grid_toggle {
 		draw_grid(passes);
@@ -620,27 +629,65 @@ editor_update :: (delta : float32, events : *os.EventList,
 			// preview tile pos
 			r.push_rect2(passes, tile_rect_from_index(tile_pos), .{0, 0, 0, 1});
 		}
+		
 		else if me_mode == .Entity {
-			
-			if lmbdown_event {
-				entity_from_kind(*editor_entity_store, xx active_entity_index, wmpos);
+			for 0 .. entity_store.count - 1 {
+				entity := entity_store.first + it;
+				
+				dst : RectF32;
+				dst.min.x = entity.pos.x;
+				dst.min.y = entity.pos.y;
+				dst.max.x = dst.min.x + 8;
+				dst.max.y = dst.min.y + 8;
+				
+				if point_in_rect(mpos, dst) {
+					entity.editor_hover = true;
+					
+					if lmbdown_event {
+						selected_entity = entity;
+					}
+					
+				} else {
+					entity.editor_hover = false;
+				}
 			}
-			
 		}
 	} 
 	
-	last_active_entity_index = active_entity_index;
-	
 	// @draw entities
-	for 0 .. editor_entity_store.count - 1 {
-		entity := editor_entity_store.first + it;
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
 		
-		array_add(*editor_entity_store.sort_list, entity);
+		array_add(*entity_store.sort_list, entity);
 	}
 	
-	intro_sort(editor_entity_store.sort_list, sort_entitties);
+	intro_sort(entity_store.sort_list, sort_entitties);
 	
-	draw_submerged_entities(editor_entity_store, passes, -1);
-	draw_submerged_entities(editor_entity_store, passes, 1);
-	array_reset_keeping_memory(*editor_entity_store.sort_list);
+	draw_submerged_entities(entity_store, passes, -1);
+	draw_submerged_entities(entity_store, passes, 1);
+	array_reset_keeping_memory(*entity_store.sort_list);
+	
+	// draw origin
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		
+		dst : RectF32;
+		dst.min.x = entity.pos.x;
+		dst.min.y = entity.pos.y;
+		dst.max.x = dst.min.x + 8;
+		dst.max.y = dst.min.y + 8;
+		
+		color := r.COLOR_YELLOW;
+		
+		if entity.editor_hover {
+			color = r.COLOR_RED;
+		}
+		
+		origin := r.push_sprite(passes, dst, color);
+		origin.radius = 4;
+		origin.border_color = r.COLOR_BLACK;
+		origin.border_thickness = 2;
+	}
+	
+	last_active_entity_index = active_entity_index;
 }

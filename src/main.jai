@@ -79,8 +79,8 @@ scroll_down : bool;
 Mode :: enum {
 	Tile_Editor;
 	Game;
-	Scratch;
 	COUNT;
+	Scratch;
 }
 
 current_mode : Mode = .Tile_Editor;
@@ -106,7 +106,7 @@ main :: () {
 	
 	frames : u64;
 	
-	arena = arena_init(ARENA_COMMIT_SIZE, MB(256));
+	arena = arena_init(ARENA_COMMIT_SIZE, MB(128));
 	
 	load_all_assets();
 	quit : bool;
@@ -114,6 +114,12 @@ main :: () {
 	ui_cxt := ui_init();
 	editor_ui_cxt = ui_cxt;
 	timer : float32;
+	
+	entity_store = entity_store_init();
+	tileworld = init_tileworld();
+	
+	load_entities(*entity_store);
+	load_tileworld(*tileworld);
 	
 	while !quit {
 		timer += xx delta;
