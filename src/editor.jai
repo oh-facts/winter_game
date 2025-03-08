@@ -156,6 +156,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		
 		ui_push_size_x_node(ui_size_pct(0.25, 0));
 		ui_push_size_y_node(ui_size_pct(1, 0));
+		ui_push_hover_color_node(r.COLOR_BLACK);
 		
 		if editor_button("hide").active {
 			window.hide = !window.hide;
@@ -168,10 +169,17 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		editor_spacer(ui_size_pct(1, 0));
 		
 		editor_button("close");
+		ui_pop_hover_color_node();
+		
 		ui_pop_size_node();
 		
-		ui_pop_parent_node();
+		editor_row_end();
 	}
+	
+	ui_push_size_node(ui_size_pct(1, 0), true);
+	editor_row_begin();
+	ui_push_size_node(ui_size_pct(1, 0), true);
+	editor_col_begin();
 	
 	editor_pop_file_id(window);
 	
@@ -181,7 +189,6 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			window.grabbed = false;
 		}
 	}
-	
 }
 
 editor_window_end :: (window : *Editor_Window) {
@@ -189,24 +196,25 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_push_file_id(window, .Editor);
 	
+	editor_row_end();
+	
+	// scroll bar ====
+	ui_push_size_x_node(ui_size_px(32, 1), true);
+	ui_push_size_y_node(ui_size_pct(1, 1), true);
+	editor_col_begin();
 	editor_spacer(ui_size_pct(1, 0));
 	
-	ui_push_size_x_node(ui_size_pct(1, 1), true);
-	editor_row_begin();
+	ui_push_size_node(ui_size_px(32, 1), true);
 	
-	// NOTE(mizu): Fix ui bug. Set size node to 32px or 16px instead of 24px to find out
-	// NOTE(mizu): Its been weeks. I made it 32 again because I wanted to do a refactor pass.
-	// The bug is gone now? What the fuck? 
-	// I think it didn't have to do with layouting,
-	// but had to do with styling. Because at some point I modified it to get rid of slop
-	
-	editor_spacer(ui_size_pct(1, 0));
-	ui_push_size_node(ui_size_px(32, 1));
-	if editor_image(r.get_white_square()).active {
+	scope := tex.scope_open();
+	tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
+	if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
 		window.resize_grabbed = true;
 	}
+	tex.scope_close(scope);
+	editor_row_end();
+	// ===============
 	
-	ui_pop_size_node();
 	editor_row_end();
 	
 	if window.resize_grabbed {
@@ -416,7 +424,7 @@ editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal 
 	return out;
 }
 
-editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index := 0, loc := #caller_location) -> UI_Signal {
+editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : Vector4 = r.COLOR_WHITE, index := 0, loc := #caller_location) -> UI_Signal {
 	
 	id := UI_ID.{};
 	id.v[0] = xx loc.line_number;
@@ -427,6 +435,8 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, index :=
 	out := ui_widget_impl(.Image, id);
 	out.widget.image = image;
 	out.widget.src = src;
+	out.widget.image_color = color;
+	
 	return out;
 }
 
@@ -623,7 +633,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	color := r.COLOR_WHITE;
 	if root.hot {
-		color = root.bg_color;
+		color = root.hover_color;
 	}
 	
 	if root.flags & .Slider {
@@ -680,7 +690,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	}
 	
 	if root.flags & .Image {
-		img := r.push_rect2(passes, root.dst, color);
+		img := r.push_rect2(passes, root.dst, root.image_color);
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
 	}
@@ -688,10 +698,15 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	if root.flags & .Check_Box {
 		dst := root.dst;
 		
-		r.push_rect2(passes, dst, color);
+		cb_bg := r.push_rect2(passes, dst, color);
+		cb_bg.border_color = r.COLOR_BLACK;
+		cb_bg.border_thickness = 3;
 		
 		if root.checked {
-			r.push_rect2(passes, dst, r.COLOR_WHITE);
+			cb := r.push_rect2(passes, dst, r.COLOR_MAGENTA);
+			cb.border_color = r.COLOR_WHITE;
+			cb.border_thickness = 4;
+			cb.radius = 4;
 		}
 		
 	}

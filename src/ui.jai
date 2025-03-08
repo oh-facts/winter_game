@@ -95,6 +95,7 @@ UI_Widget :: struct {
 	// styling =========
 	color : Vector4;
 	bg_color : Vector4;
+	hover_color : Vector4;
 	border_color : Vector4;
 	border_thickness : float32;
 	radius : float32;
@@ -132,6 +133,7 @@ UI_Widget :: struct {
 	// image
 	image : r.Handle;
 	src : RectF32;
+	image_color : Vector4;
 	
 	// text edit
 	text_edit_pos : int;
@@ -309,6 +311,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.flags |= active_cxt.flags_stack.top.v;
 		out.text_padding = active_cxt.text_padding_stack.top.v;
 		out.text_align = active_cxt.text_align_stack.top.v;
+		out.hover_color = active_cxt.hover_color_stack.top.v;
 	}
 	
 	// auto pop
@@ -628,6 +631,7 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_bg_color_node(.{0, 0, 0, 0.5});
 	ui_push_text_align_node(.Middle);
 	ui_push_border_color_node(r.COLOR_WHITE);
+	ui_push_hover_color_node(r.COLOR_MAGENTA);
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
@@ -656,6 +660,7 @@ ui_end :: () {
 	ui_pop_bg_color_node();
 	ui_pop_text_align_node();
 	ui_pop_border_color_node();
+	ui_pop_hover_color_node();
 	
 	for i : 0 .. active_cxt.slots.count - 1 {
 		first_hash := (active_cxt.slots.data + i).first;

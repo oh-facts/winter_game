@@ -16,6 +16,7 @@ ArtId :: enum {
 	Siren;
 	Editor_Titlebar;
 	Fat;
+	Editor_Window_Notch;
 	COUNT;
 }
 
@@ -28,7 +29,7 @@ Art :: struct {
 	origin : Vector2;
 }
 
-arts : [13]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
@@ -40,7 +41,8 @@ arts : [13]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Ball, path = "art/ball.png"},
 									 .{id = .Siren, path = "art/siren.png"},
 									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"},
-									 .{id = .Fat, path = "art/fat/1.png"}];
+									 .{id = .Fat, path = "art/fat/1.png"},
+									 .{id = .Editor_Window_Notch, path = "editor/window_notch.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
