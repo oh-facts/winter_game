@@ -112,6 +112,17 @@ UI_Widget :: struct {
 	scissor : RectF32;
 	// ================
 	
+	// TODO(mizu):  These are discrete types. I am unsure if I want to
+	// put this in a union. I can't think of good reason to do it, 
+	// because .... there's no reason.
+	// Maybe once I have lots of discrete types, the amount of data
+	// would be so high that it would be wasteful.
+	// Now, there is very little overlap atm, but it is important to note
+	// that these are very different and very widgets. I am sure that with
+	// time, there will be beautiful overlap
+	
+	// discrete types =========
+	
 	// checkbox
 	checked : bool;
 	
@@ -124,6 +135,7 @@ UI_Widget :: struct {
 	
 	// text edit
 	text_edit_pos : int;
+	// =========================
 	
 	// calculated during hierearchy pass
 	computed_pos : [UI_Axis.COUNT]float32;

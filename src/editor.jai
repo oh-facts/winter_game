@@ -2,8 +2,6 @@
 
 // make editor widgets copy the string. right now it isnt a problem because my strings are always valid for the frame. In my text edit it was a problem so I am doing that there for now.
 
-// 
-
 #import "Compiler";
 
 editor_windows : [5]Editor_Window;
@@ -623,6 +621,11 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		r.push_scissor(passes, root.scissor);
 	}
 	
+	color := r.COLOR_WHITE;
+	if root.hot {
+		color = root.bg_color;
+	}
+	
 	if root.flags & .Slider {
 		// bar
 		{
@@ -660,40 +663,23 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			r.push_text(passes, font, text, text_pos, 1., r.COLOR_WHITE);
 			//r.pop_scissor(passes);
 		}
-		
 	}
 	
 	if root.flags & .Bg {
 		img := r.push_rect2(passes, root.dst, root.bg_color);
-		img.border_color = root.border_color;//r.COLOR_WHITE;
+		img.border_color = root.border_color;
 		img.border_thickness = 3.5;;
 	}
 	
 	if root.flags & .Clickable {
 		dst := root.dst;
-		color := root.bg_color;
 		
-		if root.hot {
-			color *= 1.1;
-		}
-		
-		bg := r.push_rect2(passes, dst, color);
+		bg := r.push_rect2(passes, dst, .{0, 0, 0, 0.5});
 		bg.border_thickness = 3;
 		bg.border_color = root.border_color;
-		//bg.radius = 4;
 	}
 	
 	if root.flags & .Image {
-		color := r.COLOR_WHITE;
-		if root.hot {
-			color.y *= 0;
-		}
-		
-		bg := r.push_rect2(passes, root.dst, r.COLOR_BLACK);
-		bg.border_thickness = 1;
-		bg.border_color = r.COLOR_WHITE;
-		//bg.radius = 4;
-		
 		img := r.push_rect2(passes, root.dst, color);
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
@@ -701,11 +687,6 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Check_Box {
 		dst := root.dst;
-		color := Vector4.{52. / 255, 70. / 255, 97. / 255, 1};
-		
-		if root.hot {
-			color *= 1.2;
-		}
 		
 		r.push_rect2(passes, dst, color);
 		
@@ -718,26 +699,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	text_pos_delta : Vector2;
 	
 	if root.flags & .Text {
-		text_color := r.COLOR_WHITE;
-		
-		if root.hot {
-			text_color = r.COLOR_BLUE;
-		}
 		
 		font_size := 1.;
 		
 		if root.flags & .Clickable {
-			font_size = 0.95;
+			font_size = 0.9;
 		}
-		
-		/*
-				if root.size.y >= xx (font.line_height * 0.4){
-					
-					 text_pos, 0.4);
-					
-					text_pos.y += (font.line_height * 0.2);
-				}
-				*/
 		
 		text_rect := r.get_text_rect(font, root.text, .{}, font_size);
 		text_height := text_rect.max.y - text_rect.min.y;
@@ -762,7 +729,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			
 		}
 		
-		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, text_color);
+		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, color);
 	}
 	
 	if root.flags & .Text_Edit {
@@ -776,9 +743,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			dst.min.x += text_rect.max.x + text_pos_delta.x;
 			dst.max.x = dst.min.x + 4;
 			
-			rect := r.push_rect2(passes, dst, r.COLOR_WHITE);
-			//rect.border_color = r.COLOR_WHITE;
-			//rect.border_thickness = 4;
+			r.push_rect2(passes, dst, color);
 		}
 	}
 	
