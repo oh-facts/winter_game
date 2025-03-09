@@ -350,9 +350,7 @@ ui_widget_impl :: (flags : UI_Flags, key : UI_ID) -> UI_Signal {
 	widget := ui_widget_from_key(key);
 	widget.flags |= flags;
 	
-	out := ui_signal(widget);
-	
-	return out;
+	return .{widget = widget};
 }
 
 ui_layout_fixed_size :: (root : *UI_Widget, axis : UI_Axis) {

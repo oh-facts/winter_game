@@ -373,7 +373,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			test_pos.x += mv.x * xx delta * entity.speed;
 			test_pos.y += mv.y * xx delta * entity.speed;
 			
-			
 			test_tile_pos : Vector2i;
 			test_tile_pos.x = cast(s32) test_pos.x / 32;
 			test_tile_pos.y = cast(s32) test_pos.y / 32;

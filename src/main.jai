@@ -36,6 +36,7 @@ Camera :: struct {
 camera : Camera;
 
 wmpos : Vector2;
+wmpos_last : Vector2;
 
 set_camera_size :: (size : Vector2) {
 	camera.size = size;
@@ -47,6 +48,8 @@ set_camera_pos :: (pos : Vector2i) {
 }
 
 update_camera :: () {
+	wmpos_last = wmpos;
+	
 	// mouse coords -> world space coords
 	wmpos.x = mpos.x + camera.pos.x - camera.size.x / 2.;
 	wmpos.y = mpos.y + camera.pos.y - camera.size.y / 2.;
@@ -176,7 +179,7 @@ main :: () {
 		
 		r.submit(timer, win, camera.size, passes, camera.pos);
 		
-		//editor_tick_clock();
+		editor_tick_clock();
 		tex.clock_tick();
 		
 		tex.evict_textures();

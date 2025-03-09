@@ -22,34 +22,12 @@ Editor_File_Id :: enum {
 	Map_Editor;
 }
 
-Editor_File_Id_Node :: struct {
-	next : *Editor_File_Id_Node;
-	v : Editor_File_Id;
-}
-
-editor_push_file_id :: (win : *Editor_Window, v : Editor_File_Id) {
-	node : *Editor_File_Id_Node;
-	node = push_struct(win.arena, Editor_File_Id_Node);
-	
-	node.v = v;
-	
-	node.next = win.file_id_stack.top;
-	win.file_id_stack.top = node;
-}
-
-editor_pop_file_id :: (win : *Editor_Window) {
-	to_free := win.file_id_stack.top;
-	
-	win.file_id_stack.top = win.file_id_stack.top.next; 
-	
-	to_free.next = win.file_id_stack.free;
-	win.file_id_stack.free = to_free;
-}
-
 Editor_Window :: struct {
 	arena : *Arena;
 	hide : bool;
 	events : *os.EventList;
+	
+	last_grabbed_tick : int;
 	
 	// titlebar
 	title : string;
@@ -74,6 +52,30 @@ Editor_Window :: struct {
 		top : *Editor_File_Id_Node;
 		free : *Editor_File_Id_Node;
 	};
+}
+
+Editor_File_Id_Node :: struct {
+	next : *Editor_File_Id_Node;
+	v : Editor_File_Id;
+}
+
+editor_push_file_id :: (win : *Editor_Window, v : Editor_File_Id) {
+	node : *Editor_File_Id_Node;
+	node = push_struct(win.arena, Editor_File_Id_Node);
+	
+	node.v = v;
+	
+	node.next = win.file_id_stack.top;
+	win.file_id_stack.top = node;
+}
+
+editor_pop_file_id :: (win : *Editor_Window) {
+	to_free := win.file_id_stack.top;
+	
+	win.file_id_stack.top = win.file_id_stack.top.next; 
+	
+	to_free.next = win.file_id_stack.free;
+	win.file_id_stack.free = to_free;
 }
 
 editor_clock : int;
@@ -168,7 +170,10 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			window.hide = !window.hide;
 		}
 		
-		if editor_label(active_window.title).active {
+		sig := editor_label(active_window.title);
+		sig = ui_signal(sig.widget);
+		
+		if sig.active {
 			window.grabbed = true;
 		}
 		
@@ -205,6 +210,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	editor_pop_file_id(window);
 	
 	if window.grabbed {
+		window.last_grabbed_tick = editor_clock;
 		window.pos += mpos - window.last_mpos;
 		if os.event(events, .LMB, .Released) {
 			window.grabbed = false;
@@ -219,26 +225,28 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_row_end();
 	
-	// scroll bar ====
-	ui_push_size_x_node(ui_size_px(32, 1), true);
-	ui_push_size_y_node(ui_size_pct(1, 1), true);
-	editor_col_begin();
-	
-	col_parent := editor_ui_cxt.parent_stack.top.v;
-	col_parent.flags |= .Bg;
-	
-	editor_spacer(ui_size_pct(1, 0));
-	
-	ui_push_size_node(ui_size_px(32, 1), true);
-	
-	scope := tex.scope_open();
-	tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
-	if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
-		window.resize_grabbed = true;
+	if !window.hide {
+		// scroll bar ====
+		ui_push_size_x_node(ui_size_px(32, 1), true);
+		ui_push_size_y_node(ui_size_pct(1, 1), true);
+		editor_col_begin();
+		
+		col_parent := editor_ui_cxt.parent_stack.top.v;
+		col_parent.flags |= .Bg;
+		
+		editor_spacer(ui_size_pct(1, 0));
+		
+		ui_push_size_node(ui_size_px(32, 1), true);
+		
+		scope := tex.scope_open();
+		tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
+		if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
+			window.resize_grabbed = true;
+		}
+		tex.scope_close(scope);
+		editor_row_end();
+		// ===============
 	}
-	tex.scope_close(scope);
-	editor_row_end();
-	// ===============
 	
 	editor_row_end();
 	
@@ -295,6 +303,8 @@ editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Sign
 	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_impl(.Text | .Clickable, id);
+	out = ui_signal(out.widget);
+	
 	out.widget.text = text;
 	return out;
 }
@@ -314,6 +324,8 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 	id.v[3] = xx depth;
 	
 	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
+	out = ui_signal(out.widget);
+	
 	w := out.widget;
 	w.text = tprint("%", display_text);
 	
@@ -458,6 +470,8 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : 
 	id.v[4] = xx active_window.id;
 	
 	out := ui_widget_impl(.Image, id);
+	out = ui_signal(out.widget);
+	
 	out.widget.image = image;
 	out.widget.src = src;
 	out.widget.image_color = color;

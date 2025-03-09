@@ -606,3 +606,19 @@ draw_tilemap_collisions :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List
 		}
 	}
 }
+
+rect_from_tilemap_index :: (index : Vector2i) -> RectF32 {
+	out : RectF32;
+	using out;
+	
+	stride_x := index.x * Tilemap.col * Tilemap.tile_size;
+	stride_y := index.y * Tilemap.row * Tilemap.tile_size;
+	
+	min.x = xx stride_x;
+	max.x = min.x + stride_x;
+	
+	min.y = xx stride_y;
+	max.y = min.y + stride_y;
+	
+	return out;
+}

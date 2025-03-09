@@ -182,21 +182,21 @@ poll_events :: () -> EventList {
 			event.key = .NULL;
 			
 			case SDL_KEYDOWN;
-			//if sdl_event.key.repeat == 0 {
-			event := push_event(*out);
-			event.kind = .Pressed;
-			event.key = key_from_sym(xx sdl_event.key.keysym.sym);
-			
-			if (sdl_event.key.keysym.sym >= 32 && sdl_event.key.keysym.sym <= 126) {
-				event.char = xx sdl_event.key.keysym.sym;
-				event.text = true;
+			if sdl_event.key.repeat == 0 {
+				event := push_event(*out);
+				event.kind = .Pressed;
+				event.key = key_from_sym(xx sdl_event.key.keysym.sym);
+				
+				if (sdl_event.key.keysym.sym >= 32 && sdl_event.key.keysym.sym <= 126) {
+					event.char = xx sdl_event.key.keysym.sym;
+					event.text = true;
+				}
+				
+				if sdl_event.key.keysym.mod & KMOD_SHIFT {
+					event.shift_held = true;
+				}
+				
 			}
-			
-			if sdl_event.key.keysym.mod & KMOD_SHIFT {
-				event.shift_held = true;
-			}
-			
-			//}
 			
 			case SDL_KEYUP;
 			event := push_event(*out);
