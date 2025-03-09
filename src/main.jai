@@ -1,20 +1,3 @@
-// TODO(mizu): Make it so that tilemap uses world position instead of local / ...
-
-// Infact, get rid of tilemap world and
-// game world. Just have one. 
-// After that, in load entities, make a load
-// entity and use that fn in the editor
-// to alloc entities
-
-// change all engine imports to load.
-// modules make sense for ext libraries
-// where I can't control the namespace.
-
-// TODO(mizu): Also, fix that annoying map editor bug you've been working around.
-// also bug in the ui layer. padding doesn't add up for some reason. Fix that first.
-
-// For stuff like picking, I am thinking I just use the per frame entity map.
-
 #import "Basic";
 #import "System";
 #import "String";
@@ -23,6 +6,8 @@
 #import "IntroSort";
 #import "Random";
 #import "Thread";
+#import "Compiler";
+
 #import "mizu_base";
 r :: #import "render";
 tex :: #import "texture";
@@ -42,7 +27,6 @@ cam_wheld : bool;
 cam_aheld : bool;
 cam_sheld : bool;
 cam_dheld : bool;
-beam_pos : Vector2;
 
 Camera :: struct {
 	pos : Vector2;
@@ -190,7 +174,7 @@ main :: () {
 		ui_end();
 		r.pop_scissor(*passes);
 		
-		r.submit(timer, win, camera.size, passes, beam_pos, camera.pos);
+		r.submit(timer, win, camera.size, passes, camera.pos);
 		
 		//editor_tick_clock();
 		tex.clock_tick();

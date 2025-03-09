@@ -10,8 +10,6 @@
 // However, it is probably a good idea to make the library not submit draw commands
 // for stuff that is outside its clip.
 
-#import "Compiler";
-
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;

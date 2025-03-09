@@ -565,10 +565,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 	}
 	
-	r.push_beam(passes);
-	intro_sort(entity_store.sort_list, sort_entitties);
-	draw_submerged_entities(entity_store, passes, -1);
-	
 	calculate_beam_pos :: () -> Vector2 {
 		c := py.pos;//tm_index;
 		t :: Vector2i.{10 * Tilemap.tile_size * Tilemap.col, 10 * Tilemap.tile_size * Tilemap.row};
@@ -581,7 +577,12 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		return out;
 	}
 	
-	beam_pos = calculate_beam_pos();
+	beam_pos := calculate_beam_pos();
+	
+	r.push_beam(passes, beam_pos);
+	intro_sort(entity_store.sort_list, sort_entitties);
+	draw_submerged_entities(entity_store, passes, -1);
+	
 	//r.push_beam(passes);
 	r.end_water(passes);
 	

@@ -14,9 +14,9 @@ SceneData :: struct {
 	screen_offset : Vector2;
 	noise_id : u64;
 	displacement_id : u64;
-	offset : Vector2;
+	pad : Vector2;
 	delta : float;
-	pad : float;
+	pad2 : float;
 	draw_id : u64;
 	water_id : u64;
 	bloom_id : u64;
@@ -239,7 +239,7 @@ init :: () {
 }
 
 submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
-					 passes : Pass_List, ophset : Vector2,
+					 passes : Pass_List,
 					 screen_offset := Vector2.{0, 0}) {
 	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
@@ -258,7 +258,6 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.noise_id = state.noise_id.U64[1];
 		scene_data.displacement_id = state.displacement_id.U64[1];
 		scene_data.delta = delta;
-		scene_data.offset = ophset;
 		scene_data.draw_id = state.draw_fb.resident;
 		scene_data.water_id = state.water_fb.resident;
 		scene_data.bloom_id = state.water_fb.bloom_resident;
@@ -321,6 +320,11 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				case .Beam;
 				shader := state.shader_prog[SHADER_PROG.BEAM];
 				glUseProgram(shader);
+				
+				offset_loc := glGetUniformLocation(shader, "u_offset");
+				
+				glUniform2fv(offset_loc, 1, *pass.beam_pos.component[0]);
+				
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 				do_blur = true;
 				

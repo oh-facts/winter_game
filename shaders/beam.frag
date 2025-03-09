@@ -8,7 +8,8 @@ in vec2 screen_size;
 flat in float a_delta;
 flat in uvec2 a_noise_id;
 flat in uvec2 a_displacement_id;
-flat in vec2 a_offset;
+
+uniform vec2 u_offset;
 
 layout (location=0) out vec4 FragColor;
 layout (location=1) out vec4 BloomColor;
@@ -39,10 +40,10 @@ float beam(vec2 p, float pew)
 	float z = -3.0;   
 	
 	// y = (-x^(4n) + m) / z
-	float x = (p.x + a_offset.x) * pew;
+	float x = (p.x + u_offset.x) * pew;
 	
 	float y = (-pow(x, 4.0 * n) + m) / z;
-	y += a_offset.y;
+	y += u_offset.y;
 	
 	// Distance?
 	float dist = abs(p.y - y);

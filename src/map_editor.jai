@@ -289,6 +289,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					e := entity_alloc(*entity_store);
 					memcpy(e, *edit_entity, size_of(Entity));
 					memset(*edit_entity, 0, size_of(Entity));
+					entity_init_from_kind(*edit_entity, xx active_entity_index, .{});
 					edit_entity.name = sprint("Entity #%", entity_store.count);
 				}
 				

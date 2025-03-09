@@ -42,10 +42,7 @@ Rect2 :: struct {
 	pad2 : [2]float32;
 };
 
-Beam :: struct {
-	offset : Vector2;
-	pad : [2]float;
-}
+// NOTE(mizu): The last thing you were doing was moving beam data to render pass
 
 Batch :: struct {
 	base : *u8;
@@ -74,9 +71,31 @@ Pass :: struct {
 	next : *Pass;
 	kind : Pass_Kind;
 	batches : BatchList;
-	beam : Beam;
+	beam_pos : Vector2;
 	scissor : RectF32;
 }
+
+// TODO(mizu): I am thinking I make a pass list list for highest level data like screen size 
+
+// NOTE(mizu): Might be too much for now
+// Another (good) idea is to have the submit 
+// function inside each mode.
+// This is so I can get rid of the stupid camera I made
+// Also make a struct for mode
+// maybe give it a update mode, submit mode
+// much like the window update and submit you
+// made in the mizu mizu 1 million engine
+// Also make it easy to draw to images, etc. etc
+// And also see if you can copy all batches to 
+// one big buffer, then do a big call. 
+// So basically one draw call per pass instead of one draw call per batch
+// Idk, if it would run better (all those memcpys)
+// but profile it. Will be fun.
+// the gpu calls themselves are negligible
+// so possible all that cpu memcpying would be
+// expensive? No clue. Have a crack.
+// also do the blur properly.
+// basically make render_opengl very good
 
 Pass_List :: struct {
 	first : *Pass;
@@ -212,12 +231,14 @@ push_sprite :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {
 	return push_rect2_impl(.Sprite, list, dst, color);
 }
 
-push_beam :: (list : *Pass_List) {
+push_beam :: (list : *Pass_List, pos : Vector2) {
 	pass := list.last;
 	
 	if !pass || pass.kind != .Beam {
 		pass = push_pass(list, .Beam);
 	}
+	
+	pass.beam_pos = pos;
 }
 
 begin_water :: (list : *Pass_List) {
