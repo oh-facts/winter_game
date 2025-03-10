@@ -17,6 +17,7 @@ ArtId :: enum {
 	Editor_Titlebar;
 	Fat;
 	Editor_Window_Notch;
+	Aos;
 	COUNT;
 }
 
@@ -29,7 +30,7 @@ Art :: struct {
 	origin : Vector2;
 }
 
-arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
+arts : [15]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"}, 
 									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
@@ -42,7 +43,8 @@ arts : [14]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Siren, path = "art/siren.png"},
 									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"},
 									 .{id = .Fat, path = "art/fat/1.png"},
-									 .{id = .Editor_Window_Notch, path = "editor/window_notch.png"}];
+									 .{id = .Editor_Window_Notch, path = "editor/window_notch.png"},
+									 .{id = .Aos, path = "art/aos.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
@@ -83,6 +85,11 @@ load_all_assets :: () {
 			case .Impolo_East;
 			it.frame_x = 8;
 			it.frame_y = 1;
+			
+			case .Aos;
+			it.frame_x = 1;
+			it.frame_y = 1;
+			it.origin = .{256, 380};
 		}
 		
 	}

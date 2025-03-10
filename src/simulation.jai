@@ -105,6 +105,7 @@ Entity_Kind :: enum {
 	Husk;
 	Ball;
 	Tower;
+	Aos;
 	Count;
 }
 
@@ -279,6 +280,7 @@ world_update :: (delta : float32, events : *os.EventList,
 			break;
 		}
 	}
+	
 	
 	tick(events, passes, delta);
 }
@@ -721,6 +723,10 @@ entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
 		e.flags |= .Chase_Entity;
 		e.color = r.COLOR_BLACK;
 		e.submerged = 0.08;
+		
+		case .Aos;
+		e.art_id = .Aos;
+		e.color = r.COLOR_WHITE;
 	}
 	
 	e.pos = pos;
@@ -827,10 +833,6 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 	
 	for es.sort_list {
 		
-		if it.kind == .Tree {
-			iteresdasds : int;
-		}
-		
 		origin := arts[it.art_id].origin;
 		
 		art_id : int;
@@ -847,6 +849,11 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		size : Vector2;
 		size.x = xx bmp.U32[0];
 		size.y = xx bmp.U32[1];
+		
+		if it.art_id == .Aos {
+			size.x /= 2;
+			size.y /= 2;
+		}
 		
 		frame_x := arts[art_id].frame_x;
 		
