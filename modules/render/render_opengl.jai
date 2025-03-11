@@ -9,7 +9,7 @@ os :: #import "os";
 #import "File";
 #import "Math";
 
-SceneData :: struct {
+Scene_Data :: struct {
 	screen_size : Vector2;
 	screen_offset : Vector2;
 	noise_id : u64;
@@ -19,9 +19,6 @@ SceneData :: struct {
 	pad2 : float;
 	draw_id : u64;
 	water_id : u64;
-	bloom_id : u64;
-	blur1_id : u64;
-	blur2_id : u64;
 };
 
 Image :: struct {
@@ -39,20 +36,19 @@ Framebuffer :: struct {
 	// color tex
 	tex : GLuint;
 	resident : GLuint64;
-	bloom : GLuint;
-	bloom_resident : GLuint64;
 	
 	// depth stencil rbo
 	depth_stencil : GLuint;
 }
 
-framebuffer :: (size : Vector2, sec : bool = false) -> Framebuffer {
+framebuffer :: (size : Vector2) -> Framebuffer {
 	out : Framebuffer;
 	
 	glCreateFramebuffers(1, *out.id);
 	width : u32 = xx size.x;
 	height : u32 = xx size.y;
 	
+	// color attachment
 	{
 		glCreateTextures(GL_TEXTURE_2D, 1, *out.tex);
 		glTextureStorage2D(out.tex, 1, GL_RGBA8, width, height);
@@ -63,21 +59,13 @@ framebuffer :: (size : Vector2, sec : bool = false) -> Framebuffer {
 		glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT0, out.tex, 0);
 	}
 	
-	if sec {
-		glCreateTextures(GL_TEXTURE_2D, 1, *out.bloom);
-		glTextureStorage2D(out.bloom, 1, GL_RGBA8, width, height);
-		
-		resident := glGetTextureHandleARB(out.bloom);
-		glMakeTextureHandleResidentARB(resident);
-		out.bloom_resident = resident;
-		glNamedFramebufferTexture(out.id, GL_COLOR_ATTACHMENT1, out.bloom, 0);
+	// depth and stencil attachment
+	{
+		renderbuffer : GLuint;
+		glCreateRenderbuffers(1, *renderbuffer);
+		glNamedRenderbufferStorage(renderbuffer, GL_DEPTH24_STENCIL8, width, height);
+		glNamedFramebufferRenderbuffer(out.id, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
 	}
-	
-	renderbuffer : GLuint;
-	glCreateRenderbuffers(1, *renderbuffer);
-	glNamedRenderbufferStorage(renderbuffer, GL_DEPTH24_STENCIL8, width, height);
-	glNamedFramebufferRenderbuffer(out.id, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
-	
 	status := glCheckNamedFramebufferStatus(out.id, GL_FRAMEBUFFER);
 	
 	assert(status == GL_FRAMEBUFFER_COMPLETE, "fb not complete");
@@ -106,8 +94,6 @@ SHADER_PROG :: enum {
 	BEAM;
 	WATER;
 	FINAL;
-	BLUR;
-	VOXEL;
 	COUNT;
 };
 
@@ -116,8 +102,6 @@ vert_shader_paths :[SHADER_PROG.COUNT]string: .["ui.vert",
 																								"beam.vert",
 																								"water.vert",
 																								"final.vert",
-																								"blur.vert",
-																								"voxel.vert"
 																								];
 
 frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
@@ -125,8 +109,6 @@ frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
 																								"beam.frag",
 																								"water.frag",
 																								"final.frag",
-																								"blur.frag",
-																								"voxel.frag"
 																								];
 
 State :: struct {
@@ -139,12 +121,8 @@ State :: struct {
 	
 	draw_fb : Framebuffer;
 	water_fb : Framebuffer;
-	blur_fb : [2]Framebuffer;
 	
 	last_screen_size : Vector2;
-	
-	voxel_prog : GLuint;
-	voxel_tex : Handle;
 	
 	noise_id : Handle;
 	displacement_id : Handle;
@@ -189,13 +167,11 @@ init :: () {
 	
 	compile_shaders();
 	
-	state.voxel_tex = image(.{w = 1920, h = 1080});
-	
-	for i : 0 .. INST_BUFFER.COUNT - 1 {		
+	for i : 0 .. INST_BUFFER.COUNT - 1 {
 		state.inst_buffer[i] = make_buffer(MB(8));
 	}
 	
-	state.scene_buffer = make_buffer(size_of(SceneData));
+	state.scene_buffer = make_buffer(size_of(Scene_Data));
 	
 	data : [1]s64 : .[0xFFFFFFFF];
 	
@@ -206,11 +182,8 @@ init :: () {
 	{
 		// NOTE(mizu): :>
 		screen_size : Vector2 = .{1920, 1051};
-		state.draw_fb = framebuffer(screen_size, false);
-		state.water_fb = framebuffer(screen_size, true);
-		
-		state.blur_fb[0] = framebuffer(screen_size, false);
-		state.blur_fb[1] = framebuffer(screen_size, false);
+		state.draw_fb = framebuffer(screen_size);
+		state.water_fb = framebuffer(screen_size);
 	}
 	
 	{
@@ -238,21 +211,21 @@ init :: () {
 	}
 }
 
-submit :: (delta : float, win : os.Handle, screen_size : Vector2, 
+submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 passes : Pass_List,
 					 screen_offset := Vector2.{0, 0}) {
 	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
 	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_BLEND);
 	
 	glClearColor(0.2, 0.2, 0.3, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
+	glEnable(GL_BLEND);
 	
 	// scene buffer
 	{
-		scene_data : SceneData;
+		scene_data : Scene_Data;
 		scene_data.screen_size = .{screen_size.x, screen_size.y};
 		scene_data.screen_offset = screen_offset;
 		scene_data.noise_id = state.noise_id.U64[1];
@@ -260,20 +233,15 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.delta = delta;
 		scene_data.draw_id = state.draw_fb.resident;
 		scene_data.water_id = state.water_fb.resident;
-		scene_data.bloom_id = state.water_fb.bloom_resident;
-		scene_data.blur1_id = state.blur_fb[0].resident;
-		scene_data.blur2_id = state.blur_fb[1].resident;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
-		ssbo_data : *u8 = glMapNamedBufferRange(scene_buffer, 0, size_of(SceneData), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+		ssbo_data : *u8 = glMapNamedBufferRange(scene_buffer, 0, size_of(Scene_Data), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 		
-		memcpy(ssbo_data, *scene_data, size_of(SceneData));
+		memcpy(ssbo_data, *scene_data, size_of(Scene_Data));
 		
 		glUnmapNamedBuffer(scene_buffer);
 	}
-	
-	do_blur : bool;
 	
 	// passes
 	{
@@ -326,32 +294,12 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				glUniform2fv(offset_loc, 1, *pass.beam_pos.component[0]);
 				
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-				do_blur = true;
 				
 				case .Begin_Water;
 				glBindFramebuffer(GL_FRAMEBUFFER, state.water_fb.id);
 				
-				attachments : [2]u32 = .[GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1];
-				glDrawBuffers(2, attachments.data);
-				
 				glClear(GL_COLOR_BUFFER_BIT);
 				
-				case .Voxel;
-				
-				voxel_draw : *Image = xx state.voxel_tex.U64[0];
-				glUseProgram(state.voxel_prog);
-				
-				glBindImageTexture(0, voxel_draw.id, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-				
-				glDispatchCompute(xx ceil(screen_size.x / 8), xx ceil(screen_size.y / 4), 1);
-				glMemoryBarrier(GL_ALL_BARRIER_BITS);
-				
-				shader := state.shader_prog[SHADER_PROG.VOXEL];
-				
-				glUseProgram(shader);
-				glBindTextureUnit(0, voxel_draw.id);
-				glUniform1i(glGetUniformLocation(shader, "screen"), 0);
-				glDrawArrays(GL_TRIANGLES, 0, 6);
 				case .End_Water;
 				shader := state.shader_prog[SHADER_PROG.WATER];
 				glUseProgram(shader);
@@ -384,44 +332,13 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		}
 	}
 	
-	glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[0].id);
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[1].id);
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	// blur
-	if do_blur {
-		shader := state.shader_prog[SHADER_PROG.BLUR];
-		
-		horizontal := true;
-		first_iteration := true;
-		
-		amount := 2;
-		glUseProgram(shader);
-		
-		for i : 0 .. amount - 1 {
-			glBindFramebuffer(GL_FRAMEBUFFER, state.blur_fb[xx horizontal].id);
-			glUniform1i(glGetUniformLocation(shader, "horizontal"), xx horizontal);
-			
-			if first_iteration {
-				glBindTexture(GL_TEXTURE_2D, state.water_fb.bloom);
-				first_iteration = false;
-			} else {
-				glBindTexture(GL_TEXTURE_2D, state.blur_fb[xx !horizontal].id);
-			}
-			
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-			horizontal = !horizontal;
-		}
-	}
-	
 	// copy to window fb
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		
 		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 		shader := state.shader_prog[SHADER_PROG.FINAL];
+		
 		glUseProgram(shader);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
@@ -478,7 +395,7 @@ make_shader_program :: (vertexShaderSource : string, fragmentShaderSource : stri
 }
 
 make_buffer :: (size : u64) -> GLuint {
-	ssbo : GLuint;	
+	ssbo : GLuint;
 	glCreateBuffers(1, *ssbo);
 	glNamedBufferData(ssbo, xx size, xx 0, GL_STREAM_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
@@ -498,7 +415,7 @@ image :: (bmp : Bitmap, params := Tex_Params.Nearest) -> Handle {
 	<< img = .{};
 	
 	id : GLuint;
-	glCreateTextures(GL_TEXTURE_2D, 1, *id);	
+	glCreateTextures(GL_TEXTURE_2D, 1, *id);
 	
 	if params == .Linear {
 		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -549,7 +466,7 @@ free_shaders :: () {
 }
 
 compile_shaders :: () {
-	for i : 0 .. SHADER_PROG.COUNT - 1 {		
+	for i : 0 .. SHADER_PROG.COUNT - 1 {
 		
 		vert_abs_path := tprint("%/%", state.shaders_folder, vert_shader_paths[i]);
 		
@@ -563,18 +480,4 @@ compile_shaders :: () {
 		
 		state.shader_prog[i] = make_shader_program(vert_shader_file, frag_shader_file);
 	}
-	
-	/*
-	cs_shader_file := read_entire_file(tprint("%/%", state.shaders_folder, "voxel.cs"));
-	
-	vox_shader := glCreateShader(GL_COMPUTE_SHADER);
-	glShaderSource(vox_shader, 1, *cs_shader_file.data, xx 0);
-	glCompileShader(vox_shader);
-	check_compile_errors(vox_shader, "cs shader");
-	
-	state.voxel_prog = glCreateProgram();
-	glAttachShader(state.voxel_prog, vox_shader);
-	glLinkProgram(state.voxel_prog);
-	check_link_errors(state.voxel_prog, "cs shader linking");
-*/
 }

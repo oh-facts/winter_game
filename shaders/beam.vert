@@ -10,6 +10,8 @@ layout (std430, binding = 0) buffer ssbo {
 	vec2 offset;
 	float delta;
 	float pad;
+	uvec2 draw_id;
+	uvec2 water_id;
 };
 
 out vec2 a_screen_size;

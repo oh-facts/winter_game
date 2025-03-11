@@ -11,7 +11,6 @@ flat in vec2 a_offset;
 flat in uvec2 a_water_id;
 
 layout (location=0) out vec4 FragColor;
-layout (location=1) out vec4 BloomColor;
 
 const vec4 water_color = vec4(0.0, 0.4, 0.8, 0.8);
 
@@ -34,6 +33,4 @@ void main()
 	
 	FragColor = mix(noise, screen_color, 0.5);
 	FragColor = mix(FragColor, water_color, 0.3);
-	
-	BloomColor = vec4(0, 0, 0, 1);
 }

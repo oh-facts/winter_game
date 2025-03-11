@@ -8,7 +8,9 @@
 
 // TODO(mizu): entity direction
 
-// TODO(mizu):  Work on the ui layer. Make it as close to feature complete as you can. Otherwise iit will be very annoying to work on the map editor and entity inspector, which I will work on next.
+// focus on entity when you double click
+
+// TODO(mizu): Alloc entities, save them, quit, open, rename them, save them, quit, open. Entity names are shorter than they are supposed to be. I am guessing name.count isn't saved idk
 
 World_Cmd_Kind :: enum {
 	Eat;
@@ -44,7 +46,7 @@ World_Complete_Interaction_Cmd :: struct {
 
 World_Start_Attack_Cmd :: struct {
 	header : World_Cmd_Header;
-	entity : *Entity; 
+	entity : *Entity;
 }
 
 World_Cmd_Buffer :: struct {
@@ -116,6 +118,8 @@ Entity_Flags :: enum_flags u64 {
 	Interactable;
 	Sloppy_Shadow;
 	Chase_Entity;
+	Hostile;
+	Dead;
 }
 
 Interaction_State :: enum {
@@ -253,8 +257,6 @@ entity_free :: (es : *Entity_Store, entity : *Entity) {
 entity_window : *Editor_Window;
 world_window : *Editor_Window;
 
-py : *Entity;
-
 entity_store_init :: () -> Entity_Store {
 	out : Entity_Store;
 	
@@ -264,7 +266,18 @@ entity_store_init :: () -> Entity_Store {
 	return out;
 }
 
-world_update :: (delta : float32, events : *os.EventList, 
+// NOTE(mizu): Temp, for combat demo
+py : *Entity;
+
+Stage :: enum {
+	Sim;
+	Combat;
+}
+
+stage : Stage = .Sim;
+//stage : Stage = .Combat;
+
+world_update :: (delta : float32, events : *os.EventList,
 								 passes : *r.Pass_List) {
 	if !world_initialized {
 		world_initialized = true;
@@ -281,8 +294,19 @@ world_update :: (delta : float32, events : *os.EventList,
 		}
 	}
 	
+	if stage == {
+		case .Sim;
+		tick(events, passes, delta);
+		
+		case .Combat;
+		combat_stage(events, passes, delta);
+	}
 	
-	tick(events, passes, delta);
+}
+
+combat_stage :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
+	
+	
 }
 
 tm_index := Vector2i.{};
@@ -476,7 +500,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	highlighted_entity : *Entity;
 	
-	// 
+	//
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
 		
@@ -822,7 +846,7 @@ sort_entitties :: (a : *Entity, b : *Entity) -> int {
 		out = -1;
 	}
 	
-	return out; 
+	return out;
 }
 
 // TODO(mizu): Needs cleanup
@@ -919,9 +943,9 @@ astar_from_pos :: (tw : *Tileworld, pos : Vector2) -> AStar {
 
 /*
 find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
-	
+
 	start := tile_from_index(tw, );
-	//start_node = 
+	//start_node =
 }
 */
 
@@ -933,12 +957,6 @@ Entity array
 name strings
 
 */
-
-Entity_Save_File :: struct {
-	count : int;
-	entities : *Entity;
-	names : *string;
-}
 
 save_entities :: (es : Entity_Store) {
 	filename := tprint("%/%", data_folder, "entity_data");
@@ -969,16 +987,6 @@ save_entities :: (es : Entity_Store) {
 	write_entire_file(filename, data, xx save_arena.used - ARENA_HEADER_SIZE);
 	
 	print("ended saving\n");
-	
-	// names
-	/*
-	names : *string = xx entry;
-	
-	for 0 .. es.count - 1 {
-		e := es.first + it;
-		memcpy(names, es.first, es.count);
-	}
-	*/
 }
 
 // TODO(mizu): I am thinking, this just creates a new one and returns and then you free the old one
@@ -1013,7 +1021,7 @@ load_entities :: (es : *Entity_Store) {
 			src := entities + it;
 			dst := es.first + it;
 			
-			name := alloc_string(entities.name.count);
+			name := alloc_string(src.name.count);
 			
 			offset :int= xx src.name.data;
 			
