@@ -297,7 +297,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				case .Begin_Water;
 				glBindFramebuffer(GL_FRAMEBUFFER, state.water_fb.id);
-				
+				glClearColor(0., 0., 0., 1.0);
 				glClear(GL_COLOR_BUFFER_BIT);
 				
 				case .End_Water;
