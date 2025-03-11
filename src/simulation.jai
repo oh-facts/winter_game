@@ -13,11 +13,10 @@
 // TODO(mizu): Alloc entities, save them, quit, open, rename them, save them, quit, open. Entity names are shorter than they are supposed to be. I am guessing name.count isn't saved idk
 
 World_Cmd_Kind :: enum {
-	Eat;
+	Null;
 	Test_Interaction;
 	Start_Interaction;
 	Complete_Interaction;
-	Start_Attack;
 }
 
 World_Cmd_Header :: struct {
@@ -44,11 +43,6 @@ World_Complete_Interaction_Cmd :: struct {
 	id : Interaction_Id;
 }
 
-World_Start_Attack_Cmd :: struct {
-	header : World_Cmd_Header;
-	entity : *Entity;
-}
-
 World_Cmd_Buffer :: struct {
 	base : *u8;
 	count : int;
@@ -57,15 +51,6 @@ World_Cmd_Buffer :: struct {
 }
 
 world_cmds : World_Cmd_Buffer;
-
-push_world_eat_cmd :: (tile_pos : Vector2i) {
-	data : *World_Eat_Cmd = xx (world_cmds.base + world_cmds.size);
-	data.tile_pos = tile_pos;
-	data.header.kind = .Eat;
-	
-	world_cmds.count += 1;
-	world_cmds.size += size_of(World_Eat_Cmd);
-}
 
 push_world_test_interaction :: () {
 	data : *World_Test_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
@@ -88,14 +73,6 @@ push_world_complete_interaction :: (id : Interaction_Id) {
 	data.id = id;
 	world_cmds.count += 1;
 	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
-}
-
-push_world_start_attack :: (entity : *Entity) {
-	data : *World_Start_Attack_Cmd = xx (world_cmds.base + world_cmds.size);
-	data.header.kind = .Start_Attack;
-	data.entity = entity;
-	world_cmds.count += 1;
-	world_cmds.size += size_of(World_Start_Attack_Cmd);
 }
 
 Entity_Kind :: enum {
@@ -421,11 +398,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				push_world_test_interaction();
 			}
 			
-			if os.event(events, .LMB, .Pressed) {
-				if entity.attack_state == .Cold {
-					push_world_start_attack(entity);
-				}
-			}
 		}
 	}
 	
@@ -653,11 +625,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		//print("%\n", i);
 		
 		if << header == {
-			case .Eat;
-			cmd : *World_Eat_Cmd = xx base;
-			
-			base += size_of(type_of(<< cmd));
-			
 			case .Test_Interaction;
 			cmd : *World_Test_Interaction_Cmd = xx base;
 			
@@ -686,23 +653,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				active_entity = xx 0;
 			}
 			active_interatction = .None;
-			
-			base += size_of(type_of(<< cmd));
-			
-			case .Start_Attack;
-			
-			cmd : *World_Start_Attack_Cmd = xx base;
-			
-			target_pos := cmd.entity.tile_pos;
-			target_pos.x += 1;
-			
-			target_tile := tile_from_index(tileworld, target_pos, .Occupied);
-			
-			if target_tile {
-				if target_tile.entity {
-					target_tile.entity.color.w = 0;
-				}
-			}
 			
 			base += size_of(type_of(<< cmd));
 			
