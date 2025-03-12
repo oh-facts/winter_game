@@ -96,7 +96,7 @@ map_editor_window : *Editor_Window;
 entity_tree_window : *Editor_Window;
 
 editor_tilemap : *Tilemap;
-
+entity_store : Entity_Store;
 editor_update :: (delta : float32, events : *os.EventList, 
 									passes : *r.Pass_List) {
 	
@@ -690,6 +690,15 @@ entity_tree_window_update :: (events : *os.EventList) {
 		
 		for 0 .. entity_store.count - 1 {
 			e := entity_store.first + it;
+			
+			if e.flags & .Inactive {
+				continue;
+			}
+			
+			ui_push_size_x_node(ui_size_pct(0.4, 0), true);
+			ui_push_size_y_node(ui_size_px(24, 1), true);
+			editor_row_begin();
+			
 			text := tprint("%", e.name);
 			
 			if selected_entity == e {
@@ -705,6 +714,13 @@ entity_tree_window_update :: (events : *os.EventList) {
 				}
 				
 			}
+			
+			text = tprint("reset\n");
+			if editor_button(text, it).active {
+				entity_init_from_kind(e, e.kind, e.pos);
+			}
+			
+			editor_row_end();
 			
 			if selected_entity == e {
 				editor_struct_edit(<< e);

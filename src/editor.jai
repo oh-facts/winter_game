@@ -439,6 +439,7 @@ editor_check_box :: (checked : *bool, index := 0, loc := #caller_location) -> UI
 	id.v[2] = xx active_window_file_id();
 	
 	out := ui_widget_impl(.Check_Box, id);
+	out = ui_signal(out.widget);
 	
 	if out.active {
 		<< checked = ! << checked;

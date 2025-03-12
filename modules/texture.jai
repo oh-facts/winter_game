@@ -21,10 +21,6 @@
 #import "mizu_base";
 r :: #import "render";
 
-Work_Entry :: struct {
-	hash : u64;
-}
-
 Key_Node :: struct {
 	next : *Key_Node;
 	prev : *Key_Node;
@@ -51,12 +47,6 @@ Node :: struct {
 	key_ref_count : int;
 	loaded : bool;
 	last_touched_tick : u64;
-	
-	is_working : bool;
-	work_next : *Node;
-	loaded_in_ram : bool;
-	bmp : Bitmap;
-	work_kind : Work_Kind;
 }
 
 Slot :: struct {
@@ -86,16 +76,6 @@ State :: struct {
 	free_touch : *Touch;
 	
 	ticks : u64;
-	
-	load_tex_thread : Thread;
-	
-	work_queue_first: *Node;
-	work_queue_last: *Node;
-	
-	work_count : int;
-	
-	cv : Condition_Variable;
-	mutex : Mutex;
 }
 
 state : *State;
@@ -113,12 +93,6 @@ init :: () {
 		
 		key_slots.count = 1024;
 		key_slots.data = push_array(arena, Key_Slot, xx key_slots.count);
-		
-		
-		thread_init(*load_tex_thread, do_work);
-		thread_start(*load_tex_thread);
-		init(*cv);
-		init(*mutex);
 	}
 	
 }
@@ -339,18 +313,14 @@ handle_from_hash :: (scope : *Scope, hash : u128, params := r.Tex_Params.Nearest
 		touch.next = scope.top_touch;
 		scope.top_touch = touch;
 		
-		if !node.loaded && !node.is_working && !node.loaded_in_ram {
-			node.is_working = true;
+		if !node.loaded {
 			//print("CPU Load Request %\n", node.tag);
-			push_work(node, .Load_From_Disk);
-		}
-		
-		if node.loaded_in_ram && !node.loaded {
-			node.v = r.image(node.bmp, params);
 			
-			//print("CPU Free Request%\n", node.tag);
-			push_work(node, .Free_From_Ram);
+			//print("loaded to ram %\n", work_node.tag);
+			bmp := bitmap(node.data);
+			node.v = r.image(bmp, params);
 			node.loaded = true;
+			bitmap_free(*bmp);
 		}
 		
 		node.last_touched_tick = state.ticks;
@@ -369,79 +339,6 @@ clock_tick :: () {
 	//print("%\n", state.ticks);
 }
 
-Work_Kind ::enum {
-	Null;
-	Load_From_Disk;
-	Free_From_Ram;
-}
-
-push_work :: (node : *Node, work_kind : Work_Kind) {
-	using state;
-	
-	lock(*mutex);
-	
-	if !work_queue_first {
-		work_queue_last = node;
-		work_queue_first = node;
-	} else {
-		work_queue_last.work_next = node;
-		work_queue_last = node;
-	}
-	
-	node.work_kind = work_kind;
-	
-	work_count += 1;
-	
-	wake(*cv);
-	unlock(*mutex);
-}
-
-pop_work :: () -> *Node {
-	using state;
-	assert(work_count > 0);
-	
-	out : *Node;
-	
-	out = work_queue_first;
-	
-	work_queue_first = work_queue_first.work_next;
-	
-	work_count -= 1;
-	
-	return out;
-}
-
-do_work :: (thread : *Thread) -> int {
-	while true {
-		lock(*state.mutex);
-		
-		while (state.work_count == 0) {
-			wait(*state.cv, *state.mutex);
-		}
-		
-		work_node := pop_work();
-		
-		if work_node.work_kind == {
-			case .Load_From_Disk;
-			work_node.bmp = bitmap(work_node.data);
-			
-			work_node.is_working = false;
-			work_node.loaded_in_ram = true;
-			//print("loaded to ram %\n", work_node.tag);
-			
-			case .Free_From_Ram;
-			bitmap_free(*work_node.bmp);
-			work_node.loaded_in_ram = false;
-			//print("Freed from ram %\n", work_node.tag);
-			case;
-			assert(false);
-		}
-		
-		unlock(*state.mutex);
-	}
-	return 1;
-}
-
 evict_textures :: () -> int {
 	
 	if (state.ticks % 1650) == 0 {
@@ -452,7 +349,7 @@ evict_textures :: () -> int {
 			while node {
 				defer node = node.next;
 				
-				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) && !node.is_working {
+				if (node.scope_ref_count == 0) && (node.loaded) && (node.last_touched_tick + 10 < state.ticks) {
 					r.free_image(node.v);
 					node.loaded = false;
 					print("% ; evicted % at %\n", state.ticks, node.tag, node.last_touched_tick);

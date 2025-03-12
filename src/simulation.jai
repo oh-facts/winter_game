@@ -10,7 +10,10 @@
 
 // focus on entity when you double click
 
-// TODO(mizu): Alloc entities, save them, quit, open, rename them, save them, quit, open. Entity names are shorter than they are supposed to be. I am guessing name.count isn't saved idk
+// TODO(mizu): Redo interaction system fully
+// I want to interact with girl and see a box
+// that asks what you want to do with her
+// 
 
 World_Cmd_Kind :: enum {
 	Null;
@@ -21,12 +24,6 @@ World_Cmd_Kind :: enum {
 
 World_Cmd_Header :: struct {
 	kind : World_Cmd_Kind;
-}
-
-World_Eat_Cmd :: struct {
-	header : World_Cmd_Header;
-	// position of eater
-	tile_pos : Vector2i;
 }
 
 World_Test_Interaction_Cmd :: struct {
@@ -182,7 +179,6 @@ active_count :: () -> int {
 	return entity_store.count - entity_store.inactive_count;
 }
 
-entity_store : Entity_Store;
 world_initialized := false;
 quest : Quest;
 
@@ -191,6 +187,7 @@ Interaction_Id :: enum {
 	Tree;
 	Siren;
 	Opening;
+	Aos;
 };
 
 interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
@@ -199,6 +196,7 @@ interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
 		case .Tree; return .Tree;
 		case .Siren; return .Siren;
 		case .Opening; return .Opening;
+		case .Aos; return .Aos;
 	}
 	
 	return .None;
@@ -613,6 +611,11 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		if dialogue_box(passes, events, OPENING_PROMPT) {
 			push_world_complete_interaction(.Opening);
 		}
+		case .Aos;
+		if dialogue_box(passes, events, "ge") {
+			push_world_complete_interaction(.Aos);
+		}
+		
 	}
 	
 	base := world_cmds.base;
@@ -701,6 +704,8 @@ entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
 		case .Aos;
 		e.art_id = .Aos;
 		e.color = r.COLOR_WHITE;
+		e.frame_n = 1;
+		e.flags |= .Interactable;
 	}
 	
 	e.pos = pos;
@@ -714,13 +719,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 	out := entity_alloc(es);
 	entity_init_from_kind(out, kind, pos);
 	return out;
-}
-
-unload_entities :: () {
-	entity_store.arena.used = 128;
-	entity_store.free = xx 0;
-	entity_store.inactive_count = 0;
-	entity_store.count = 0;
 }
 
 Quest :: struct {
@@ -825,8 +823,8 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		size.y = xx bmp.U32[1];
 		
 		if it.art_id == .Aos {
-			size.x /= 2;
-			size.y /= 2;
+			//size.x /= 2;
+			//size.y /= 2;
 		}
 		
 		frame_x := arts[art_id].frame_x;
