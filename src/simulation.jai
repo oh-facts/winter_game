@@ -15,63 +15,6 @@
 // that asks what you want to do with her
 // 
 
-World_Cmd_Kind :: enum {
-	Null;
-	Test_Interaction;
-	Start_Interaction;
-	Complete_Interaction;
-}
-
-World_Cmd_Header :: struct {
-	kind : World_Cmd_Kind;
-}
-
-World_Test_Interaction_Cmd :: struct {
-	header : World_Cmd_Header;
-}
-
-World_Start_Interaction_Cmd :: struct {
-	header : World_Cmd_Header;
-	id : Interaction_Id;
-}
-
-World_Complete_Interaction_Cmd :: struct {
-	header : World_Cmd_Header;
-	id : Interaction_Id;
-}
-
-World_Cmd_Buffer :: struct {
-	base : *u8;
-	count : int;
-	size : s64;
-	cap : s64;
-}
-
-world_cmds : World_Cmd_Buffer;
-
-push_world_test_interaction :: () {
-	data : *World_Test_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
-	data.header.kind = .Test_Interaction;
-	world_cmds.count += 1;
-	world_cmds.size += size_of(World_Test_Interaction_Cmd);
-}
-
-push_world_start_interaction :: (id : Interaction_Id) {
-	data : *World_Start_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
-	data.header.kind = .Start_Interaction;
-	data.id = id;
-	world_cmds.count += 1;
-	world_cmds.size += size_of(World_Start_Interaction_Cmd);
-}
-
-push_world_complete_interaction :: (id : Interaction_Id) {
-	data : *World_Complete_Interaction_Cmd = xx (world_cmds.base + world_cmds.size);
-	data.header.kind = .Complete_Interaction;
-	data.id = id;
-	world_cmds.count += 1;
-	world_cmds.size += size_of(World_Complete_Interaction_Cmd);
-}
-
 Entity_Kind :: enum {
 	Nothing;
 	Opening;
@@ -180,30 +123,6 @@ active_count :: () -> int {
 }
 
 world_initialized := false;
-quest : Quest;
-
-Interaction_Id :: enum {
-	None;
-	Tree;
-	Siren;
-	Opening;
-	Aos;
-};
-
-interaction_id_from_entity :: (e : Entity) -> Interaction_Id{
-	
-	if e.kind == {
-		case .Tree; return .Tree;
-		case .Siren; return .Siren;
-		case .Opening; return .Opening;
-		case .Aos; return .Aos;
-	}
-	
-	return .None;
-}
-
-active_interatction : Interaction_Id;
-active_entity : *Entity;
 
 entity_alloc :: (es : *Entity_Store) -> *Entity {
 	out := es.free;
@@ -288,13 +207,6 @@ tm_index := Vector2i.{};
 aos_tm_index := Vector2i.{3, 3};
 
 tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
-	
-	world_cmds.base = talloc(xx MB(1));
-	world_cmds.count = 0;
-	world_cmds.size = 0;
-	world_cmds.cap = xx MB(1);
-	
-	quest_update(*demo_quest, events, passes);
 	
 	if py {
 		tm_index = tilemap_index_from_tile_pos(py.tile_pos);
@@ -393,23 +305,10 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			entity.test_pos = test_pos;
 			
 			if os.event(events, .E, .Pressed) {
-				push_world_test_interaction();
+				
 			}
 			
 		}
-	}
-	
-	// pathfind
-	
-	for 0 .. entity_store.count - 1 {
-		entity := entity_store.first + it;
-		
-		if entity.flags & .Inactive continue;
-		
-		if entity.flags & .Chase_Entity {
-			
-		}
-		
 	}
 	
 	// physics
@@ -466,26 +365,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			}
 		}
 		
-	}
-	
-	highlighted_entity : *Entity;
-	
-	//
-	for 0 .. entity_store.count - 1 {
-		entity := entity_store.first + it;
-		
-		if entity.flags & .Inactive continue;
-		
-		if entity.flags & .Interactable {
-			min_dist :: 2;
-			if distance_squared(entity.tile_pos, py.tile_pos) < min_dist * min_dist {
-				if entity.interaction_state == .Cold {
-					entity.interaction_state = .Hot;
-					highlighted_entity = entity;
-				}
-			};
-			
-		}
 	}
 	
 	// update animations
@@ -585,85 +464,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
-	for 0 .. entity_store.count - 1 {
-		entity := entity_store.first + it;
-		
-		if entity.flags & .Inactive continue;
-		
-		if entity.flags & .Interactable {
-			if entity.interaction_state == {
-				case .Hot;
-				entity.interaction_state = .Cold;
-			}
-		}
-	}
-	
-	if active_interatction == {
-		case .Tree;
-		if dialogue_box(passes, events, TREE_TALK) {
-			push_world_complete_interaction(.Tree);
-		}
-		case .Siren;
-		if dialogue_box(passes, events, SIREN_TALK) {
-			push_world_complete_interaction(.Siren);
-		}
-		case .Opening;
-		if dialogue_box(passes, events, OPENING_PROMPT) {
-			push_world_complete_interaction(.Opening);
-		}
-		case .Aos;
-		if dialogue_box(passes, events, "ge") {
-			push_world_complete_interaction(.Aos);
-		}
-		
-	}
-	
-	base := world_cmds.base;
-	i : s32;
-	while i < world_cmds.count {
-		defer i+=1;
-		
-		header :*World_Cmd_Kind = xx base;
-		
-		//print("%\n", i);
-		
-		if << header == {
-			case .Test_Interaction;
-			cmd : *World_Test_Interaction_Cmd = xx base;
-			
-			if highlighted_entity {
-				highlighted_entity.interaction_state = .Active;
-				active_entity = highlighted_entity;
-				push_world_start_interaction(interaction_id_from_entity(active_entity));
-			}
-			
-			base += size_of(type_of(<< cmd));
-			
-			case .Start_Interaction;
-			cmd : *World_Start_Interaction_Cmd = xx base;
-			py.flags &= ~.Control;
-			print("started");
-			active_interatction = cmd.id;
-			
-			base += size_of(type_of(<< cmd));
-			
-			case .Complete_Interaction;
-			cmd : *World_Complete_Interaction_Cmd = xx base;
-			py.flags |= .Control;
-			
-			if active_entity {
-				active_entity.interaction_state = .Hot;
-				active_entity = xx 0;
-			}
-			active_interatction = .None;
-			
-			base += size_of(type_of(<< cmd));
-			
-			case;
-			assert(false, "cmd not found");
-		}
-	}
-	
 	clear_collisions(*tileworld);
 }
 
@@ -718,70 +518,6 @@ entity_from_kind :: (es : *Entity_Store, kind : Entity_Kind, pos : Vector2) -> *
 	
 	out := entity_alloc(es);
 	entity_init_from_kind(out, kind, pos);
-	return out;
-}
-
-Quest :: struct {
-	started : bool;
-	opening_prompt : bool;
-}
-
-demo_quest : Quest;
-
-quest_update :: (quest : *Quest, events : *os.EventList, passes : *r.Pass_List) {
-	
-	if !quest.started {
-		quest.started = true;
-		
-		//print("%", OPENING_PROMPT);
-		
-		push_world_start_interaction(.Opening);
-		
-		// some cutscene. Very short. Just the explosion
-		
-		for 0 .. entity_store.count - 1 {
-			entity := entity_store.first + it;
-			
-			if entity.flags & .Inactive continue;
-			
-			if entity.flags & .Chase_Entity {
-				entity.target_entity = py;
-				entity.chase_state = .Hot;
-			}
-			
-		}
-		
-	}
-	
-}
-
-dialogue_box :: (passes : *r.Pass_List, events : *os.EventList, text : string) -> bool {
-	out := false;
-	padding := 16.;
-	
-	bg : RectF32;
-	bg.min.x = 0;
-	bg.min.y = 0;
-	bg.max.x = camera.size.x;
-	bg.max.y = camera.size.y;
-	
-	r.push_rect2(passes, bg, r.COLOR_BLACK);
-	r.push_text(passes, font, text, .{padding, padding}, text_size);
-	
-	continue_text :: "space ->";
-	
-	text_rect := r.get_text_rect(font, continue_text, camera.size, text_size);
-	
-	bottom_right := camera.size - .{padding, padding};
-	bottom_right.x -= (text_rect.max.x - text_rect.min.x);
-	bottom_right.y -= (text_rect.max.y - text_rect.min.y);
-	
-	r.push_text(passes, font, continue_text, bottom_right, text_size);
-	
-	if os.event(events, .SPACE, .Pressed) {
-		out = true;
-	}
-	
 	return out;
 }
 
@@ -865,46 +601,6 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 	
 	tex.scope_close(scope);
 }
-
-AStar :: struct {
-	g : s32;
-	h : s32;
-	pos : Vector2i;
-	unwalkable : bool;
-}
-
-fcost :: (n : AStar) -> s32 {
-	return n.g + n.h;
-}
-
-astar_from_pos :: (tw : *Tileworld, pos : Vector2) -> AStar {
-	out : AStar;
-	
-	tile_pos := index_from_coords(pos);
-	out.pos = tile_pos;
-	
-	tile := tile_from_index(tw, tile_pos, .Occupied);
-	//out.unwalkable = xx tile.v[0];
-	
-	return out;
-}
-
-/*
-find_path :: (tw : *Tileworld, start : Vector2, end : Vector2) -> []*Tile {
-
-	start := tile_from_index(tw, );
-	//start_node =
-}
-*/
-
-/*
-Entity save file
-
-count
-Entity array
-name strings
-
-*/
 
 save_entities :: (es : Entity_Store) {
 	filename := tprint("%/%", data_folder, "entity_data");
