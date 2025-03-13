@@ -15,6 +15,71 @@
 // that asks what you want to do with her
 // 
 
+Interact_Data :: struct {
+	active : bool;
+	e : *Entity;
+}
+
+active_interaction : Interact_Data;
+
+World_Cmd_Buffer :: struct {
+	base : *u8;
+	count : int;
+	size : s64;
+	cap : s64;
+}
+
+World_Cmd_Header :: struct {
+	kind : Type;
+	size : int;
+}
+
+World_Test_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
+}
+
+World_Start_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
+	e : *Entity;
+}
+
+World_Complete_Interaction_Cmd :: struct {
+	header : World_Cmd_Header;
+}
+
+world_cmds : World_Cmd_Buffer;
+
+push_world_impl :: ($T : Type) -> *T {
+	data : *T = xx (world_cmds.base + world_cmds.size);
+	data.header.kind = T;
+	data.header.size = size_of(T);
+	
+	world_cmds.count += 1;
+	world_cmds.size += data.header.size;
+	
+	return data;
+}
+
+push_world_test_interaction :: () {
+	data := push_world_impl(World_Test_Interaction_Cmd);
+}
+
+push_world_start_interaction :: (e : *Entity) {
+	data := push_world_impl(World_Start_Interaction_Cmd);
+	data.e = e;
+}
+
+push_world_complete_interaction :: () {
+	data := push_world_impl(World_Complete_Interaction_Cmd);
+}
+
+begin_world_cmd :: () {
+	world_cmds.cap = xx MB(1);
+	world_cmds.base = talloc(world_cmds.cap);
+	world_cmds.size = 0;
+	world_cmds.count = 0;
+}
+
 Entity_Kind :: enum {
 	Nothing;
 	Opening;
@@ -120,8 +185,6 @@ Entity_Store :: struct {
 entity_store : Entity_Store;
 anim_store : Animation_Store;
 
-
-
 active_count :: () -> int {
 	return entity_store.count - entity_store.inactive_count;
 }
@@ -151,9 +214,6 @@ entity_free :: (es : *Entity_Store, entity : *Entity) {
 	entity.flags |= .Inactive;
 	es.inactive_count += 1;
 }
-
-entity_window : *Editor_Window;
-world_window : *Editor_Window;
 
 entity_store_init :: () -> Entity_Store {
 	out : Entity_Store;
@@ -244,8 +304,6 @@ world_update :: (delta : float32, events : *os.EventList,
 	if !world_initialized {
 		world_initialized = true;
 		
-		entity_window = editor_init_window("entity inspector");
-		world_window = editor_init_window("world inspector");
 	}
 	
 	for 0 .. entity_store.count - 1{
@@ -276,6 +334,8 @@ aos_tm_index := Vector2i.{3, 3};
 
 tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
+	begin_world_cmd();
+	
 	if py {
 		tm_index = tilemap_index_from_tile_pos(py.tile_pos);
 	}
@@ -289,6 +349,16 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	generate_collisions(*tileworld, entity_store);
 	draw_tilemap_collisions(tileworld, world_tilemap, passes);
+	
+	
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		if entity.flags & .Inactive continue;
+		
+		if entity.interaction_state == .Hot {
+			entity.interaction_state = .Cold;
+		}
+	}
 	
 	// control
 	for 0 .. entity_store.count - 1 {
@@ -350,6 +420,11 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				mv.x += 1;
 			}
 			
+			if mv.x != 0 || mv.y != 0 {
+				entity.dir.x = xx mv.x;
+				entity.dir.y = xx mv.y;
+			}
+			
 			test_pos := entity.pos;
 			test_pos.x += mv.x * xx delta * entity.speed;
 			test_pos.y += mv.y * xx delta * entity.speed;
@@ -364,7 +439,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				entity.anim_state = .Idle;
 			}
 			
-			if mv.x < 0 {
+			if entity.dir.x < 0 {
 				entity.flipped = xx 1;
 			} else {
 				entity.flipped = xx 0;
@@ -372,10 +447,24 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			entity.test_pos = test_pos;
 			
-			if os.event(events, .E, .Pressed) {
+			{
+				tile := tile_from_index(tileworld, entity.tile_pos + entity.dir, .Occupied);
 				
+				if tile && tile.entity {
+					
+					if tile.entity.interaction_state == .Cold {
+						tile.entity.interaction_state = .Hot;
+					}
+					
+					if !active_interaction.active {
+						if os.event(events, .E, .Pressed) {
+							tile.entity.interaction_state = .Active;
+							
+							push_world_start_interaction(tile.entity);
+						}
+					}
+				}
 			}
-			
 		}
 	}
 	
@@ -406,7 +495,11 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		// other entities
 		
-		tile := tile_from_index(tileworld, .{test_tile_pos.x, test_tile_pos.y}, .Occupied);
+		tile,map := tile_from_index(tileworld, .{test_tile_pos.x, test_tile_pos.y}, .Occupied);
+		
+		if !map {
+			valid = false;
+		}
 		
 		if tile {
 			valid = !tile.entity;
@@ -414,7 +507,9 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				valid = true;
 			}
 		}
-		
+		else {
+			reer : int;
+		}
 		// if valid, set new position. if not, slide
 		
 		if valid {
@@ -531,6 +626,54 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	draw_submerged_entities(entity_store, passes, 1);
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
+	
+	
+	
+	// process cmds
+	
+	// TODO(mizu): make a current interaction struct
+	// that holds data like is active and the current entity
+	
+	// interactions
+	if active_interaction.active {
+		/*
+		if os.event(events, .E, .Pressed) {
+			push_world_complete_interaction(active_interaction.e);
+		}
+		*/
+		
+		interaction_update(events);
+	}
+	
+	{
+		base := world_cmds.base;
+		i : s32;
+		
+		while i < world_cmds.count {
+			defer i+=1;
+			
+			header : *World_Cmd_Header = xx base;
+			
+			if header.kind == {
+				
+				case World_Start_Interaction_Cmd;
+				cmd : *World_Start_Interaction_Cmd = xx base;
+				active_interaction.active = true;
+				active_interaction.e = cmd.e;
+				py.flags &= ~.Control;
+				
+				case World_Complete_Interaction_Cmd;
+				cmd : *World_Complete_Interaction_Cmd = xx base;
+				
+				py.flags |= .Control;
+				active_interaction.active = false;
+				active_interaction.e.interaction_state = .Cold;
+			}
+			
+			base += header.size;
+			
+		}
+	}
 	
 	clear_collisions(*tileworld);
 }
@@ -653,11 +796,11 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		
 		if it.flags & .Animated {
 			
-			sprite.tex_id = bmp.U64[1];
-			
 			if it.flipped {
 				width = -width;
 			}
+			
+			sprite.tex_id = bmp.U64[1];
 			
 			sprite.src = rectF32(it.frame_n * width, 0, width * (it.frame_n + 1), 1);
 		} else {
@@ -744,4 +887,141 @@ load_entities :: (es : *Entity_Store) {
 		
 		free (file_data);
 	}
+}
+
+dialogue_phase : int;
+active_option := 0;
+
+interaction_update :: (events : *os.EventList) {
+	editor_window_begin(dialogue_window, events);
+	editor_push_file_id(dialogue_window, .Simulation);
+	
+	ui_push_size_node(ui_size_pct(1, 0), true);
+	editor_row_begin();
+	row_parent := editor_ui_cxt.parent_stack.top.v;
+	row_parent.offset[0] = 10;
+	
+	ui_push_size_node(ui_size_pct(1, 0), true);
+	editor_col_begin();
+	
+	ui_push_text_align_node(.Left);
+	ui_push_size_x_node(ui_size_pct(0.2));
+	ui_push_size_y_node(ui_size_px(32));
+	
+	editor_spacer(ui_size_px(10));
+	
+	if dialogue_phase == {
+		case 0;
+		editor_label("You would like to say something nice to her");
+		editor_label("But you don't know how");
+		
+		editor_spacer(ui_size_px(12));
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 1;
+		editor_label("AOS : Psst. I can't hold my breath forever");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 2;
+		editor_label("You: You have nice hair");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 3;
+		editor_label("AOS : Lets go over this again :).");
+		editor_label("First, you find corpses and hold their hands. Like this.");
+		
+		editor_label("This will wake them.");
+		editor_label("But they aren't actually alive. You must remember that.");
+		editor_label("Then, you say something nice to them, which will calm them");
+		editor_label("Then you bring them here");
+		
+		active_interaction.e.frame_n = 0;
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 4;
+		editor_label("AOS : If you do this, they will go to heaven. \nOtherwise, they will experience nothingness forever");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 5;
+		editor_label("AOS : Lets try again");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 6;
+		push_world_complete_interaction();
+		dialogue_phase += 1;
+		active_interaction.e.frame_n = 1;
+		
+		case 7;
+		
+		if editor_button("Hold Hands").active {
+			dialogue_phase += 1;
+		}
+		
+		case 8;
+		editor_label("Is <Demon> gone? I am scared.");
+		
+		//push_world_complete_interaction(active_interaction.e);
+		active_interaction.e.frame_n = 0;
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 9;
+		editor_label("Psst. Say something to calm me.");
+		
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 10;
+		editor_label("You : You have nice hair.");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 11;
+		editor_label("Thanks, I feel better now!");
+		
+		if os.event(events, .E, .Pressed) { 
+			dialogue_phase += 1;
+		}
+		
+		case 12;
+		editor_label("You are good at this :)!");
+		editor_label("I'll wait for you here");
+		
+		if os.event(events, .E, .Pressed) { 
+			push_world_complete_interaction();
+		}
+		
+		
+	}
+	
+	editor_row_end();
+	editor_row_end();
+	ui_pop_text_align_node();
+	ui_pop_size_node();
+	
+	editor_pop_file_id(dialogue_window);
+	editor_window_end(dialogue_window);
 }

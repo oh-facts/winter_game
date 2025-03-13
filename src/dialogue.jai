@@ -19,5 +19,5 @@ Then the hold hands option appears
 
 when you interact with someone, you see a prompt and then you can pick what you want
 
-
+I am thinking in the real beginning, you follow the beam and when you find her, she tells you how happy she is. how absolutely happy and then you zone out and when you zone in, the "past .. hold my hands part" starts
 */

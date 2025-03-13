@@ -67,8 +67,6 @@ World_Id :: enum {
 	Combat_Test;
 }
 
-
-
 Tilemap :: struct {
 	// dim
 	row :: 32;
@@ -387,7 +385,7 @@ real_to_local_coords :: (tw : Tileworld, r : Vector2i) -> Vector2i, Vector2i {
 	return tm_slot, out;
 }
 
-tile_from_index :: (tw : Tileworld, r : Vector2i, kind : Tile_Kind) -> *Tile {
+tile_from_index :: (tw : Tileworld, r : Vector2i, kind : Tile_Kind) -> *Tile , *Tilemap {
 	tm_slot, index := real_to_local_coords(tw, r);
 	
 	tm := tilemap_from_key_dont_alloc(tw, tm_slot);
@@ -405,7 +403,7 @@ tile_from_index :: (tw : Tileworld, r : Vector2i, kind : Tile_Kind) -> *Tile {
 		}
 	}
 	
-	return out;
+	return out, tm;
 }
 
 tile_from_local_index :: (tm : *Tilemap, l : Vector2i, kind : Tile_Kind) -> *Tile {

@@ -94,6 +94,7 @@ ed_initialized : bool;
 
 map_editor_window : *Editor_Window;
 entity_tree_window : *Editor_Window;
+dialogue_window : *Editor_Window;
 
 editor_tilemap : *Tilemap;
 
@@ -103,8 +104,9 @@ editor_update :: (delta : float32, events : *os.EventList,
 	if !ed_initialized {
 		ed_initialized = true;
 		
-		map_editor_window = editor_init_window("map editor");
-		entity_tree_window = editor_init_window("entity tree", .{800, 0});
+		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable);
+		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable, .{800, 0});
+		dialogue_window = editor_init_window("dialogue window", xx 0, .{400, 400}, .{600, 200});
 		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		
@@ -474,7 +476,6 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	last_active_entity_index = active_entity_index;
 }
-
 
 map_editor_window_update :: (events : *os.EventList) {
 	editor_window_begin(map_editor_window, events);

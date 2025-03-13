@@ -10,6 +10,10 @@
 // However, it is probably a good idea to make the library not submit draw commands
 // for stuff that is outside its clip.
 
+// TODO(mizu): Put this shit inside an editor ui state. And use the flags. And call the file widgets? And make it easier to pick
+// No need to call it editor window.
+// window is fine. Winter_Window maybe?
+// 
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
@@ -20,10 +24,39 @@ Editor_File_Id :: enum {
 	Scratch;
 	Editor;
 	Map_Editor;
+	Simulation;
+}
+
+/*
+0. index
+1. depth
+2. line #
+3. file #
+4. window #
+*/
+
+widget_key :: (index := 0, depth :*UI_ID = xx 0, loc : Source_Code_Location) -> UI_ID {
+	out : UI_ID;
+	
+	out.v[0] = xx index;
+	out.v[1] = xx depth;
+	out.v[2] = xx loc.line_number;
+	out.v[3] = xx active_window_file_id();
+	out.v[4] = xx active_window.id;
+	
+	return out;
+}
+
+Editor_Window_Flags :: enum_flags {
+	Draw_Titlebar;
+	Resizable;
+	Scrollable;
 }
 
 Editor_Window :: struct {
 	arena : *Arena;
+	flags : Editor_Window_Flags;
+	
 	hide : bool;
 	events : *os.EventList;
 	
@@ -114,14 +147,15 @@ any_editor_in_focus :: () -> bool {
 	return out;
 }
 
-editor_init_window :: (title : string, pos : Vector2 = .{}) -> *Editor_Window {
+editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector2 = .{}, size : Vector2 = .{400, 300}) -> *Editor_Window {
 	out := *editor_windows[0] + editor_windows_count;
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
-	out.size = .{400, 300};
+	out.size = size;
 	out.arena = arena_init();
 	out.pos = pos;
+	out.flags = flags;
 	return out;
 }
 
@@ -132,9 +166,8 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	editor_push_file_id(window, .Editor);
 	
-	ui_push_flags_node(UI_Floating);
+	ui_push_flags_node(UI_Floating, true);
 	ui_push_size_x_node(ui_size_px(window.size.x), true);
-	ui_push_border_color_node(r.COLOR_MAGENTA, true);
 	
 	if window.hide {
 		ui_push_size_y_node(ui_size_children_sum(), true);
@@ -142,18 +175,16 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		ui_push_size_y_node(ui_size_px(window.size.y), true);
 	}
 	
-	root := ui_widget_from_key(.{.[199, 99, 99, xx window.id]});
+	root := ui_widget_from_key(widget_key(0, xx 0, .{}));
 	root.scissor = root.dst;
 	root.child_layout_axis = .Y;
 	root.computed_pos = window.pos.component;
 	window.dst = root.dst;
 	
-	ui_pop_flags_node();
-	
 	ui_push_parent_node(root);
 	
 	// titlebar
-	{
+	if window.flags & .Draw_Titlebar {
 		ui_push_flags_node(.Bg);
 		ui_push_size_x_node(ui_size_pct(1.), true);
 		ui_push_size_y_node(ui_size_px(32), true);
@@ -190,18 +221,21 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	if point_in_rect(mpos, window.dst) {
 		
 		if scroll_up {
-			window.scroll_offset -= 4;
+			window.scroll_offset += 4;
 		}
 		
 		if scroll_down {
-			window.scroll_offset += 4;
+			window.scroll_offset -= 4;
 		}
 		
 	}
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
+	row_parent := editor_ui_cxt.parent_stack.top.v;
+	
 	ui_push_size_node(ui_size_pct(1, 0), true);
+	ui_push_border_color_node(r.COLOR_MAGENTA, true);
 	editor_col_begin();
 	col_parent := editor_ui_cxt.parent_stack.top.v;
 	col_parent.offset[1] = window.scroll_offset;
@@ -225,27 +259,29 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_row_end();
 	
-	if !window.hide {
+	if window.flags & .Scrollable {
 		// scroll bar ====
-		ui_push_size_x_node(ui_size_px(32, 1), true);
-		ui_push_size_y_node(ui_size_pct(1, 1), true);
-		editor_col_begin();
-		
-		col_parent := editor_ui_cxt.parent_stack.top.v;
-		col_parent.flags |= .Bg;
-		
-		editor_spacer(ui_size_pct(1, 0));
-		
-		ui_push_size_node(ui_size_px(32, 1), true);
-		
-		scope := tex.scope_open();
-		tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
-		if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
-			window.resize_grabbed = true;
+		if !window.hide {
+			ui_push_size_x_node(ui_size_px(32, 1), true);
+			ui_push_size_y_node(ui_size_pct(1, 1), true);
+			editor_col_begin();
+			
+			col_parent := editor_ui_cxt.parent_stack.top.v;
+			col_parent.flags |= .Bg;
+			
+			editor_spacer(ui_size_pct(1, 0));
+			
+			ui_push_size_node(ui_size_px(32, 1), true);
+			
+			scope := tex.scope_open();
+			tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
+			if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
+				window.resize_grabbed = true;
+			}
+			tex.scope_close(scope);
+			editor_row_end();
+			// ===============
 		}
-		tex.scope_close(scope);
-		editor_row_end();
-		// ===============
 	}
 	
 	editor_row_end();
@@ -281,12 +317,7 @@ editor_window_end :: (window : *Editor_Window) {
 
 editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
 	
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[3] = xx depth;
-	id.v[4] = xx active_window.id;
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Text, id);
 	out.widget.text = text;
@@ -294,13 +325,9 @@ editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #calle
 	return out;
 }
 
-editor_button :: (text : string, index := 0, loc := #caller_location) -> UI_Signal {
+editor_button :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
 	
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[4] = xx active_window.id;
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Text | .Clickable, id);
 	out = ui_signal(out.widget);
@@ -317,11 +344,7 @@ Action_Kind :: enum {
 
 editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 										 depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[3] = xx depth;
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
 	out = ui_signal(out.widget);
@@ -432,11 +455,9 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 	return out;
 }
 
-editor_check_box :: (checked : *bool, index := 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
+editor_check_box :: (checked : *bool, index := 0,
+										 depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Check_Box, id);
 	out = ui_signal(out.widget);
@@ -449,11 +470,8 @@ editor_check_box :: (checked : *bool, index := 0, loc := #caller_location) -> UI
 	return out;
 }
 
-editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
+editor_slider :: (v : *float, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Slider, id);
 	
@@ -462,13 +480,8 @@ editor_slider :: (v : *float, index := 0, loc := #caller_location) -> UI_Signal 
 	return out;
 }
 
-editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : Vector4 = r.COLOR_WHITE, index := 0, loc := #caller_location) -> UI_Signal {
-	
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[4] = xx active_window.id;
+editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : Vector4 = r.COLOR_WHITE, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Image, id);
 	out = ui_signal(out.widget);
@@ -484,12 +497,8 @@ active_window_file_id :: () -> Editor_File_Id {
 	return active_window.file_id_stack.top.v;
 }
 
-editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[4] = xx active_window.id;
+editor_row_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
@@ -498,12 +507,8 @@ editor_row_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
 	return .{};
 }
 
-editor_col_begin :: (index := 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[4] = xx active_window.id;
+editor_col_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
@@ -516,11 +521,8 @@ editor_row_end :: () {
 	ui_pop_parent_node();
 }
 
-editor_spacer :: (size : UI_Size, index := 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
+editor_spacer :: (size : UI_Size, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
 	
 	ui_push_size_node(size);
 	
@@ -654,11 +656,7 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 
 editor_color_picker :: (index := 0,
 												depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
-	id := UI_ID.{};
-	id.v[0] = xx loc.line_number;
-	id.v[1] = xx index;
-	id.v[2] = xx active_window_file_id();
-	id.v[3] = xx depth;
+	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Text, id);
 	
