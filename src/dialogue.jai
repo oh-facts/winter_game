@@ -9,3 +9,15 @@ DONE
 SIREN_TALK :: #string DONE
 blah blah blah
 DONE
+
+/*
+I am writing game stuff here
+
+aos : *while lying down* if you try talking to her, she say "pst .. hold my hands"
+
+Then the hold hands option appears
+
+when you interact with someone, you see a prompt and then you can pick what you want
+
+
+*/

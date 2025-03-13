@@ -45,20 +45,9 @@ Interaction_State :: enum {
 	Active;
 }
 
-Chase_State :: enum {
-	Cold;
-	Hot;
-	Active;
-}
-
 Animation_State :: enum {
 	Idle;
 	Move;
-}
-
-Attack_State :: enum {
-	Cold;
-	Active;
 }
 
 Animation :: struct {
@@ -66,8 +55,21 @@ Animation :: struct {
 	speed : float32;
 }
 
-animations : [2]Animation : .[.{art_id = .Impolo, speed = 0},
-															.{art_id = .Impolo_East, speed = 7}];
+Animation_Node :: struct {
+	using v : Animation;
+	next : *Animation_Node;
+	state : Animation_State;
+	kind : Entity_Kind;
+}
+
+Animation_Slot :: struct {
+	first : *Animation_Node;
+	last : *Animation_Node;
+}
+
+Animation_Store :: struct {
+	slots : []Animation_Slot;
+}
 
 Entity :: struct {
 	next : *Entity;
@@ -84,7 +86,6 @@ Entity :: struct {
 	tile_pos : Vector2i;
 	
 	target_entity : *Entity;
-	chase_state : Chase_State;
 	
 	src : RectF32;
 	art_id : ArtId;
@@ -97,8 +98,6 @@ Entity :: struct {
 	color : Color;
 	interaction_state : Interaction_State;
 	submerged : float;
-	
-	attack_state : Attack_State;
 	
 	auto : bool;
 	
@@ -117,6 +116,11 @@ Entity_Store :: struct {
 	// per frame
 	sort_list : [..]*Entity;
 }
+
+entity_store : Entity_Store;
+anim_store : Animation_Store;
+
+
 
 active_count :: () -> int {
 	return entity_store.count - entity_store.inactive_count;
@@ -156,6 +160,70 @@ entity_store_init :: () -> Entity_Store {
 	
 	out.arena = arena_init();
 	out.first = push_struct(out.arena, void);
+	
+	return out;
+}
+
+hash_from_animation :: (state : Animation_State, kind : Entity_Kind) -> int {
+	
+	hash := 5381;
+	
+	hash = ((hash << 5) + hash) + xx state;
+	hash = ((hash << 5) + hash) + xx kind;
+	
+	return hash;
+}
+
+register_animation :: (as : *Animation_Store, art_id : ArtId, state : Animation_State, kind : Entity_Kind, anim_speed := 0.) {
+	
+	node : *Animation_Node = xx push_struct(arena, Animation_Node);
+	node.art_id = art_id;
+	node.state = state;
+	node.kind = kind;
+	node.speed = anim_speed;
+	hash := hash_from_animation(state, kind);
+	
+	slot_index := hash % xx as.slots.count;
+	
+	slot := as.slots.data + slot_index;
+	
+	if !slot.last {
+		slot.first = node;
+		slot.last = node;
+	} else {
+		slot.last.next = node;
+		slot.last = node;
+	}
+	
+}
+
+get_animation :: (as : *Animation_Store, state : Animation_State, kind : Entity_Kind) -> Animation {
+	
+	out : Animation;
+	hash := hash_from_animation(state, kind);
+	slot_index := hash % xx as.slots.count;
+	slot := as.slots.data + slot_index;
+	{
+		cur := slot.first;
+		
+		while cur {
+			if cur.kind == kind && cur.state == state {
+				out = cur.v;
+			}
+			cur = cur.next;
+		}
+	}
+	
+	return out;
+}
+
+animation_store_init :: () -> Animation_Store {
+	out : Animation_Store;
+	out.slots.count = 256;
+	out.slots.data = push_array(arena, Animation_Slot, xx out.slots.count);
+	
+	register_animation(*out, .Impolo, .Idle, .Player);
+	register_animation(*out, .Impolo_East, .Move, .Player, 7);
 	
 	return out;
 }
@@ -375,7 +443,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		if entity.flags & .Animated {
 			
-			anim := animations[entity.anim_state];
+			anim := get_animation(*anim_store, entity.anim_state, entity.kind);
 			
 			frame_x := arts[anim.art_id].frame_x;
 			
@@ -546,7 +614,8 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		art_id : int;
 		
 		if it.flags & .Animated {
-			anim := animations[it.anim_state];
+			anim := get_animation(*anim_store, it.anim_state, it.kind);
+			
 			art_id = xx anim.art_id;
 		} else {
 			art_id = xx it.art_id;

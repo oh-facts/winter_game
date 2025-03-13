@@ -96,7 +96,7 @@ map_editor_window : *Editor_Window;
 entity_tree_window : *Editor_Window;
 
 editor_tilemap : *Tilemap;
-entity_store : Entity_Store;
+
 editor_update :: (delta : float32, events : *os.EventList, 
 									passes : *r.Pass_List) {
 	
