@@ -109,6 +109,7 @@ Entity_Flags :: enum_flags u64 {
 	Chase_Entity;
 	Hostile;
 	Dead;
+	Has_Quest;
 }
 
 Interaction_State :: enum {
@@ -141,6 +142,53 @@ Animation_Slot :: struct {
 
 Animation_Store :: struct {
 	slots : []Animation_Slot;
+}
+
+Quest_Status :: enum {
+	Unassigned;
+	Assigned;
+	Completed;
+}
+
+Quest :: struct {
+	first : *Quest;
+	last : *Quest;
+	next : *Quest;
+	parent : *Quest;
+	
+	status : Quest_Status;
+	
+	current_quest : *Quest;
+	dialogue_phase : int;
+}
+
+aos_quest : *Quest;
+
+init_quest :: () {
+	
+	// root
+	{
+		aos_quest = xx push_struct(arena, Quest);
+	}
+	
+	// quest 1
+	{
+		quest := xx push_struct(arena, Quest);
+		aos_quest.first = quest;
+	}
+	
+	// quest 2
+	{
+		quest := xx push_struct(arena, Quest);
+		aos_quest.first.next = quest;
+		aos_quest.last = quest;
+	}
+	
+	aos_quest.current_quest = aos_quest.first;
+}
+
+set_quest :: () {
+	
 }
 
 Entity :: struct {
@@ -674,10 +722,21 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				case World_Start_Interaction_Cmd;
 				cmd : *World_Start_Interaction_Cmd = xx base;
 				cmd.e.interaction_state = .Active;
+				aos_quest.status = .Assigned;
+				
+				if !aos_quest.current_quest {
+					aos_quest.current_quest = aos_quest.current_quest.next;
+				}
+				
+				aos_quest.current_quest.status = .Assigned;
+				
 				py.flags &= ~.Control;
 				
 				case World_Complete_Interaction_Cmd;
 				cmd : *World_Complete_Interaction_Cmd = xx base;
+				aos_quest.current_quest.status = .Completed;
+				
+				aos_quest.current_quest = aos_quest.current_quest.next;
 				
 				cmd.e.interaction_state = .Hot;
 				py.flags |= .Control;
@@ -729,7 +788,8 @@ entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
 		e.art_id = .Aos;
 		e.color = r.COLOR_WHITE;
 		e.frame_n = 1;
-		e.flags |= .Interactable;
+		e.flags |= .Interactable | .Has_Quest;
+		e.submerged = 0.4;
 	}
 	
 	e.pos = pos;
@@ -902,9 +962,8 @@ load_entities :: (es : *Entity_Store) {
 	}
 }
 
-dialogue_phase : int;
-
 interaction_update :: (entity : *Entity, events : *os.EventList) {
+	
 	editor_window_begin(dialogue_window, events);
 	editor_push_file_id(dialogue_window, .Simulation);
 	
@@ -922,26 +981,28 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 	
 	editor_spacer(ui_size_px(10));
 	
-	if dialogue_phase == {
+	quest := aos_quest.current_quest;
+	
+	if quest.dialogue_phase == {
 		case 0;
 		editor_label(AoS_Opening_0);
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 1;
 		editor_label(AoS_Opening_1);
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 2;
 		editor_label(AoS_Opening_2);
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 3;
@@ -949,31 +1010,31 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 		
 		entity.frame_n = 0;
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 4;
 		editor_label(AoS_Opening_4);
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 5;
 		editor_label(AoS_Opening_5);
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			quest.dialogue_phase += 1;
 		}
 		
 		case 6;
 		push_world_complete_interaction(entity);
 		entity.frame_n = 1;
-		//dialogue_phase += 1;
+		//aos_quest.dialogue_phase += 1;
 		
 		/*
 		case 7;
 		if editor_button("Hold Hands").active {
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 8;
@@ -982,12 +1043,12 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 		active_interaction.e.frame_n = 0;
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 9;
 		push_world_complete_interaction();
-		dialogue_phase += 1;
+		aos_quest.dialogue_phase += 1;
 		active_interaction.e.frame_n = 1;
 		
 		case 10;
@@ -996,24 +1057,24 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 		editor_label("Can you try lifting me?");
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 11;
 		
 		if editor_button("Hold Hands").active {
-			dialogue_phase = 8;
+			aos_quest.dialogue_phase = 8;
 		}
 		
 		if editor_button("Pick up").active {
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 12;
 		editor_label("*You weren't able to pick AoS because you are too weak*");
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 13;
@@ -1022,7 +1083,7 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 		editor_label("Good Luck!");
 		
 		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
+			aos_quest.dialogue_phase += 1;
 		}
 		
 		case 14;
