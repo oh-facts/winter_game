@@ -15,13 +15,6 @@
 // that asks what you want to do with her
 // 
 
-Interact_Data :: struct {
-	active : bool;
-	e : *Entity;
-}
-
-active_interaction : Interact_Data;
-
 World_Cmd_Buffer :: struct {
 	base : *u8;
 	count : int;
@@ -36,6 +29,12 @@ World_Cmd_Header :: struct {
 
 World_Test_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
+	tile_pos : Vector2i;
+}
+
+World_Input_Interact_Cmd :: struct {
+	header : World_Cmd_Header;
+	tile_pos : Vector2i;
 }
 
 World_Start_Interaction_Cmd :: struct {
@@ -45,6 +44,7 @@ World_Start_Interaction_Cmd :: struct {
 
 World_Complete_Interaction_Cmd :: struct {
 	header : World_Cmd_Header;
+	e : *Entity;
 }
 
 world_cmds : World_Cmd_Buffer;
@@ -60,8 +60,14 @@ push_world_impl :: ($T : Type) -> *T {
 	return data;
 }
 
-push_world_test_interaction :: () {
+push_world_input_interact :: (tile_pos : Vector2i) {
+	data := push_world_impl(World_Input_Interact_Cmd);
+	data.tile_pos = tile_pos;
+}
+
+push_world_test_interaction :: (tile_pos : Vector2i) {
 	data := push_world_impl(World_Test_Interaction_Cmd);
+	data.tile_pos = tile_pos;
 }
 
 push_world_start_interaction :: (e : *Entity) {
@@ -69,8 +75,9 @@ push_world_start_interaction :: (e : *Entity) {
 	data.e = e;
 }
 
-push_world_complete_interaction :: () {
+push_world_complete_interaction :: (e : *Entity) {
 	data := push_world_impl(World_Complete_Interaction_Cmd);
+	data.e = e;
 }
 
 begin_world_cmd :: () {
@@ -350,16 +357,6 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	generate_collisions(*tileworld, entity_store);
 	draw_tilemap_collisions(tileworld, world_tilemap, passes);
 	
-	
-	for 0 .. entity_store.count - 1 {
-		entity := entity_store.first + it;
-		if entity.flags & .Inactive continue;
-		
-		if entity.interaction_state == .Hot {
-			entity.interaction_state = .Cold;
-		}
-	}
-	
 	// control
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -447,24 +444,12 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			entity.test_pos = test_pos;
 			
-			{
-				tile := tile_from_index(tileworld, entity.tile_pos + entity.dir, .Occupied);
-				
-				if tile && tile.entity {
-					
-					if tile.entity.interaction_state == .Cold {
-						tile.entity.interaction_state = .Hot;
-					}
-					
-					if !active_interaction.active {
-						if os.event(events, .E, .Pressed) {
-							tile.entity.interaction_state = .Active;
-							
-							push_world_start_interaction(tile.entity);
-						}
-					}
-				}
+			push_world_test_interaction(entity.tile_pos + entity.dir);
+			
+			if os.event(events, .E, .Pressed) {
+				push_world_input_interact(entity.tile_pos + entity.dir);
 			}
+			
 		}
 	}
 	
@@ -627,24 +612,20 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
-	
-	
-	// process cmds
-	
-	// TODO(mizu): make a current interaction struct
-	// that holds data like is active and the current entity
-	
-	// interactions
-	if active_interaction.active {
-		/*
-		if os.event(events, .E, .Pressed) {
-			push_world_complete_interaction(active_interaction.e);
-		}
-		*/
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		if entity.flags & .Inactive continue;
 		
-		interaction_update(events);
+		if entity.interaction_state == {
+			case .Hot;
+			entity.interaction_state = .Cold;
+			
+			case .Active;
+			interaction_update(entity, events);
+		}
 	}
 	
+	// process cmds
 	{
 		base := world_cmds.base;
 		i : s32;
@@ -656,18 +637,50 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			if header.kind == {
 				
+				case World_Test_Interaction_Cmd;
+				cmd : *World_Test_Interaction_Cmd = xx base;
+				
+				tile := tile_from_index(tileworld, cmd.tile_pos, .Occupied);
+				
+				if tile && tile.entity {
+					
+					if tile.entity.flags & .Interactable {
+						
+						if tile.entity.interaction_state == .Cold {
+							tile.entity.interaction_state = .Hot;
+						}
+						
+					}
+					
+				}
+				
+				case World_Input_Interact_Cmd;
+				cmd : *World_Input_Interact_Cmd = xx base;
+				
+				tile := tile_from_index(tileworld, cmd.tile_pos, .Occupied);
+				
+				if tile && tile.entity {
+					
+					if tile.entity.flags & .Interactable {
+						
+						if tile.entity.interaction_state == .Hot {
+							push_world_start_interaction(tile.entity);
+						}
+						
+					}
+					
+				}
+				
 				case World_Start_Interaction_Cmd;
 				cmd : *World_Start_Interaction_Cmd = xx base;
-				active_interaction.active = true;
-				active_interaction.e = cmd.e;
+				cmd.e.interaction_state = .Active;
 				py.flags &= ~.Control;
 				
 				case World_Complete_Interaction_Cmd;
 				cmd : *World_Complete_Interaction_Cmd = xx base;
 				
+				cmd.e.interaction_state = .Hot;
 				py.flags |= .Control;
-				active_interaction.active = false;
-				active_interaction.e.interaction_state = .Cold;
 			}
 			
 			base += header.size;
@@ -891,7 +904,7 @@ load_entities :: (es : *Entity_Store) {
 
 dialogue_phase : int;
 
-interaction_update :: (events : *os.EventList) {
+interaction_update :: (entity : *Entity, events : *os.EventList) {
 	editor_window_begin(dialogue_window, events);
 	editor_push_file_id(dialogue_window, .Simulation);
 	
@@ -934,7 +947,7 @@ interaction_update :: (events : *os.EventList) {
 		case 3;
 		editor_label(AoS_Opening_3);
 		
-		active_interaction.e.frame_n = 0;
+		entity.frame_n = 0;
 		if os.event(events, .E, .Pressed) { 
 			dialogue_phase += 1;
 		}
@@ -953,9 +966,9 @@ interaction_update :: (events : *os.EventList) {
 		}
 		
 		case 6;
-		push_world_complete_interaction();
-		dialogue_phase += 1;
-		active_interaction.e.frame_n = 1;
+		push_world_complete_interaction(entity);
+		entity.frame_n = 1;
+		//dialogue_phase += 1;
 		
 		/*
 		case 7;
