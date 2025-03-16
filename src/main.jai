@@ -106,6 +106,9 @@ main :: () {
 	tileworld = init_tileworld();
 	anim_store = animation_store_init();
 	
+	dialogue_builder.arena = arena_init();
+	init_game();
+	
 	load_entities(*entity_store);
 	load_tileworld(*tileworld);
 	

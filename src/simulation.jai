@@ -660,7 +660,14 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				cmd : *World_Start_Interaction_Cmd = xx base;
 				active_interaction.active = true;
 				active_interaction.e = cmd.e;
+				game_state.current_piece = get_dialogue().first;
 				py.flags &= ~.Control;
+				
+				if !game_state.aos_opening_dialogue_active {
+					game_state.aos_opening_dialogue_active = true;
+				} else if !game_state.aos_demo_dialogue_active {
+					game_state.aos_demo_dialogue_active = true;
+				}
 				
 				case World_Complete_Interaction_Cmd;
 				cmd : *World_Complete_Interaction_Cmd = xx base;
@@ -668,6 +675,13 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				py.flags |= .Control;
 				active_interaction.active = false;
 				active_interaction.e.interaction_state = .Cold;
+				
+				if game_state.aos_opening_dialogue_active {
+					game_state.aos_opening_dialogue_complete = true;
+				} else if game_state.aos_demo_dialogue_active {
+					game_state.aos_demo_dialogue_complete = true;
+				}
+				
 			}
 			
 			base += header.size;
@@ -892,136 +906,221 @@ load_entities :: (es : *Entity_Store) {
 dialogue_phase : int;
 active_option := 0;
 
-interaction_update :: (events : *os.EventList) {
-	editor_window_begin(dialogue_window, events);
-	editor_push_file_id(dialogue_window, .Simulation);
+Continue_Kind :: enum {
+	Key;
+	Choice;
+}
+
+Dialogue_Piece :: struct {
+	next : *Dialogue_Piece;
+	text : string;
+	name : string;
+	cont_kind : Continue_Kind;
+	exit : bool;
+	option : string;
+	option_next : Dialogue;
+}
+
+Dialogue :: struct {
+	first : *Dialogue_Piece;
+	last : *Dialogue_Piece;
 	
-	ui_push_size_node(ui_size_pct(1, 0), true);
-	editor_row_begin();
-	row_parent := editor_ui_cxt.parent_stack.top.v;
-	row_parent.offset[0] = 10;
+	cur : *Dialogue_Piece;
+}
+
+Dialogue_Node :: struct {
+	v : Dialogue;
+	next : *Dialogue_Node;
+}
+
+Dialogue_Builder :: struct {
+	arena : *Arena;
 	
-	ui_push_size_node(ui_size_pct(1, 0), true);
-	editor_col_begin();
+	dialogue_node_stack : struct {
+		top : *Dialogue_Node;
+		free : *Dialogue_Node;
+	}
+}
+
+begin_dialogue :: () {
 	
-	ui_push_text_align_node(.Left);
-	ui_push_size_x_node(ui_size_pct(0.2));
-	ui_push_size_y_node(ui_size_px(32));
+	using dialogue_builder;
 	
-	editor_spacer(ui_size_px(10));
+	node := dialogue_node_stack.free;
 	
-	if dialogue_phase == {
-		case 0;
-		editor_label("You would like to say something nice to her");
-		editor_label("But you don't know how");
-		
-		editor_spacer(ui_size_px(12));
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 1;
-		editor_label("AOS : Psst. I can't hold my breath forever");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 2;
-		editor_label("You: You have nice hair");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 3;
-		editor_label("AOS : Lets go over this again :).");
-		editor_label("First, you find corpses and hold their hands. Like this.");
-		
-		editor_label("This will wake them.");
-		editor_label("But they aren't actually alive. You must remember that.");
-		editor_label("Then, you say something nice to them, which will calm them");
-		editor_label("Then you bring them here");
-		
-		active_interaction.e.frame_n = 0;
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 4;
-		editor_label("AOS : If you do this, they will go to heaven. \nOtherwise, they will experience nothingness forever");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 5;
-		editor_label("AOS : Lets try again");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 6;
-		push_world_complete_interaction();
-		dialogue_phase += 1;
-		active_interaction.e.frame_n = 1;
-		
-		case 7;
-		
-		if editor_button("Hold Hands").active {
-			dialogue_phase += 1;
-		}
-		
-		case 8;
-		editor_label("Is <Demon> gone? I am scared.");
-		
-		//push_world_complete_interaction(active_interaction.e);
-		active_interaction.e.frame_n = 0;
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 9;
-		editor_label("Psst. Say something to calm me.");
-		
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 10;
-		editor_label("You : You have nice hair.");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 11;
-		editor_label("Thanks, I feel better now!");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 12;
-		editor_label("You are good at this :)!");
-		editor_label("I'll wait for you here");
-		
-		if os.event(events, .E, .Pressed) { 
-			push_world_complete_interaction();
-		}
-		
-		
+	if !node {
+		node = push_struct(dialogue_builder.arena, Dialogue_Node);
+	} else {
+		dialogue_node_stack.free = dialogue_node_stack.free.next;
+		<< node = .{};
 	}
 	
-	editor_row_end();
-	editor_row_end();
-	ui_pop_text_align_node();
-	ui_pop_size_node();
+	node.next = dialogue_node_stack.top;
+	dialogue_node_stack.top = node;
+}
+
+end_dialogue :: () -> Dialogue {
+	dialogue_exit();
 	
-	editor_pop_file_id(dialogue_window);
-	editor_window_end(dialogue_window);
+	using dialogue_builder;
+	
+	node := dialogue_node_stack.top;
+	
+	// pop from active stack
+	dialogue_node_stack.top = dialogue_node_stack.top.next;
+	
+	// push to free stack
+	node.next = dialogue_node_stack.free;
+	dialogue_node_stack.free = node;
+	
+	return node.v;
+}
+
+dialogue_builder : Dialogue_Builder;
+
+push_dialogue_piece :: () -> *Dialogue_Piece {
+	out : *Dialogue_Piece;
+	out = xx push_struct(dialogue_builder.arena, Dialogue_Piece);
+	
+	using dialogue_builder;
+	
+	cur := dialogue_node_stack.top;
+	
+	if !cur.v.last {
+		cur.v.last = out;
+		cur.v.first = out;
+	} else {
+		cur.v.last.next = out;
+		cur.v.last = out;
+	}
+	
+	return out;
+}
+
+dialogue_exit :: () {
+	p := push_dialogue_piece();
+	p.exit = true;
+}
+
+dialogue_text :: (text : string, name : string) {
+	p := push_dialogue_piece();
+	p.text = text;
+	p.name = name;
+	p.cont_kind = .Key;
+}
+
+begin_dialogue_option :: (option : string) {
+	begin_dialogue();
+	
+	using dialogue_builder;
+	
+	dialogue_node_stack.top.next.v.last.option = option;
+}
+
+end_dialogue_option :: () {
+	using dialogue_builder;
+	
+	dialogue_node_stack.top.v.last.option_next = dialogue_node_stack.top.next.v;
+}
+
+// TODO(mizu): maybe build it in real time?
+// look at game objectives, then accordingly 
+// construct it? 
+
+// store it on the entity?
+
+// maybe have a game objective struct?
+
+init_game :: () {
+	
+	begin_dialogue();
+	dialogue_text(AoS_Opening_0, "Aos");
+	dialogue_text(AoS_Opening_1, "Aos");
+	dialogue_text(AoS_Opening_2, "Aos");
+	dialogue_text(AoS_Opening_3, "Aos");
+	dialogue_text(AoS_Opening_4, "Aos");
+	dialogue_text(AoS_Opening_5, "Aos");
+	game_state.aos_opening_dialogue = end_dialogue();
+	
+	begin_dialogue();
+	dialogue_text("Pick somethung", "Aos");
+	begin_dialogue_option("hi");
+	dialogue_text(AoS_Opening_3, "Aos");
+	end_dialogue_option();
+	
+	game_state.aos_demo_dialogue = end_dialogue();
+}
+
+get_dialogue :: () -> Dialogue {
+	out : Dialogue;
+	
+	if !game_state.aos_opening_dialogue_complete {
+		out = game_state.aos_opening_dialogue;
+		
+	} else if !game_state.aos_demo_dialogue_complete {
+		out = game_state.aos_demo_dialogue;
+	}
+	
+	return out;
+}
+
+// I am thinking, for dialogues, maybe have
+// some kind of hashmap where you send objectives / game state params, and it accordingly returns the right dialogue?
+
+Game_State :: struct {
+	aos_opening_dialogue : Dialogue;
+	aos_opening_dialogue_active : bool;
+	aos_opening_dialogue_complete : bool;
+	
+	aos_demo_dialogue : Dialogue;
+	aos_demo_dialogue_active : bool;
+	aos_demo_dialogue_complete : bool;
+	
+	current_piece : *Dialogue_Piece;
+}
+
+game_state : Game_State;
+
+interaction_update :: (events : *os.EventList) {
+	if game_state.current_piece.exit {
+		push_world_complete_interaction();
+	} else {
+		
+		editor_window_begin(dialogue_window, events);
+		editor_push_file_id(dialogue_window, .Simulation);
+		
+		ui_push_size_node(ui_size_pct(1, 0), true);
+		editor_row_begin();
+		row_parent := editor_ui_cxt.parent_stack.top.v;
+		row_parent.offset[0] = 10;
+		
+		ui_push_size_node(ui_size_pct(1, 0), true);
+		editor_col_begin();
+		
+		ui_push_text_align_node(.Left);
+		ui_push_size_x_node(ui_size_pct(0.2));
+		ui_push_size_y_node(ui_size_px(32));
+		
+		editor_spacer(ui_size_px(10));
+		
+		editor_label(game_state.current_piece.text);
+		
+		if game_state.current_piece.option.count > 0 {
+			if editor_button(game_state.current_piece.option).active {
+				game_state.current_piece = game_state.current_piece.option_next.first;
+			}
+		} else {
+			if os.event(events, .E, .Pressed) {
+				game_state.current_piece = game_state.current_piece.next;
+			}
+		}
+		editor_row_end();
+		editor_row_end();
+		ui_pop_text_align_node();
+		ui_pop_size_node();
+		
+		editor_pop_file_id(dialogue_window);
+		editor_window_end(dialogue_window);
+	}
+	
 }
