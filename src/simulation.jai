@@ -678,6 +678,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		// draw shadow
 		if entity.flags & .Sloppy_Shadow {
+			/*
 			// cylinder radius and "extra" width when
 			// one stretches a circle along x to form
 			// a cylinder
@@ -692,6 +693,32 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			shadow := r.push_sprite(passes, dst, .{0, 0, 0, 0.4});
 			shadow.radius = rad;
+*/
+			
+			art_id : int;
+			
+			if entity.flags & .Animated {
+				anim := get_animation(*anim_store, entity.anim_state, entity.kind);
+				
+				art_id = xx anim.art_id;
+			} 
+			scope := tex.scope_open();
+			
+			bmp := tex.handle_from_hash(scope, arts[art_id].hash);
+			origin := arts[entity.art_id].origin;
+			size : Vector2;
+			size.x = xx bmp.U32[0] * 2.;
+			size.y = xx bmp.U32[1] * 2.;
+			
+			dst : RectF32;
+			dst.min.x = entity.pos.x - origin.x;
+			dst.min.y = entity.pos.y - origin.y;
+			dst.max.x = dst.min.x + size.x;
+			dst.max.y = dst.min.y + size.y;
+			
+			shadow := r.push_sprite(passes, dst, .{0, 0, 0, 0.4});
+			shadow.tex_id = bmp.U64[1];
+			tex.scope_close(scope);
 		}
 		
 		// draw origin
@@ -965,11 +992,6 @@ draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32
 		size : Vector2;
 		size.x = xx bmp.U32[0];
 		size.y = xx bmp.U32[1];
-		
-		if it.art_id == .Aos {
-			//size.x /= 2;
-			//size.y /= 2;
-		}
 		
 		frame_x := arts[art_id].frame_x;
 		
