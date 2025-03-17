@@ -42,6 +42,12 @@ Rect2 :: struct {
 	pad2 : [2]float32;
 };
 
+Sprite :: struct {
+	src : RectF32;
+	mat : Matrix3;
+	tex_id : u64;
+}
+
 // NOTE(mizu): The last thing you were doing was moving beam data to render pass
 
 Batch :: struct {
@@ -185,11 +191,11 @@ push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
 	return out;
 }
 
-push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {
+push_rect2 :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {
 	pass := list.last;
 	
-	if !pass || pass.kind != kind || (list.gen != list.last_gen){
-		pass = push_pass(list, kind);
+	if !pass || pass.kind != .UI || (list.gen != list.last_gen){
+		pass = push_pass(list, .UI);
 		
 		// set state params
 		pass.scissor = list.scissor_stack.top.v;
@@ -223,12 +229,8 @@ push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : 
 	return out;
 }
 
-push_rect2 :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {	
-	return push_rect2_impl(.UI, list, dst, color);
-}
-
-push_sprite :: (list : *Pass_List, dst : RectF32, color : Vector4) -> *Rect2 {	
-	return push_rect2_impl(.Sprite, list, dst, color);
+push_sprite :: (list : *Pass_List, mat : Matrix3, color : Vector4) -> *Rect2 {	
+	
 }
 
 push_beam :: (list : *Pass_List, pos : Vector2) {
