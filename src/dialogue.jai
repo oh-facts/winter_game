@@ -44,7 +44,33 @@ AoS_Opening_5 :: #string DONE
 AOS : Lets try again
 DONE
 
-//AoS_Demo_
+AoS_Demo_0_Option_1 :: #string DONE
+Hold Hands
+DONE
+
+AoS_Demo_1 :: #string DONE
+Well done! You are so good at this! Now walk me to the altar.
+DONE
+
+AoS_Demo_2 :: #string DONE
+Aos : Sorry :()
+My leg hurts
+Can you try lifting me?
+DONE
+
+AoS_Demo_3_Option_1 :: #string DONE
+Pick Up
+DONE
+
+AoS_Demo_4 :: #string DONE
+*You weren't able to pick AoS because you are too weak*
+DONE
+
+AoS_Demo_5 :: #string DONE
+Lol. I am too fat.
+Anyways, I am sure you will be able to figure this out
+Good Luck!
+DONE
 
 /*
 I am writing game stuff here
@@ -57,66 +83,3 @@ when you interact with someone, you see a prompt and then you can pick what you 
 
 I am thinking in the real beginning, you follow the beam and when you find her, she tells you how happy she is. how absolutely happy and then you zone out and when you zone in, the "past .. hold my hands part" starts
 */
-
-
-/*
-	if dialogue_phase == {
-		
-		case 7;
-		if editor_button("Hold Hands").active {
-			dialogue_phase += 1;
-		}
-		
-		case 8;
-		editor_label("Well done! You are so good at this! Now walk me to the altar.");
-		
-		active_interaction.e.frame_n = 0;
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 9;
-		push_world_complete_interaction();
-		dialogue_phase += 1;
-		active_interaction.e.frame_n = 1;
-		
-		case 10;
-		editor_label("Aos : Sorry :(");
-		editor_label("My leg hurts");
-		editor_label("Can you try lifting me?");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 11;
-		
-		if editor_button("Hold Hands").active {
-			dialogue_phase = 8;
-		}
-		
-		if editor_button("Pick up").active {
-			dialogue_phase += 1;
-		}
-		
-		case 12;
-		editor_label("*You weren't able to pick AoS because you are too weak*");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 13;
-		editor_label("Lol. I am too fat.");
-		editor_label("Anyways, I am sure you will be able to figure this out");
-		editor_label("Good Luck!");
-		
-		if os.event(events, .E, .Pressed) { 
-			dialogue_phase += 1;
-		}
-		
-		case 14;
-		push_world_complete_interaction();
-}
-	*/

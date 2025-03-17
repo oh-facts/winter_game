@@ -144,6 +144,16 @@ Animation_Store :: struct {
 	slots : []Animation_Slot;
 }
 
+Quest_Phase :: enum {
+	AoS_Opening_Dialogue;
+	AoS_Demo_Dialogue;
+	AoS_Demo_Main;
+}
+
+Quest_Kind :: enum {
+	Talk;
+}
+
 Quest_Status :: enum {
 	Unassigned;
 	Assigned;
@@ -151,45 +161,71 @@ Quest_Status :: enum {
 }
 
 Quest :: struct {
-	first : *Quest;
-	last : *Quest;
-	next : *Quest;
-	parent : *Quest;
+	kind : Quest_Kind;
 	
 	status : Quest_Status;
+	phase : Quest_Phase;
 	
-	current_quest : *Quest;
-	dialogue_phase : int;
+	opening_dialogues : Dialogue_List;
+	demo_dialogues : Dialogue_List;
+	
+	dialogue_phase : *Dialogue;
+	dialogue_phase_index : int;
 }
 
-aos_quest : *Quest;
-
-init_quest :: () {
-	
-	// root
-	{
-		aos_quest = xx push_struct(arena, Quest);
-	}
-	
-	// quest 1
-	{
-		quest := xx push_struct(arena, Quest);
-		aos_quest.first = quest;
-	}
-	
-	// quest 2
-	{
-		quest := xx push_struct(arena, Quest);
-		aos_quest.first.next = quest;
-		aos_quest.last = quest;
-	}
-	
-	aos_quest.current_quest = aos_quest.first;
+Dialogue_Flags :: enum_flags {
+	Text;
+	Option;
 }
 
-set_quest :: () {
-	
+Dialogue :: struct {
+	flags : Dialogue_Flags;
+	next : *Dialogue;
+	text : string;
+	option : string;
 }
+
+Dialogue_List :: struct {
+	first : *Dialogue;
+	last : *Dialogue;
+	count : int;
+}
+
+push_dialogue :: (list : *Dialogue_List) -> *Dialogue{
+	out : *Dialogue = push_struct(arena, Dialogue);
+	
+	if !list.last {
+		list.first = out;
+		list.last = out;
+	} else {
+		list.last.next = out;
+		list.last = out;
+	}
+	
+	list.count += 1;
+	
+	return out;
+}
+
+push_dialogue_text :: (list : *Dialogue_List, text : string) {
+	out := push_dialogue(list);
+	out.flags = .Text;
+	out.text = text;
+}
+
+push_dialogue_option :: (list : *Dialogue_List, option : string) {
+	out := push_dialogue(list);
+	out.flags = .Option;
+	out.option = option;
+}
+
+// TODO(mizu): So I am thinking dialogues, interactions, fetch quests, fights, etc. are all  quests. The word quest isn't appropriate for this.
+
+// But every quest has a quest kind that sets thigns up and optionally locks things if certain quests aren't completed.
+
+// I will eventually make a fn ptr for this and use a void* data because I think this would have lots of different kinds of data
+
+// Maybe not fn ptr but void * data certainly
 
 Entity :: struct {
 	next : *Entity;
@@ -222,9 +258,17 @@ Entity :: struct {
 	auto : bool;
 	
 	editor_hover : bool;
+	
+	quest : *Quest;
 };
 
 Color :: Vector4;
+
+Game :: struct {
+	aos_quest : *Quest;
+}
+
+game : Game;
 
 Entity_Store :: struct {
 	arena : *Arena;
@@ -359,6 +403,43 @@ world_update :: (delta : float32, events : *os.EventList,
 	if !world_initialized {
 		world_initialized = true;
 		
+		// root
+		{
+			game.aos_quest = xx push_struct(arena, Quest);
+			game.aos_quest.kind = .Talk;
+		}
+		
+		// dialogue 1
+		{
+			d := *game.aos_quest.opening_dialogues;
+			push_dialogue_text(d, AoS_Opening_0);
+			push_dialogue_text(d, AoS_Opening_1);
+			push_dialogue_text(d, AoS_Opening_2);
+			push_dialogue_text(d, AoS_Opening_3);
+			push_dialogue_text(d, AoS_Opening_4);
+			push_dialogue_text(d, AoS_Opening_5);
+			game.aos_quest.dialogue_phase = game.aos_quest.opening_dialogues.first;
+		}
+		
+		// dialogue 2
+		{
+			d := *game.aos_quest.demo_dialogues;
+			push_dialogue_option(d, AoS_Demo_0_Option_1);
+			push_dialogue_text(d, AoS_Demo_1);
+			push_dialogue_text(d, AoS_Demo_2);
+			push_dialogue_option(d, AoS_Demo_3_Option_1);
+			push_dialogue_text(d, AoS_Demo_4);
+			push_dialogue_text(d, AoS_Demo_5);
+		}
+		
+		for 0 .. entity_store.count - 1{
+			e := entity_store.first + it;
+			if e.kind == .Aos {
+				e.quest = game.aos_quest;
+				break;
+			}
+		}
+		
 	}
 	
 	for 0 .. entity_store.count - 1{
@@ -376,7 +457,6 @@ world_update :: (delta : float32, events : *os.EventList,
 		case .Combat;
 		combat_stage(events, passes, delta);
 	}
-	
 }
 
 combat_stage :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
@@ -669,7 +749,58 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			entity.interaction_state = .Cold;
 			
 			case .Active;
-			interaction_update(entity, events);
+			quest := entity.quest;
+			
+			if quest.kind ==  {
+				case .Talk;
+				
+				if quest.phase == {
+					case .AoS_Opening_Dialogue;
+					editor_dialogue_begin(events);
+					
+					editor_label(quest.dialogue_phase.text);
+					
+					editor_dialogue_end();
+					
+					if os.event(events, .E, .Pressed) {
+						quest.dialogue_phase = quest.dialogue_phase.next;
+						quest.dialogue_phase_index += 1;
+					}
+					
+					if quest.dialogue_phase_index > quest.opening_dialogues.count - 1 {
+						push_world_complete_interaction(entity);
+						quest.dialogue_phase_index = 0;
+						quest.dialogue_phase = quest.demo_dialogues.first;
+						quest.phase = .AoS_Demo_Dialogue;
+					}
+					
+					case .AoS_Demo_Dialogue;
+					editor_dialogue_begin(events);
+					
+					if quest.dialogue_phase.flags & .Text {
+						editor_label(quest.dialogue_phase.text);
+					}
+					
+					if quest.dialogue_phase.flags & .Option {
+						if editor_button(quest.dialogue_phase.option).active { 
+							quest.dialogue_phase = quest.dialogue_phase.next;
+							quest.dialogue_phase_index += 1;
+						}
+					}
+					else if os.event(events, .E, .Pressed) {
+						quest.dialogue_phase = quest.dialogue_phase.next;
+						quest.dialogue_phase_index += 1;
+					}
+					
+					editor_dialogue_end();
+					
+					if quest.dialogue_phase_index > quest.demo_dialogues.count - 1 {
+						push_world_complete_interaction(entity);
+						quest.phase = .AoS_Demo_Main;
+						entity.flags &= ~.Interactable;
+					}
+				}
+			}
 		}
 	}
 	
@@ -722,23 +853,15 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				case World_Start_Interaction_Cmd;
 				cmd : *World_Start_Interaction_Cmd = xx base;
 				cmd.e.interaction_state = .Active;
-				aos_quest.status = .Assigned;
-				
-				if !aos_quest.current_quest {
-					aos_quest.current_quest = aos_quest.current_quest.next;
-				}
-				
-				aos_quest.current_quest.status = .Assigned;
+				cmd.e.quest.status = .Assigned;
 				
 				py.flags &= ~.Control;
 				
 				case World_Complete_Interaction_Cmd;
 				cmd : *World_Complete_Interaction_Cmd = xx base;
-				aos_quest.current_quest.status = .Completed;
-				
-				aos_quest.current_quest = aos_quest.current_quest.next;
-				
+				cmd.e.quest.status = .Completed;
 				cmd.e.interaction_state = .Hot;
+				
 				py.flags |= .Control;
 			}
 			
@@ -962,8 +1085,7 @@ load_entities :: (es : *Entity_Store) {
 	}
 }
 
-interaction_update :: (entity : *Entity, events : *os.EventList) {
-	
+editor_dialogue_begin :: (events : *os.EventList) {
 	editor_window_begin(dialogue_window, events);
 	editor_push_file_id(dialogue_window, .Simulation);
 	
@@ -980,116 +1102,9 @@ interaction_update :: (entity : *Entity, events : *os.EventList) {
 	ui_push_size_y_node(ui_size_px(32));
 	
 	editor_spacer(ui_size_px(10));
-	
-	quest := aos_quest.current_quest;
-	
-	if quest.dialogue_phase == {
-		case 0;
-		editor_label(AoS_Opening_0);
-		
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 1;
-		editor_label(AoS_Opening_1);
-		
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 2;
-		editor_label(AoS_Opening_2);
-		
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 3;
-		editor_label(AoS_Opening_3);
-		
-		entity.frame_n = 0;
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 4;
-		editor_label(AoS_Opening_4);
-		
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 5;
-		editor_label(AoS_Opening_5);
-		if os.event(events, .E, .Pressed) { 
-			quest.dialogue_phase += 1;
-		}
-		
-		case 6;
-		push_world_complete_interaction(entity);
-		entity.frame_n = 1;
-		//aos_quest.dialogue_phase += 1;
-		
-		/*
-		case 7;
-		if editor_button("Hold Hands").active {
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 8;
-		editor_label("Well done! You are so good at this! Now walk me to the altar.");
-		
-		active_interaction.e.frame_n = 0;
-		
-		if os.event(events, .E, .Pressed) { 
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 9;
-		push_world_complete_interaction();
-		aos_quest.dialogue_phase += 1;
-		active_interaction.e.frame_n = 1;
-		
-		case 10;
-		editor_label("Aos : Sorry :(");
-		editor_label("My leg hurts");
-		editor_label("Can you try lifting me?");
-		
-		if os.event(events, .E, .Pressed) { 
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 11;
-		
-		if editor_button("Hold Hands").active {
-			aos_quest.dialogue_phase = 8;
-		}
-		
-		if editor_button("Pick up").active {
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 12;
-		editor_label("*You weren't able to pick AoS because you are too weak*");
-		
-		if os.event(events, .E, .Pressed) { 
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 13;
-		editor_label("Lol. I am too fat.");
-		editor_label("Anyways, I am sure you will be able to figure this out");
-		editor_label("Good Luck!");
-		
-		if os.event(events, .E, .Pressed) { 
-			aos_quest.dialogue_phase += 1;
-		}
-		
-		case 14;
-		push_world_complete_interaction();
-	*/
-	}
+}
+
+editor_dialogue_end :: () {
 	editor_row_end();
 	editor_row_end();
 	ui_pop_text_align_node();

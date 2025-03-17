@@ -107,7 +107,6 @@ main :: () {
 	anim_store = animation_store_init();
 	load_entities(*entity_store);
 	load_tileworld(*tileworld);
-	init_quest();
 	
 	while !quit {
 		timer += xx delta;
