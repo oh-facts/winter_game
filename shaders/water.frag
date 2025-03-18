@@ -23,7 +23,7 @@ void main()
 	distortedUV = vec2(distortedUV.x, distortedUV.y / 3.0 - a_delta * 0.02);
 	
 	vec4 noise = texture(sampler2D(a_noise_id), distortedUV);
-	noise = round(noise * 4.0) / 4.0;
+	noise = round(noise * 4.0) / 6.0;
 	//noise.w = 0.1;
 	
 	distortedUV = a_uv;
@@ -31,6 +31,6 @@ void main()
 	distortedUV.x += sin(a_delta * 2.0 + a_uv.y * 10.0) * 0.002;
 	vec4 screen_color = texture(sampler2D(a_water_id), distortedUV);
 	
-	FragColor = mix(noise, screen_color, 0.5);
-	FragColor = mix(FragColor, water_color, 0.3);
+	FragColor = mix(noise, screen_color, 0.35);
+	FragColor = mix(FragColor, water_color, 0.2);
 }

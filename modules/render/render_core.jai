@@ -42,6 +42,11 @@ Rect2 :: struct {
 	pad2 : [2]float32;
 };
 
+Cube :: struct {
+	model : Matrix4;
+	color : Vector4;
+}
+
 // NOTE(mizu): The last thing you were doing was moving beam data to render pass
 
 Batch :: struct {
@@ -65,6 +70,7 @@ Pass_Kind :: enum {
 	Begin_Water;
 	End_Water;
 	Voxel;
+	Cube;
 }
 
 Pass :: struct {
@@ -73,6 +79,9 @@ Pass :: struct {
 	batches : BatchList;
 	beam_pos : Vector2;
 	scissor : RectF32;
+	
+	view : Matrix4;
+	proj : Matrix4;
 }
 
 // TODO(mizu): I am thinking I make a pass list list for highest level data like screen size 
@@ -239,6 +248,17 @@ push_beam :: (list : *Pass_List, pos : Vector2) {
 	}
 	
 	pass.beam_pos = pos;
+}
+
+push_cube :: (list : *Pass_List, model : Matrix4, color : Vector4) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .Cube {
+		pass = push_pass(list, .Cube);
+	}
+	
+	pass.model = model;
+	pass.color = color;
 }
 
 begin_water :: (list : *Pass_List) {

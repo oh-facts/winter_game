@@ -1,10 +1,10 @@
 // i was thinking of using this as an offset into an image. So imagine a massive image with .. I don't feel like writing the rest I am particularly sad.
 
 paints : [5]Entity : .[.{name = "empty"},
-											 .{auto = true, art_id = .TerrainTemplate, name = "template 1"},
-											 .{auto = true, art_id = .TerrainGrass, name = "auto grass"},
-											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_n = 9},
-											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_n = 6},
+											 .{auto = true, art_id = .TerrainTemplate, name = "template 1", color = r.COLOR_WHITE},
+											 .{auto = true, art_id = .TerrainGrass, name = "auto grass", color = .{0.4, 0.4, 0.3, 1}},
+											 .{art_id = .TilesForest, name = "grass", src = .{.{0, 0},.{1, 1}}, frame_n = 9, color = r.COLOR_WHITE},
+											 .{art_id = .TilesForest, name = "dirt", src = .{.{0, 0},.{1, 1}}, frame_n = 6, color = r.COLOR_WHITE},
 											 ];
 
 auto_col :: 8;
@@ -486,10 +486,11 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 							src.min.y = 1 - src.min.y;
 							src.max.y = 1 - src.max.y;
 							//print("%\n", src);
-							
-							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
+							//print("r");
+							tile_rect := r.push_sprite(passes, dst, paint.color);
 							tile_rect.tex_id = tex_id;
 							tile_rect.src = src;
+							//tile_rect.radius = 4;
 						}
 						else {
 							src.min.x = (cast(float32) (paint.frame_n % frame_x) / frame_x);
@@ -501,7 +502,7 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 							src.max.y = 1 - src.max.y;
 							//print("%\n", src);
 							
-							tile_rect := r.push_sprite(passes, dst, r.COLOR_WHITE);
+							tile_rect := r.push_sprite(passes, dst, paint.color);
 							tile_rect.tex_id = tex_id;
 							tile_rect.src = src;
 						}

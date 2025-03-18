@@ -14,6 +14,7 @@ layout (std430, binding = 0) buffer ssbo {
 
 flat out uvec2 a_draw_id;
 out vec2 a_uv;
+out vec2 a_corrected_uv;
 
 void main()
 {
@@ -40,12 +41,15 @@ void main()
 	};
 	
 	a_uv = base_uv[gl_VertexID];
+	
 	vec2 vertex = vertices[gl_VertexID];
 	
 	float aspect_ratio = screen_size.x / screen_size.y;
 	vec2 norm_pos = vertex;// / screen_size.xy * 2.0 - 1.0;
 	//norm_pos.x *= aspect_ratio;
 	
+	a_corrected_uv = base_uv[gl_VertexID];
+	a_corrected_uv.x *= aspect_ratio;
 	
 	gl_Position = vec4(norm_pos, 0, 1);
 	a_draw_id = draw_id;

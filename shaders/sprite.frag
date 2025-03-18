@@ -28,7 +28,19 @@ void main()
 	}
 	
 	if ((a_submerged.x * a_norm_uv.y) > (a_submerged.x * (1.0 - a_submerged.y))) {
-		discard;
+		//discard;
+	}
+	
+	float dist = length(a_norm_uv - vec2(0.5, -0.38));
+	
+	if (a_submerged.x > 0) {
+		if (dist > 1) {
+			discard;
+		}
+	} else if (a_submerged.x < 0) {
+		if (dist < 1) {
+			discard;
+		}
 	}
 	
 	vec2 pos = a_half_size * 2 * a_norm_uv;

@@ -31,7 +31,7 @@ Art :: struct {
 }
 
 arts : [15]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
-									 .{id = .TerrainGrass, path = "art/terrain_grass.png"},
+									 .{id = .TerrainGrass, path = "art/terrain_grass2.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
 									 .{id = .Impolo, path = "art/impolo-idle.png"},

@@ -328,6 +328,9 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					batch = batch.next;
 				}
+				
+				case .Cube;
+				
 			}
 		}
 	}
