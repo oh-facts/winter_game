@@ -448,30 +448,33 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	intro_sort(entity_store.sort_list, sort_entitties);
 	
-	draw_submerged_entities(entity_store, passes, -1);
-	draw_submerged_entities(entity_store, passes, 1);
+	draw_submerged_entities(entity_store.sort_list, passes, -1);
+	draw_submerged_entities(entity_store.sort_list, passes, 1);
+	
 	array_reset_keeping_memory(*entity_store.sort_list);
 	
 	// draw origin
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
 		
-		dst : RectF32;
-		dst.min.x = entity.pos.x;
-		dst.min.y = entity.pos.y;
-		dst.max.x = dst.min.x + 8;
-		dst.max.y = dst.min.y + 8;
-		
 		color := r.COLOR_YELLOW;
 		
 		if entity.editor_hover {
 			color = r.COLOR_RED;
 		}
+		{
+			dst : RectF32;
+			dst.min.x = entity.pos.x;
+			dst.min.y = entity.pos.y;
+			dst.max.x = dst.min.x + 8;
+			dst.max.y = dst.min.y + 8;
+			
+			origin := r.push_sprite(passes, dst, color);
+			origin.radius = 4;
+			origin.border_color = r.COLOR_BLACK;
+			origin.border_thickness = 2;
+		}
 		
-		origin := r.push_sprite(passes, dst, color);
-		origin.radius = 4;
-		origin.border_color = r.COLOR_BLACK;
-		origin.border_thickness = 2;
 	}
 	
 	last_active_entity_index = active_entity_index;

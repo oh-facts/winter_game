@@ -19,6 +19,7 @@ Scene_Data :: struct {
 	pad2 : float;
 	draw_id : u64;
 	water_id : u64;
+	light_id : u64;
 };
 
 Image :: struct {
@@ -85,6 +86,7 @@ size_from_image :: (h : Handle) -> Vector2i {
 INST_BUFFER :: enum {
 	UI;
 	SPRITE;
+	LIGHT;
 	COUNT;
 };
 
@@ -94,6 +96,7 @@ SHADER_PROG :: enum {
 	BEAM;
 	WATER;
 	FINAL;
+	Light;
 	COUNT;
 };
 
@@ -102,6 +105,7 @@ vert_shader_paths :[SHADER_PROG.COUNT]string: .["ui.vert",
 																								"beam.vert",
 																								"water.vert",
 																								"final.vert",
+																								"light.vert"
 																								];
 
 frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
@@ -109,6 +113,7 @@ frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
 																								"beam.frag",
 																								"water.frag",
 																								"final.frag",
+																								"light.frag"
 																								];
 
 State :: struct {
@@ -121,6 +126,7 @@ State :: struct {
 	
 	draw_fb : Framebuffer;
 	water_fb : Framebuffer;
+	light_fb : Framebuffer;
 	
 	last_screen_size : Vector2;
 	
@@ -184,6 +190,7 @@ init :: () {
 		screen_size : Vector2 = .{1920, 1051};
 		state.draw_fb = framebuffer(screen_size);
 		state.water_fb = framebuffer(screen_size);
+		state.light_fb = framebuffer(screen_size);
 	}
 	
 	{
@@ -233,6 +240,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.delta = delta;
 		scene_data.draw_id = state.draw_fb.resident;
 		scene_data.water_id = state.water_fb.resident;
+		scene_data.light_id = state.light_fb.resident;
 		
 		using state;
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, scene_buffer);
@@ -331,6 +339,44 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				case .Cube;
 				
+				case .Light;
+				{
+					shader := state.shader_prog[SHADER_PROG.Light];
+					glUseProgram(shader);
+					
+					buffer := state.inst_buffer[INST_BUFFER.LIGHT];
+					
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+					
+					ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, size_of(type_of(pass.light)), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+					
+					memcpy(ssbo_data, *pass.light, size_of(type_of(pass.light)));
+					
+					glUnmapNamedBuffer(buffer);
+					
+					glBindFramebuffer(GL_FRAMEBUFFER, state.light_fb.id);
+					
+					glDrawArrays(GL_TRIANGLES, 0, 6);
+				}
+				{
+					shader := state.shader_prog[SHADER_PROG.FINAL];
+					glUseProgram(shader);
+					
+					offset_loc := glGetUniformLocation(shader, "u_image_id");
+					
+					draw_fb_id := state.light_fb.resident;
+					
+					l : u32 = cast(u32) (draw_fb_id & 0xFFFFFFFF); 
+					r: u32 = cast(u32) (draw_fb_id >> 32);
+					
+					glUniform2ui(offset_loc, l, r);
+					
+					glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
+					glClear(GL_COLOR_BUFFER_BIT);
+					
+					glDrawArrays(GL_TRIANGLES, 0, 6);
+				}
+				
 			}
 		}
 	}
@@ -338,11 +384,20 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 	// copy to window fb
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
+		glClear(GL_COLOR_BUFFER_BIT);
 		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
 		shader := state.shader_prog[SHADER_PROG.FINAL];
-		
 		glUseProgram(shader);
+		
+		offset_loc := glGetUniformLocation(shader, "u_image_id");
+		
+		draw_fb_id := state.draw_fb.resident;
+		
+		l : u32 = cast(u32) (draw_fb_id & 0xFFFFFFFF); 
+		r: u32 = cast(u32) (draw_fb_id >> 32);
+		
+		glUniform2ui(offset_loc, l, r);
+		
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 	

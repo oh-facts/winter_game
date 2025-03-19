@@ -13,10 +13,10 @@ layout (std430, binding = 0) buffer ssbo {
 };
 
 out vec2 a_uv;
-out vec2 a_n_uv;
 
-void main() {
-	vec2 vertices[] = 
+void main()
+{
+	vec2 vertices[] =
 	{
 		{-1.0, -1.0},
 		{ 1.0, -1.0},
@@ -27,7 +27,7 @@ void main() {
 		{ 1.0,  1.0}
 	};
 	
-	vec2 base_uv[] = 
+	vec2 base_uv[] =
 	{
 		{0, 0},
 		{1, 0},
@@ -38,11 +38,11 @@ void main() {
 		{1, 1}
 	};
 	
+	a_uv = base_uv[gl_VertexID];
+	
 	vec2 vertex = vertices[gl_VertexID];
 	
-	a_uv = base_uv[gl_VertexID];
-	a_n_uv = a_uv;
-	a_n_uv.x *= screen_size.x / screen_size.y;
-	
-	gl_Position = vec4(vertex, 0.0, 1.0);
+	float aspect_ratio = screen_size.x / screen_size.y;
+	vec2 norm_pos = vertex;
+	gl_Position = vec4(norm_pos, 0, 1);
 }

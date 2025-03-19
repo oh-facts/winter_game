@@ -27,11 +27,7 @@ void main()
 		discard;
 	}
 	
-	if ((a_submerged.x * a_norm_uv.y) > (a_submerged.x * (1.0 - a_submerged.y))) {
-		//discard;
-	}
-	
-	float dist = length(a_norm_uv - vec2(0.5, -0.38));
+	float dist = length(a_norm_uv - vec2(0.5, -a_submerged.y));
 	
 	if (a_submerged.x > 0) {
 		if (dist > 1) {

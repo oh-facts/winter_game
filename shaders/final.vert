@@ -12,7 +12,6 @@ layout (std430, binding = 0) buffer ssbo {
 	uvec2 water_id;
 };
 
-flat out uvec2 a_draw_id;
 out vec2 a_uv;
 out vec2 a_corrected_uv;
 
@@ -52,5 +51,4 @@ void main()
 	a_corrected_uv.x *= aspect_ratio;
 	
 	gl_Position = vec4(norm_pos, 0, 1);
-	a_draw_id = draw_id;
 }

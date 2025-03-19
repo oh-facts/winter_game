@@ -42,6 +42,10 @@ Rect2 :: struct {
 	pad2 : [2]float32;
 };
 
+Light :: struct {
+	pos : Vector2;
+}
+
 Cube :: struct {
 	model : Matrix4;
 	color : Vector4;
@@ -71,6 +75,7 @@ Pass_Kind :: enum {
 	End_Water;
 	Voxel;
 	Cube;
+	Light;
 }
 
 Pass :: struct {
@@ -79,6 +84,7 @@ Pass :: struct {
 	batches : BatchList;
 	beam_pos : Vector2;
 	scissor : RectF32;
+	light : Light;
 	
 	view : Matrix4;
 	proj : Matrix4;
@@ -248,6 +254,16 @@ push_beam :: (list : *Pass_List, pos : Vector2) {
 	}
 	
 	pass.beam_pos = pos;
+}
+
+push_light :: (list : *Pass_List, light : Light) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .Light {
+		pass = push_pass(list, .Light);
+	}
+	
+	pass.light = light;
 }
 
 push_cube :: (list : *Pass_List, model : Matrix4, color : Vector4) {

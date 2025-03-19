@@ -279,6 +279,7 @@ Entity_Store :: struct {
 	
 	// per frame
 	sort_list : [..]*Entity;
+	sort_list2 : [..]*Entity;
 }
 
 entity_store : Entity_Store;
@@ -729,16 +730,18 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
 	beam_pos := calculate_beam_pos();
 	
-	r.push_beam(passes, beam_pos);
+	//r.push_beam(passes, beam_pos);
 	intro_sort(entity_store.sort_list, sort_entitties);
-	draw_submerged_entities(entity_store, passes, -1);
+	draw_submerged_entities(entity_store.sort_list, passes, -1);
 	
 	//r.push_beam(passes);
 	r.end_water(passes);
 	
-	draw_submerged_entities(entity_store, passes, 1);
+	draw_submerged_entities(entity_store.sort_list, passes, 1);
 	
 	array_reset_keeping_memory(*entity_store.sort_list);
+	
+	r.push_light(passes, .{pos = py.pos});
 	
 	for 0 .. entity_store.count - 1 {
 		entity := entity_store.first + it;
@@ -933,6 +936,7 @@ sort_entitties :: (a : *Entity, b : *Entity) -> int {
 	pos_b := b.pos;
 	
 	out : int = 1;
+	
 	if pos_a.y < pos_b.y {
 		out = -1;
 	}
@@ -942,11 +946,11 @@ sort_entitties :: (a : *Entity, b : *Entity) -> int {
 
 // TODO(mizu): Needs cleanup
 
-draw_submerged_entities :: (es : Entity_Store, passes : *r.Pass_List, pass : s32) {
+draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass : s32) {
 	
 	scope := tex.scope_open();
 	
-	for es.sort_list {
+	for sort_list {
 		
 		origin := arts[it.art_id].origin;
 		
