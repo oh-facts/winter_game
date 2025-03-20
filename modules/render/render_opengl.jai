@@ -218,6 +218,13 @@ init :: () {
 	}
 }
 
+uvec2_from_u64 :: (v : u64) -> u32, u32 {
+	l : u32 = cast(u32) (v & 0xFFFFFFFF); 
+	r: u32 = cast(u32) (v >> 32);
+	
+	return l, r;
+}
+
 submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 passes : Pass_List,
 					 screen_offset := Vector2.{0, 0}) {
@@ -340,6 +347,9 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				case .Cube;
 				
 				case .Light;
+				
+				// draw lights to light fb.
+				// samples draw fb
 				{
 					shader := state.shader_prog[SHADER_PROG.Light];
 					glUseProgram(shader);
@@ -358,6 +368,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					glDrawArrays(GL_TRIANGLES, 0, 6);
 				}
+				
+				// copy to draw fb
 				{
 					shader := state.shader_prog[SHADER_PROG.FINAL];
 					glUseProgram(shader);
@@ -366,8 +378,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					draw_fb_id := state.light_fb.resident;
 					
-					l : u32 = cast(u32) (draw_fb_id & 0xFFFFFFFF); 
-					r: u32 = cast(u32) (draw_fb_id >> 32);
+					l, r := uvec2_from_u64(draw_fb_id);
 					
 					glUniform2ui(offset_loc, l, r);
 					
@@ -393,8 +404,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		
 		draw_fb_id := state.draw_fb.resident;
 		
-		l : u32 = cast(u32) (draw_fb_id & 0xFFFFFFFF); 
-		r: u32 = cast(u32) (draw_fb_id >> 32);
+		l, r := uvec2_from_u64(draw_fb_id);
 		
 		glUniform2ui(offset_loc, l, r);
 		

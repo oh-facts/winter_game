@@ -45,7 +45,7 @@ void main()
 		float ambient = 0.1;
 		float brightness = smoothstep(threshold - edgeSoftness, threshold + edgeBlur, distanceFromCenter);
 		
-		FragColor = texture(sampler2D(draw_id), a_uv) * (1.1 + ambient - brightness) * 1.5 * lightColor;
+		FragColor = texture(sampler2D(draw_id), a_uv) * (1 + ambient - brightness) * 1.5 * lightColor;
 	}
 	{
 		vec2 center = vec2(1100, 500);
@@ -69,7 +69,8 @@ void main()
 		float ambient = 0.1;
 		float brightness = smoothstep(threshold - edgeSoftness, threshold + edgeBlur, distanceFromCenter);
 		
-		FragColor += texture(sampler2D(draw_id), a_uv) * (1.1 + ambient - brightness) * 1.5 * lightColor;
+		FragColor += texture(sampler2D(draw_id), a_uv) * (1 + ambient - brightness) * 1.5 * lightColor;
 	}
-	
+	//float amb = 0.05;
+	//FragColor += vec4(amb, amb, amb, 1);
 }

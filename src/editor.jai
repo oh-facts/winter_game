@@ -185,15 +185,13 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	// titlebar
 	if window.flags & .Draw_Titlebar {
-		ui_push_flags_node(.Bg);
+		ui_push_flags_node(.Bg, true);
 		ui_push_size_x_node(ui_size_pct(1.), true);
 		ui_push_size_y_node(ui_size_px(32), true);
-		ui_push_bg_color_node(r.COLOR_MAGENTA);
+		ui_push_bg_color_node(.{0.639, 0.624, 0.584, 1}, true);
 		editor_row_begin();
-		ui_pop_bg_color_node();
-		ui_pop_flags_node();
 		
-		ui_push_size_x_node(ui_size_pct(0.25, 0));
+		ui_push_size_x_node(ui_size_pct(0.35, 0));
 		ui_push_size_y_node(ui_size_pct(1, 0));
 		ui_push_hover_color_node(r.COLOR_BLACK);
 		
@@ -201,6 +199,9 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			window.hide = !window.hide;
 		}
 		
+		editor_spacer(ui_size_pct(1, 0));
+		
+		ui_push_size_x_node(ui_size_txt(1), true);
 		sig := editor_label(active_window.title);
 		sig = ui_signal(sig.widget);
 		
@@ -232,6 +233,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
+	
 	row_parent := editor_ui_cxt.parent_stack.top.v;
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
@@ -273,12 +275,10 @@ editor_window_end :: (window : *Editor_Window) {
 			
 			ui_push_size_node(ui_size_px(32, 1), true);
 			
-			scope := tex.scope_open();
-			tex_id := tex.handle_from_hash(scope, arts[xx ArtId.Editor_Window_Notch].hash, .Linear);
-			if editor_image(tex_id, color = r.COLOR_MAGENTA).active {
+			if editor_image(r.get_white_square(), color = .{0.698, 0.694, 0.651, 1}).active {
 				window.resize_grabbed = true;
 			}
-			tex.scope_close(scope);
+			
 			editor_row_end();
 			// ===============
 		}
@@ -672,6 +672,8 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	}
 	
 	color := r.COLOR_WHITE;
+	font_size := 1.;
+	
 	if root.hot {
 		color = root.hover_color;
 	}
@@ -717,22 +719,33 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Bg {
 		img := r.push_rect2(passes, root.dst, root.bg_color);
-		img.border_color = root.border_color;
+		img.border_color = .{0.545, 0.541, 0.498, 1};
 		img.border_thickness = 3.5;;
 	}
 	
 	if root.flags & .Clickable {
+		font_size = 0.9;
+		
 		dst := root.dst;
 		
-		bg := r.push_rect2(passes, dst, .{0, 0, 0, 0.5});
+		dst_off := dst;
+		dst_off.min.x += 1.5;
+		dst_off.min.y += 1.5;
+		dst_off.max.x += 1.5;
+		dst_off.max.y += 1.5;
+		
+		sh := r.push_rect2(passes, dst_off, .{0, 0, 0, 0.4});
+		bg := r.push_rect2(passes, dst, .{0.698, 0.694, 0.651, 1});
 		bg.border_thickness = 3;
-		bg.border_color = root.border_color;
+		bg.border_color = .{0.459, 0.439, 0.402, 1};
 	}
 	
 	if root.flags & .Image {
 		img := r.push_rect2(passes, root.dst, root.image_color);
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
+		img.border_thickness = 3;
+		img.border_color = .{0.459, 0.439, 0.402, 1};
 	}
 	
 	if root.flags & .Check_Box {
@@ -754,13 +767,6 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	text_pos_delta : Vector2;
 	
 	if root.flags & .Text {
-		
-		font_size := 1.;
-		
-		if root.flags & .Clickable {
-			font_size = 0.9;
-		}
-		
 		text_rect := r.get_text_rect(font, root.text, .{}, font_size);
 		text_height := text_rect.max.y - text_rect.min.y;
 		
@@ -784,7 +790,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			
 		}
 		
-		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, color);
+		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, .{0.459, 0.439, 0.402, 1});
 	}
 	
 	if root.flags & .Text_Edit {

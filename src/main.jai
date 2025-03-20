@@ -81,7 +81,7 @@ main :: () {
 	print("Except for you, you can stay\n");
 	
 	os.init();
-	win := os.open_window("winter steam game", 960, 540);
+	win := os.open_window("The SAD Debugger and Linker", 960, 540);
 	r.init();
 	tex.init();
 	
