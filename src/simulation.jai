@@ -981,8 +981,8 @@ draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass :
 		
 		size.x *= width;
 		
-		//size.x /= 2;
-		//size.y /= 2;
+		size.x *= 2;
+		size.y *= 2;
 		
 		dst : RectF32;
 		dst.min.x = it.pos.x - origin.x;
