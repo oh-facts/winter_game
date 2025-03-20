@@ -84,6 +84,7 @@ Pass :: struct {
 	batches : BatchList;
 	beam_pos : Vector2;
 	scissor : RectF32;
+	target : Framebuffer;
 	light : Light;
 	
 	view : Matrix4;
@@ -123,11 +124,19 @@ Pass_List :: struct {
 	scissor_stack : struct {
 		top : *Scissor_Node;
 	}
+	target_stack : struct {
+		top : *Target_Node;
+	}
 }
 
 Scissor_Node :: struct {
 	next : *Scissor_Node;
 	v : RectF32;
+}
+
+Target_Node :: struct {
+	next : *Target_Node;
+	v : Framebuffer;
 }
 
 push_voxel :: (list :*Pass_List) {
@@ -148,6 +157,19 @@ push_scissor :: (list : *Pass_List, v : RectF32) {
 
 pop_scissor :: (list : *Pass_List) {
 	list.scissor_stack.top = list.scissor_stack.top.next;
+	list.gen += 1;
+}
+
+push_target :: (list : *Pass_List, v : Framebuffer) {
+	node : *Target_Node = xx tpush_struct(Target_Node);
+	node.v = v;
+	node.next = list.target_stack.top;
+	list.target_stack.top = node;
+	list.gen += 1;
+}
+
+pop_target :: (list : *Pass_List) {
+	list.target_stack.top = list.target_stack.top.next;
 	list.gen += 1;
 }
 
@@ -179,6 +201,10 @@ null_scissor_node : Scissor_Node = .{
 	v = .{.{0, 0}, .{1920, 1051}}
 };
 
+null_target_node : Handle = .{
+	
+};
+
 ooga := 0;
 
 push_pass :: (list : *Pass_List, kind : Pass_Kind) -> *Pass{
@@ -207,6 +233,7 @@ push_rect2_impl :: (kind : Pass_Kind, list : *Pass_List, dst : RectF32, color : 
 		pass = push_pass(list, kind);
 		
 		// set state params
+		pass.target = list.target_stack.top.v;
 		pass.scissor = list.scissor_stack.top.v;
 		list.last_gen = list.gen;
 	}

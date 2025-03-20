@@ -97,13 +97,14 @@ entity_tree_window : *Editor_Window;
 dialogue_window : *Editor_Window;
 
 editor_tilemap : *Tilemap;
+game_target : r.Framebuffer;
 
 editor_update :: (delta : float32, events : *os.EventList, 
 									passes : *r.Pass_List) {
 	
 	if !ed_initialized {
 		ed_initialized = true;
-		
+		game_target = r.framebuffer(.{1920, 1080});
 		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable);
 		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable, .{800, 0});
 		dialogue_window = editor_init_window("dialogue window", xx 0, .{400, 400}, .{600, 200});
@@ -155,6 +156,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	editor_tilemap = tilemap_from_key(*tileworld, active_tilemap_index);
 	
+	r.push_target(passes, game_target);
 	// draw map
 	draw_tilemap(tileworld, editor_tilemap, passes);
 	
@@ -478,6 +480,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	last_active_entity_index = active_entity_index;
+	
+	r.pop_target(passes);
 }
 
 map_editor_window_update :: (events : *os.EventList) {
@@ -491,6 +495,10 @@ map_editor_window_update :: (events : *os.EventList) {
 		ui_push_size_x_node(ui_size_pct(0.4, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));
 		ui_push_text_align_node(.Left);
+		
+		ui_push_size_x_node(ui_size_px(960, 1), true);
+		ui_push_size_y_node(ui_size_px(540, 1), true);
+		editor_image(.{U64 = .[0, xx game_target.resident]});
 		
 		text := tprint("mpos %", mpos);
 		editor_label(text);
