@@ -147,7 +147,7 @@ get_white_square :: inline () -> Handle {
 	return state.white_square;
 }
 
-init :: (screen_size : Vector2) {
+init :: () {
 	arena := arena_init();
 	state = push_struct(arena, State);
 	state.arena = arena;
@@ -186,6 +186,8 @@ init :: (screen_size : Vector2) {
 	state.white_square = image(bmp);
 	
 	{
+		// NOTE(mizu): :>
+		screen_size : Vector2 = .{1920, 1051};
 		state.draw_fb = framebuffer(screen_size);
 		state.water_fb = framebuffer(screen_size);
 		state.light_fb = framebuffer(screen_size);
@@ -267,17 +269,13 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				buffer := state.inst_buffer[INST_BUFFER.UI];
 				shader := state.shader_prog[SHADER_PROG.UI];
 				
-				if pass.target.id > 0 {
-					glBindFramebuffer(GL_FRAMEBUFFER, pass.target.id);
-				}
-				
 				size : Vector2i;
 				size.x = xx (pass.scissor.max.x - pass.scissor.min.x);
 				size.y = xx (pass.scissor.max.y - pass.scissor.min.y);
 				
 				br: Vector2i;
 				br.x = xx pass.scissor.min.x;
-				br.y = xx (screen_size.y - pass.scissor.max.y);
+				br.y = xx (1051 - pass.scissor.max.y);
 				
 				glEnable(GL_SCISSOR_TEST);
 				
@@ -301,7 +299,6 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					batch = batch.next;
 				}
 				glDisable(GL_SCISSOR_TEST);
-				glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 				
 				case .Beam;
 				shader := state.shader_prog[SHADER_PROG.BEAM];
@@ -332,9 +329,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
 				glUseProgram(shader);
-				if pass.target.id > 0 {
-					glBindFramebuffer(GL_FRAMEBUFFER, pass.target.id);
-				}
+				
 				batches := pass.batches;
 				batch := batches.first;
 				while batch	{
@@ -348,7 +343,6 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					batch = batch.next;
 				}
-				glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 				
 				case .Cube;
 				
@@ -555,4 +549,3 @@ compile_shaders :: () {
 		state.shader_prog[i] = make_shader_program(vert_shader_file, frag_shader_file);
 	}
 }
-

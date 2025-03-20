@@ -82,10 +82,7 @@ main :: () {
 	
 	os.init();
 	win := os.open_window("The SAD Debugger and Linker", 960, 540);
-	
-	win_size := os.get_window_size(win);
-	
-	r.init(win_size);
+	r.init();
 	tex.init();
 	
 	start := os.get_perf_counter();
@@ -119,7 +116,7 @@ main :: () {
 		time_since_last := time_elapsed;
 		
 		events := os.poll_events();
-		win_size = os.get_window_size(win);
+		win_size := os.get_window_size(win);
 		set_camera_size(win_size);
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
@@ -153,7 +150,6 @@ main :: () {
 		}
 		
 		r.push_scissor(*passes, rectF32(0, 0, win_size.x, win_size.y));
-		r.push_target(*passes, .{});
 		ui_begin(ui_cxt, *events, mpos);
 		
 		if os.event(*events, .TAB, .Pressed) {
@@ -180,7 +176,6 @@ main :: () {
 		//print("----\n");
 		ui_end();
 		r.pop_scissor(*passes);
-		r.pop_target(*passes);
 		
 		r.submit(timer, win, camera.size, passes, camera.pos);
 		
