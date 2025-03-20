@@ -187,7 +187,7 @@ init :: () {
 	
 	{
 		// NOTE(mizu): :>
-		screen_size : Vector2 = .{1920, 1051};
+		screen_size : Vector2 = .{960, 540};
 		state.draw_fb = framebuffer(screen_size);
 		state.water_fb = framebuffer(screen_size);
 		state.light_fb = framebuffer(screen_size);
@@ -230,7 +230,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
 	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
-	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
+	glViewport(0, 0, 960, 540);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClearColor(0.2, 0.2, 0.3, 1.0);
@@ -240,7 +240,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 	// scene buffer
 	{
 		scene_data : Scene_Data;
-		scene_data.screen_size = .{screen_size.x, screen_size.y};
+		scene_data.screen_size = .{1920, 1051};
 		scene_data.screen_offset = screen_offset;
 		scene_data.noise_id = state.noise_id.U64[1];
 		scene_data.displacement_id = state.displacement_id.U64[1];
@@ -373,6 +373,8 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				{
 					shader := state.shader_prog[SHADER_PROG.FINAL];
 					glUseProgram(shader);
+					glViewport(0, 0, xx screen_size.x, xx screen_size.y);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 					
 					offset_loc := glGetUniformLocation(shader, "u_image_id");
 					

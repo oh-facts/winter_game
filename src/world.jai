@@ -72,7 +72,7 @@ Tilemap :: struct {
 	row :: 32;
 	col :: 60;
 	
-	tile_size :: 32;
+	tile_size :: 16;
 	count :: row * col;
 	size_gfx :: count * size_of(Tile);
 	size_occupied :: count * size_of(Tile);
