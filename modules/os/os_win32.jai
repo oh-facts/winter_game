@@ -1,12 +1,17 @@
 #import "Windows";
+cmt : u64;
+res : u64;
+
 reserve :: (size : u64) -> *void {
 	out := VirtualAlloc(xx 0, size, MEM_RESERVE, PAGE_READWRITE);
+	res += size;
 	assert(xx out);
 	return xx out;
 }
 
 commit :: (ptr : *void, size : u64) -> bool {
 	out := VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+	cmt += size;
 	assert(xx out);
 	return xx out;
 }

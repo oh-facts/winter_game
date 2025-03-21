@@ -71,9 +71,12 @@ EventList :: struct {
 	count : u64;
 };
 
-CursorMode :: enum {
-	Normal;
-	Disabled;
+cursors : [2]*SDL_Cursor;
+
+Cursor_Mode :: enum {
+	Arrow;
+	Hand;
+	COUNT;
 };
 
 push_event :: (list : *EventList) -> *Event {
@@ -150,10 +153,19 @@ event_any_text :: (list : *EventList) -> *Event {
 init :: () {
 	SDL_Init(SDL_INIT_VIDEO);
 	
+	cursors[Cursor_Mode.Arrow] = SDL_CreateSystemCursor(ARROW);
+	cursors[Cursor_Mode.Hand] = SDL_CreateSystemCursor(HAND);
+	
+	SDL_SetCursor(cursors[Cursor_Mode.Arrow]);
+	
 #if OS == .WINDOWS {
 		Windows :: #import "Windows";
 		Windows.SetProcessDPIAware();
 	}
+}
+
+set_cursor :: (mode : Cursor_Mode) {
+	SDL_SetCursor(cursors[mode]);
 }
 
 // NOTE(mizu): Will probably fail if string isn't a literal

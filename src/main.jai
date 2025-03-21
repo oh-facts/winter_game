@@ -64,13 +64,15 @@ scroll_up : bool;
 scroll_down : bool;
 
 Mode :: enum {
-	Tile_Editor;
+	Home;
+	Editor;
 	Game;
-	COUNT;
 	Scratch;
+	Profiler;
+	COUNT;
 }
 
-//current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Editor;
 //current_mode : Mode = .Game;
 current_mode : Mode = .Scratch;
 
@@ -154,21 +156,7 @@ main :: () {
 		r.push_scissor(*passes, rectF32(0, 0, win_size.x, win_size.y));
 		ui_begin(ui_cxt, *events, mpos);
 		
-		if os.event(*events, .TAB, .Pressed) {
-			current_mode = (current_mode + 1) % .COUNT;
-		}
-		
-		if current_mode == {
-			case .Game;
-			world_update(xx delta, *events, *passes);
-			
-			case .Tile_Editor;
-			editor_update(xx delta, *events, *passes);
-			
-			case .Scratch;
-			scratch_update(xx delta, *events, *passes);
-		}
-		
+		scratch_update(xx delta, *events, *passes);
 		ui_layout(ui_cxt.root);
 		
 		//print("----\n");

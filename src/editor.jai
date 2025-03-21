@@ -108,8 +108,14 @@ Editor_File_Id_Node :: struct {
 }
 
 editor_push_file_id :: (win : *Editor_Window, v : Editor_File_Id) {
-	node : *Editor_File_Id_Node;
-	node = push_struct(win.arena, Editor_File_Id_Node);
+	node := win.file_id_stack.free;
+	
+	if !node {
+		node = push_struct(win.arena, Editor_File_Id_Node);
+	} else {
+		win.file_id_stack.free = win.file_id_stack.free.next;
+		<< node = .{};
+	}
 	
 	node.v = v;
 	
@@ -300,14 +306,30 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	col_parent.scissor = col_parent.dst;
 	editor_pop_file_id(window);
 	
+	mmpos := os.get_global_mouse_pos(win);
+	
 	if window.grabbed {
 		window.last_grabbed_tick = editor_clock;
+		window.pos +=  mmpos - window.last_mpos;
+		//print("% % %\n", window.pos, os.get_global_mouse_pos(win), window.last_mpos);
 		
-		window.pos += os.get_global_mouse_pos(win) - window.last_mpos;
 		if os.event(events, .LMB, .Released) {
 			window.grabbed = false;
 		}
 	}
+	
+	if window.resize_grabbed {
+		window.size += mmpos - window.last_mpos;
+		
+		window.size.x = clamp_bot(32., window.size.x);
+		window.size.y = clamp_bot(64., window.size.y);
+		
+		if os.event(window.events, .LMB, .Released) {
+			window.resize_grabbed = false;
+		}
+	}
+	
+	window.last_mpos = mmpos;
 }
 
 editor_window_end :: (window : *Editor_Window) {
@@ -342,21 +364,9 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_row_end();
 	
-	if window.resize_grabbed {
-		window.size += os.get_global_mouse_pos(win) - window.last_mpos;
-		
-		window.size.x = clamp_bot(32., window.size.x);
-		window.size.y = clamp_bot(64., window.size.y);
-		
-		if os.event(window.events, .LMB, .Released) {
-			window.resize_grabbed = false;
-		}
-	}
-	
 	ui_pop_parent_node();
 	
 	editor_pop_file_id(window);
-	
 	
 	active_window = xx 0;
 	/*
@@ -368,7 +378,7 @@ editor_window_end :: (window : *Editor_Window) {
 		os.event(window.events, .RMB, .Released);
 	}
 	*/
-	window.last_mpos = os.get_global_mouse_pos(win);
+	
 }
 
 editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
@@ -385,7 +395,15 @@ editor_button :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #call
 	
 	id := widget_key(index, depth, loc);
 	
-	out := ui_widget_impl(.Text | .Clickable, id);
+	out := ui_widget_impl(.Text | .Clickable | .Shadow, id);
+	out = ui_signal(out.widget);
+	
+	out.widget.text = text;
+	return out;
+}
+
+editor_active_button :: (text : string, id : UI_ID) -> UI_Signal {
+	out := ui_widget_impl(.Text | .Clickable | .Offset, id);
 	out = ui_signal(out.widget);
 	
 	out.widget.text = text;
@@ -541,6 +559,18 @@ editor_image :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : 
 	
 	out := ui_widget_impl(.Image, id);
 	out = ui_signal(out.widget);
+	
+	out.widget.image = image;
+	out.widget.src = src;
+	out.widget.image_color = color;
+	
+	return out;
+}
+
+editor_image_cant_click_lol_bro :: (image : r.Handle, src : RectF32 = .{.{0, 0}, .{1, 1}}, color : Vector4 = r.COLOR_WHITE, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
+	
+	out := ui_widget_impl(.Image, id);
 	
 	out.widget.image = image;
 	out.widget.src = src;
@@ -779,9 +809,10 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		img.border_thickness = 3.5;;
 	}
 	
-	if root.flags & .Clickable {
-		//font_size = 0.9;
-		
+	text_pos_delta : Vector2;
+	button_dst := root.dst;
+	
+	if root.flags & .Shadow {
 		dst := root.dst;
 		
 		dst_off := dst;
@@ -789,9 +820,22 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		dst_off.min.y += 1.5;
 		dst_off.max.x += 1.5;
 		dst_off.max.y += 1.5;
-		
 		sh := r.push_rect2(passes, dst_off, .{0, 0, 0, 0.4});
-		bg := r.push_rect2(passes, dst, .{0.698, 0.694, 0.651, 1});
+	}
+	
+	if root.flags & .Offset {
+		text_pos_delta.x += 1.5;
+		text_pos_delta.y += 1.5;
+		
+		button_dst.min.x += 1.5;
+		button_dst.min.y += 1.5;
+		button_dst.max.x += 1.5;
+		button_dst.max.y += 1.5;
+	}
+	
+	if root.flags & .Clickable {
+		//font_size = 0.9;
+		bg := r.push_rect2(passes, button_dst, .{0.698, 0.694, 0.651, 1});
 		bg.border_thickness = 3;
 		bg.border_color = .{0.459, 0.439, 0.402, 1};
 	}
@@ -819,8 +863,6 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		}
 		
 	}
-	
-	text_pos_delta : Vector2;
 	
 	if root.flags & .Text {
 		text_rect := r.get_text_rect(font, root.text, .{}, font_size);

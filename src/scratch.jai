@@ -25,26 +25,83 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	editor_col_begin();
 	
 	if !scratch_window.hide {
-		ui_push_size_node(ui_size_txt(1));
-		editor_label("Hello you are loved");
+		ui_push_size_x_node(ui_size_pct(1, 0), true);
+		ui_push_size_y_node(ui_size_children_sum(1), true);
+		editor_row_begin();
+		
+		ui_push_size_x_node(ui_size_px(64, 1));
+		ui_push_size_y_node(ui_size_px(32, 1));
+		
+		passes2 : r.Pass_List;
+		r.push_scissor(*passes2, rectF32(0, 0, 1920, 1024));
+		
+		active_ids : [Mode.COUNT]UI_ID;
+		
+		for 0 .. Mode.COUNT - 1 {
+			text := tprint("%", it);
+			
+			if current_mode == it {
+				editor_active_button(text, active_ids[it]);
+			} else {
+				sig := editor_button(text, xx it);
+				if sig.active {
+					current_mode = it;
+				}
+				active_ids[it] = sig.widget.key;
+			}
+		}
+		
+		if current_mode == {
+			case .Home;
+			
+			
+			case .Game;
+			world_update(delta, events, *passes2);
+			
+			case .Editor;
+			editor_update(delta, events, *passes2);
+			
+			case .Scratch;
+			r.push_text(passes, font, "hi", .{100, 600}, 32);
+			
+			case .Profiler;
+			
+			ui_push_size_x_node(ui_size_txt(1));
+			editor_spacer(ui_size_px(4));
+			text := tprint("cmt: %\n res %", os.cmt, os.res);
+			editor_label(text);
+			ui_pop_size_x_node();
+			
+		}
+		
+		if os.event(events, .TAB, .Pressed) {
+			current_mode = (current_mode + 1) % .COUNT;
+		}
+		
+		ui_push_size_x_node(ui_size_txt(1));
+		editor_spacer(ui_size_px(4));
+		editor_label("Please enjoy each mode equally.");
+		//editor_spacer(ui_size_px(4));
+		//text := tprint("%", 1. / delta);
+		//editor_label(text);
+		ui_pop_size_x_node();
+		
 		ui_pop_size_node();
 		
+		r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
+		r.pop_scissor(*passes2);
+		editor_row_end();
+	}
+	
+	if current_mode == .Game || current_mode == .Editor {
 		ui_push_size_x_node(ui_size_px(1920, 0), true);
 		ui_push_size_y_node(ui_size_px(1024, 0), true);
-		editor_image(.{U64 = .[0, xx game_target.resident]});
+		editor_image_cant_click_lol_bro(.{U64 = .[0, xx game_target.resident]});
 	}
 	
 	editor_row_end();
 	editor_pop_file_id(scratch_window);
 	editor_window_end(scratch_window);
-	
-	passes2 : r.Pass_List;
-	r.push_scissor(*passes2, rectF32(0, 0, 1920, 1024));
-	
-	editor_update(delta, events, *passes2);
-	//world_update(xx delta, events, *passes2);
-	r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
-	r.pop_scissor(*passes2);
 	
 	//text := tprint("%", delta);
 	//r.push_text(passes, font, text, .{}, text_size, r.COLOR_BLACK);

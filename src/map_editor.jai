@@ -179,7 +179,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos, Tilemap.rect);
 	
-	if true {
+	if false {
 		
 		// collect input events
 		

@@ -63,6 +63,8 @@ UI_Flags :: enum_flags u32 {
 	Scissor;
 	Text_Edit;
 	Color_Picker;
+	Shadow;
+	Offset;
 }
 
 UI_Floating :: UI_Flags.FloatingX | UI_Flags.FloatingY;
@@ -269,7 +271,12 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.computed_pos[0] = 0;
 		out.computed_pos[1] = 0;
 		
+		if out.hot {
+			active_cxt.atleast_one_hot = true;
+		}
+		
 		out.hot = false;
+		
 		out.active = false;
 		out.focus_last = out.focus;
 		//out.text_edit_pos = 0;
@@ -618,8 +625,6 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	state.root = widget;
 	
 	state.root.child_count = 0;
-	state.frame = arena_init();
-	state.frame.used = ARENA_HEADER_SIZE;
 	
 	ui_push_offset_node(.[0, 0]);
 	ui_push_size_node(ui_size_children_sum());
@@ -630,6 +635,17 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_text_align_node(.Middle);
 	ui_push_border_color_node(r.COLOR_WHITE);
 	ui_push_hover_color_node(r.COLOR_MAGENTA);
+	
+	if state.atleast_one_hot  && !state.atleast_one_hot_last {
+		os.set_cursor(.Hand);
+	}
+	
+	if !state.atleast_one_hot && state.atleast_one_hot_last {
+		os.set_cursor(.Arrow);
+	}
+	
+	state.atleast_one_hot_last = state.atleast_one_hot;
+	state.atleast_one_hot = false;
 }
 
 ui_size_txt :: (strictness := 1.) -> UI_Size {
