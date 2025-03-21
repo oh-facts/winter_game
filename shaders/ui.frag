@@ -16,7 +16,6 @@ float RectSDF(vec2 p, vec2 b, float r)
 	vec2 d = abs(p) - b + vec2(r);
 	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
 }
-
 void main() 
 {
 	vec4 tex_col = texture(sampler2D(a_tex_id), a_uv);

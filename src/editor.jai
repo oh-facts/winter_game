@@ -54,6 +54,17 @@ Editor_Window_Flags :: enum_flags {
 	Scrollable;
 }
 
+Editor_Panel :: struct {
+	first : *Editor_Panel;
+	last : *Editor_Panel;
+	next : *Editor_Panel;
+	prev : *Editor_Panel;
+	parent : *Editor_Panel;
+	
+	axis : UI_Axis;
+	pct : float;
+}
+
 Editor_Window :: struct {
 	arena : *Arena;
 	flags : Editor_Window_Flags;
@@ -87,6 +98,8 @@ Editor_Window :: struct {
 		top : *Editor_File_Id_Node;
 		free : *Editor_File_Id_Node;
 	};
+	
+	root_panel : *Editor_Panel;
 }
 
 Editor_File_Id_Node :: struct {
@@ -149,6 +162,34 @@ any_editor_in_focus :: () -> bool {
 	return out;
 }
 
+Editor_Panel_Rec :: struct {
+	v : *Editor_Panel;
+	push : int;
+	pop : int;
+}
+
+depth_first_preorder :: (v : *Editor_Panel) -> Editor_Panel_Rec {
+	out : Editor_Panel_Rec;
+	
+	if v.first {
+		out.v = v.first;
+		out.push = 1;
+	} else {
+		cur : * Editor_Panel = v;
+		
+		while cur {
+			if cur.next {
+				out.v = v.next;
+				break;
+			}
+			out.pop += 1;
+			cur = cur.parent;
+		}
+	}
+	
+	return out;
+}
+
 editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector2 = .{}, size : Vector2 = .{400, 300}) -> *Editor_Window {
 	out := *editor_windows[0] + editor_windows_count;
 	out.id = editor_windows_count;
@@ -158,6 +199,9 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	out.arena = arena_init();
 	out.pos = os.get_window_pos(win);
 	out.flags = flags;
+	out.root_panel = push_struct(arena, Editor_Panel);
+	out.root_panel.axis = .X;
+	out.root_panel.pct = 1;
 	return out;
 }
 

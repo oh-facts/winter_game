@@ -15,6 +15,7 @@ build :: () {
 	if !args {
 		w := compiler_create_workspace("winter");
 		target_options := get_build_options(w);
+		target_options.backend = .X64;
 		target_options.output_executable_name = "winter";
 		target_options.output_path = ".build/";
 		set_build_options(target_options, w);

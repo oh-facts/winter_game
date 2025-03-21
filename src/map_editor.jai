@@ -116,11 +116,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	if map_editor_window.last_grabbed_tick < entity_tree_window.last_grabbed_tick {
-		map_editor_window_update(events);
-		entity_tree_window_update(events);
+		//map_editor_window_update(events);
+		//entity_tree_window_update(events);
 	} else {
-		entity_tree_window_update(events);
-		map_editor_window_update(events);
+		//entity_tree_window_update(events);
+		//map_editor_window_update(events);
 	}
 	
 	//print("%", << test_entity);
@@ -151,7 +151,6 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	active_tilemap_index.x = max(active_tilemap_index.x, 0);
 	active_tilemap_index.y = max(active_tilemap_index.y, 0);
-	
 	
 	editor_tilemap = tilemap_from_key(*tileworld, active_tilemap_index);
 	

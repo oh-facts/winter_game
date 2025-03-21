@@ -40,10 +40,13 @@ Framebuffer :: struct {
 	
 	// depth stencil rbo
 	depth_stencil : GLuint;
+	
+	size : Vector2;
 }
 
 framebuffer :: (size : Vector2) -> Framebuffer {
 	out : Framebuffer;
+	out.size = size;
 	
 	glCreateFramebuffers(1, *out.id);
 	width : u32 = xx size.x;
@@ -52,7 +55,9 @@ framebuffer :: (size : Vector2) -> Framebuffer {
 	// color attachment
 	{
 		glCreateTextures(GL_TEXTURE_2D, 1, *out.tex);
-		glTextureStorage2D(out.tex, 1, GL_RGBA8, width, height);
+		glTextureParameteri(out.tex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTextureParameteri(out.tex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTextureStorage2D(out.tex, 1, GL_RGB8, width, height);
 		
 		resident := glGetTextureHandleARB(out.tex);
 		glMakeTextureHandleResidentARB(resident);
@@ -124,7 +129,6 @@ State :: struct {
 	inst_buffer : [INST_BUFFER.COUNT] GLuint;
 	white_square : Handle;
 	
-	draw_fb : Framebuffer;
 	water_fb : Framebuffer;
 	light_fb : Framebuffer;
 	
@@ -187,7 +191,6 @@ init :: (screen_size : Vector2) {
 	
 	{
 		// NOTE(mizu): :>
-		state.draw_fb = framebuffer(screen_size);
 		state.water_fb = framebuffer(screen_size);
 		state.light_fb = framebuffer(screen_size);
 	}
@@ -224,12 +227,38 @@ uvec2_from_u64 :: (v : u64) -> u32, u32 {
 	return l, r;
 }
 
-submit :: (delta : float, win : os.Handle, screen_size : Vector2,
+present :: (target : Framebuffer, win : os.Handle) {
+	
+	screen_size := os.get_window_size(win);
+	
+	// copy to window fb
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
+		shader := state.shader_prog[SHADER_PROG.FINAL];
+		glUseProgram(shader);
+		
+		offset_loc := glGetUniformLocation(shader, "u_image_id");
+		
+		draw_fb_id := target.resident;
+		
+		l, r := uvec2_from_u64(draw_fb_id);
+		
+		glUniform2ui(offset_loc, l, r);
+		
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+	}
+	
+	SDL_GL_SwapWindow(xx win.U64[0]);
+}
+
+submit :: (delta : float, target : Framebuffer, screen_size : Vector2,
 					 passes : Pass_List,
 					 screen_offset := Vector2.{0, 0}) {
-	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
+	glBindFramebuffer(GL_FRAMEBUFFER, target.id);
 	
-	glViewport(0, 0, xx 960, xx 540);
+	glViewport(0, 0, xx target.size.x, xx target.size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClearColor(0.2, 0.2, 0.3, 1.0);
@@ -244,7 +273,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 		scene_data.noise_id = state.noise_id.U64[1];
 		scene_data.displacement_id = state.displacement_id.U64[1];
 		scene_data.delta = delta;
-		scene_data.draw_id = state.draw_fb.resident;
+		scene_data.draw_id = target.resident;
 		scene_data.water_id = state.water_fb.resident;
 		scene_data.light_id = state.light_fb.resident;
 		
@@ -274,7 +303,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				br: Vector2i;
 				br.x = xx pass.scissor.min.x;
-				br.y = xx (540 - pass.scissor.max.y);
+				br.y = xx (target.size.y - pass.scissor.max.y);
 				
 				//glEnable(GL_SCISSOR_TEST);
 				
@@ -318,7 +347,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				shader := state.shader_prog[SHADER_PROG.WATER];
 				glUseProgram(shader);
 				
-				glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
+				glBindFramebuffer(GL_FRAMEBUFFER, target.id);
 				
 				glDrawArrays(GL_TRIANGLES, 0, 6);
 				
@@ -381,7 +410,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					
 					glUniform2ui(offset_loc, l, r);
 					
-					glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
+					glBindFramebuffer(GL_FRAMEBUFFER, target.id);
 					glClear(GL_COLOR_BUFFER_BIT);
 					
 					glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -390,27 +419,6 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 			}
 		}
 	}
-	
-	// copy to window fb
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glViewport(0, 0, xx screen_size.x, xx screen_size.y);
-		shader := state.shader_prog[SHADER_PROG.FINAL];
-		glUseProgram(shader);
-		
-		offset_loc := glGetUniformLocation(shader, "u_image_id");
-		
-		draw_fb_id := state.draw_fb.resident;
-		
-		l, r := uvec2_from_u64(draw_fb_id);
-		
-		glUniform2ui(offset_loc, l, r);
-		
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-	}
-	
-	SDL_GL_SwapWindow(xx win.U64[0]);
 }
 
 check_compile_errors :: (shader : GLuint, type : *u8) {

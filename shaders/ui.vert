@@ -85,6 +85,7 @@ void main()
 	a_tex_id = obj.tex_id;
 	a_border_color = obj.border_color;
 	a_fade = vertex.fade;
+	
 	a_border_thickness = obj.border_thickness;
 	a_radius = obj.radius;
 	a_uv = vertex.uv;

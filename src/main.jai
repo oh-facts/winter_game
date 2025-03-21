@@ -119,7 +119,7 @@ main :: () {
 		
 		events := os.poll_events();
 		win_size = os.get_window_size(win);
-		set_camera_size(win_size);
+		set_camera_size(.{1920, 1080});
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
@@ -179,7 +179,8 @@ main :: () {
 		ui_end();
 		r.pop_scissor(*passes);
 		
-		r.submit(timer, win, camera.size, passes, camera.pos);
+		r.submit(timer, win_target, win_size, passes, .{});
+		r.present(win_target, win);
 		
 		editor_tick_clock();
 		tex.clock_tick();
