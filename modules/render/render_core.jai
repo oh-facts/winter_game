@@ -46,6 +46,12 @@ Light :: struct {
 	pos : Vector2;
 }
 
+Grid :: struct {
+	grid_rect : RectF32;
+	col : float;
+	row : float;
+}
+
 Cube :: struct {
 	model : Matrix4;
 	color : Vector4;
@@ -76,6 +82,7 @@ Pass_Kind :: enum {
 	Voxel;
 	Cube;
 	Light;
+	Grid;
 }
 
 Pass :: struct {
@@ -85,6 +92,7 @@ Pass :: struct {
 	beam_pos : Vector2;
 	scissor : RectF32;
 	light : Light;
+	grid : Grid;
 	
 	view : Matrix4;
 	proj : Matrix4;
@@ -135,6 +143,14 @@ push_voxel :: (list :*Pass_List) {
 	
 	if !pass || pass.kind != .Voxel || (list.gen != list.last_gen){
 		pass = push_pass(list, .Voxel);
+	}
+}
+
+push_grid :: (list :*Pass_List, grid : Grid) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .Grid || (list.gen != list.last_gen){
+		pass = push_pass(list, .Grid);
 	}
 }
 

@@ -102,6 +102,7 @@ SHADER_PROG :: enum {
 	WATER;
 	FINAL;
 	Light;
+	GRID;
 	COUNT;
 };
 
@@ -110,7 +111,8 @@ vert_shader_paths :[SHADER_PROG.COUNT]string: .["ui.vert",
 																								"beam.vert",
 																								"water.vert",
 																								"final.vert",
-																								"light.vert"
+																								"light.vert",
+																								"grid.vert"
 																								];
 
 frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
@@ -118,7 +120,8 @@ frag_shader_paths :[SHADER_PROG.COUNT]string: .["ui.frag",
 																								"beam.frag",
 																								"water.frag",
 																								"final.frag",
-																								"light.frag"
+																								"light.frag",
+																								"grid.frag"
 																								];
 
 State :: struct {
@@ -141,6 +144,7 @@ State :: struct {
 	
 	base_path : string;
 	shaders_folder : string;
+	grid_buffer : GLuint;
 };
 
 state : *State;
@@ -182,6 +186,7 @@ init :: (screen_size : Vector2) {
 	}
 	
 	state.scene_buffer = make_buffer(size_of(Scene_Data));
+	state.grid_buffer = make_buffer(size_of(Grid));
 	
 	data : [1]s64 : .[0xFFFFFFFF];
 	
@@ -372,7 +377,20 @@ submit :: (delta : float, target : Framebuffer, screen_size : Vector2,
 					batch = batch.next;
 				}
 				
-				case .Cube;
+				case .Grid;
+				shader := state.shader_prog[SHADER_PROG.GRID];
+				glUseProgram(shader);
+				
+				buffer := state.grid_buffer;
+				
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+				
+				ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, size_of(type_of(pass.grid)), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+				
+				memcpy(ssbo_data, *pass.grid, size_of(type_of(pass.grid)));
+				
+				glUnmapNamedBuffer(buffer);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
 				
 				case .Light;
 				

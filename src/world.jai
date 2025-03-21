@@ -517,6 +517,10 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 }
 
 draw_grid :: (passes : *r.Pass_List) {
+	r.push_grid(passes, .{Tilemap.rect, Tilemap.col, Tilemap.row});
+}
+
+draw_sloppy_grid :: (passes : *r.Pass_List) {
 	for y: 0 .. Tilemap.row - 1 {
 		for x: 0 .. Tilemap.col - 1 {
 			dst : RectF32;
@@ -526,7 +530,7 @@ draw_grid :: (passes : *r.Pass_List) {
 			dst.max.y = dst.min.y + Tilemap.tile_size;
 			
 			tile_rect := r.push_rect2(passes, dst, .{});
-			tile_rect.border_thickness = 2;
+			tile_rect.border_thickness = 4;
 			tile_rect.border_color = r.COLOR_BLACK;
 		}
 	}

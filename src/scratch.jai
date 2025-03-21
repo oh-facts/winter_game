@@ -41,8 +41,8 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	passes2 : r.Pass_List;
 	r.push_scissor(*passes2, rectF32(0, 0, 1920, 1080));
 	
-	//editor_update(delta, events, *passes2);
-	world_update(xx delta, events, *passes2);
+	editor_update(delta, events, *passes2);
+	//world_update(xx delta, events, *passes2);
 	r.submit(timer, game_target, .{1920, 1080}, passes2, camera.pos);
 	r.pop_scissor(*passes2);
 	

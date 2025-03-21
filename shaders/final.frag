@@ -28,8 +28,9 @@ layout (std430, binding = 0) buffer ssbo {
 };
 
 in vec2 a_uv;
+in vec2 a_corrected_uv;
 
 void main() 
 {
-	FragColor = texture(sampler2D(u_image_id), a_uv);
+	FragColor += texture(sampler2D(u_image_id), a_uv);
 }
