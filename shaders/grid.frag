@@ -29,24 +29,22 @@ layout (std430, binding = 1) buffer ssbo2 {
 void main() 
 {
 	vec2 ss = screen_size;
-	ss.x /= 4;
-	ss.y /= 4;
 	
 	float col = 60;
 	float row = 32;
-	float lineThickness = 0.5;
-	vec2 top_left = vec2(-lineThickness, -lineThickness);
+	float lineThickness = 2;
+	vec2 top_left = vec2(0, 0);
 	vec2 gridSize = (ss.xy - top_left) / vec2(col, row);
 	
-	vec2 adjustedUV = a_uv * ss;
+	vec2 uv = a_uv;
 	
-	adjustedUV -= grid_min;
+	vec2 adjustedUV = uv * ss;
 	
 	float gridX = mod(adjustedUV.x, gridSize.x);
 	float gridY = mod(adjustedUV.y, gridSize.y);
 	
 	if (gridX < lineThickness || gridY < lineThickness) {
-		FragColor = vec4(0, 0, 0, 0.3);
+		FragColor = vec4(0, 0, 0, 0.8);
 	} else {
 		FragColor = vec4(0.0, 0.0, 0.0, 0.0);
 	}

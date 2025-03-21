@@ -84,7 +84,7 @@ main :: () {
 	os.init();
 	win = os.open_window("The sad debugger and Linker", 960, 540);
 	win_size := os.get_window_size(win);
-	r.init(win_size);
+	r.init(.{1920, 1024});
 	tex.init();
 	
 	start := os.get_perf_counter();
@@ -119,7 +119,7 @@ main :: () {
 		
 		events := os.poll_events();
 		win_size = os.get_window_size(win);
-		set_camera_size(.{1920, 1080});
+		set_camera_size(.{1920, 1024});
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;

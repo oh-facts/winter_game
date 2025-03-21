@@ -161,7 +161,8 @@ init :: () {
 open_window :: (title : string, w : s32, h : s32) -> Handle {
 	out : Handle;
 	
-	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN_DESKTOP);
+	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS);
+	//  | SDL_WINDOW_FULLSCREEN_DESKTOP
 	glContext := SDL_GL_CreateContext(sdl_win);
 	out.U64[0] = xx sdl_win;
 	out.U64[1] = xx glContext;
