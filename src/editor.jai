@@ -14,6 +14,7 @@
 // No need to call it editor window.
 // window is fine. Winter_Window maybe?
 // 
+
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
@@ -78,6 +79,7 @@ Editor_Window :: struct {
 	
 	resize_grabbed : bool;
 	size : Vector2;
+	close_requested : bool;
 	
 	scroll_offset : float;
 	
@@ -152,9 +154,9 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
-	out.size = size;
+	out.size = os.get_window_size(win);
 	out.arena = arena_init();
-	out.pos = pos;
+	out.pos = os.get_window_pos(win);
 	out.flags = flags;
 	return out;
 }
@@ -178,9 +180,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	root := ui_widget_from_key(widget_key(0, xx 0, .{}));
 	root.scissor = root.dst;
 	root.child_layout_axis = .Y;
-	root.computed_pos = window.pos.component;
 	window.dst = root.dst;
-	
 	ui_push_parent_node(root);
 	
 	// titlebar
@@ -195,13 +195,18 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		ui_push_size_y_node(ui_size_pct(1, 0));
 		ui_push_hover_color_node(r.COLOR_BLACK);
 		
-		if editor_button("hide").active {
+		scope := tex.scope_open();
+		
+		ui_push_size_node(ui_size_px(32, 1), true);
+		hide_img := tex.handle_from_hash(scope, arts[ArtId.Editor_Titlebar].hash, .Linear);
+		
+		if editor_image(hide_img, .{.{0, 0}, .{0.25, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 			window.hide = !window.hide;
 		}
 		
 		editor_spacer(ui_size_pct(1, 0));
 		
-		ui_push_size_x_node(ui_size_txt(1), true);
+		ui_push_size_x_node(ui_size_txt(), true);
 		sig := editor_label(active_window.title);
 		sig = ui_signal(sig.widget);
 		
@@ -211,7 +216,13 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		
 		editor_spacer(ui_size_pct(1, 0));
 		
-		editor_button("close");
+		ui_push_size_node(ui_size_px(32, 1), true);
+		if editor_image(hide_img, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			window.close_requested = true;
+		}
+		
+		tex.scope_close(scope);
+		
 		ui_pop_hover_color_node();
 		
 		ui_pop_size_node();
@@ -247,7 +258,8 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	if window.grabbed {
 		window.last_grabbed_tick = editor_clock;
-		window.pos += mpos - window.last_mpos;
+		
+		window.pos += os.get_global_mouse_pos(win) - window.last_mpos;
 		if os.event(events, .LMB, .Released) {
 			window.grabbed = false;
 		}
@@ -287,7 +299,7 @@ editor_window_end :: (window : *Editor_Window) {
 	editor_row_end();
 	
 	if window.resize_grabbed {
-		window.size += mpos - window.last_mpos;
+		window.size += os.get_global_mouse_pos(win) - window.last_mpos;
 		
 		window.size.x = clamp_bot(32., window.size.x);
 		window.size.y = clamp_bot(64., window.size.y);
@@ -312,7 +324,7 @@ editor_window_end :: (window : *Editor_Window) {
 		os.event(window.events, .RMB, .Released);
 	}
 	*/
-	window.last_mpos = mpos;
+	window.last_mpos = os.get_global_mouse_pos(win);
 }
 
 editor_label :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
@@ -724,7 +736,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	}
 	
 	if root.flags & .Clickable {
-		font_size = 0.9;
+		//font_size = 0.9;
 		
 		dst := root.dst;
 		
@@ -745,7 +757,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
 		img.border_thickness = 3;
-		img.border_color = .{0.459, 0.439, 0.402, 1};
+		img.border_color = .{0.545, 0.541, 0.498, 1};
 	}
 	
 	if root.flags & .Check_Box {

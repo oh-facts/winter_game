@@ -147,7 +147,7 @@ get_white_square :: inline () -> Handle {
 	return state.white_square;
 }
 
-init :: () {
+init :: (screen_size : Vector2) {
 	arena := arena_init();
 	state = push_struct(arena, State);
 	state.arena = arena;
@@ -187,7 +187,6 @@ init :: () {
 	
 	{
 		// NOTE(mizu): :>
-		screen_size : Vector2 = .{1920, 1051};
 		state.draw_fb = framebuffer(screen_size);
 		state.water_fb = framebuffer(screen_size);
 		state.light_fb = framebuffer(screen_size);
@@ -230,7 +229,7 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 					 screen_offset := Vector2.{0, 0}) {
 	glBindFramebuffer(GL_FRAMEBUFFER, state.draw_fb.id);
 	
-	glViewport(0, 0, xx screen_size.x, xx screen_size.y);
+	glViewport(0, 0, xx 960, xx 540);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClearColor(0.2, 0.2, 0.3, 1.0);
@@ -275,9 +274,9 @@ submit :: (delta : float, win : os.Handle, screen_size : Vector2,
 				
 				br: Vector2i;
 				br.x = xx pass.scissor.min.x;
-				br.y = xx (1051 - pass.scissor.max.y);
+				br.y = xx (540 - pass.scissor.max.y);
 				
-				glEnable(GL_SCISSOR_TEST);
+				//glEnable(GL_SCISSOR_TEST);
 				
 				if size.x >= 0 && size.y >= 0 {
 					glScissor(xx br.x, xx br.y, xx size.x, xx size.y);

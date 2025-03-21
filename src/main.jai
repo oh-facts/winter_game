@@ -70,19 +70,21 @@ Mode :: enum {
 	Scratch;
 }
 
-current_mode : Mode = .Tile_Editor;
+//current_mode : Mode = .Tile_Editor;
 //current_mode : Mode = .Game;
-//current_mode : Mode = .Scratch;
+current_mode : Mode = .Scratch;
 
 arena : *Arena;
+win : os.Handle;
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
 	print("Except for you, you can stay\n");
 	
 	os.init();
-	win := os.open_window("The SAD Debugger and Linker", 960, 540);
-	r.init();
+	win = os.open_window("The sad debugger and Linker", 960, 540);
+	win_size := os.get_window_size(win);
+	r.init(win_size);
 	tex.init();
 	
 	start := os.get_perf_counter();
@@ -116,7 +118,7 @@ main :: () {
 		time_since_last := time_elapsed;
 		
 		events := os.poll_events();
-		win_size := os.get_window_size(win);
+		win_size = os.get_window_size(win);
 		set_camera_size(win_size);
 		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
@@ -200,6 +202,17 @@ main :: () {
 		//print("%\n", delta);
 		
 		reset_temporary_storage();
+		
+		if !scratch_window.hide {
+			os.set_window_size(win, scratch_window.size);
+		} else {
+			os.set_window_size(win, .{scratch_window.size.x, 32});
+		}
+		os.set_window_pos(win, scratch_window.pos);
+		
+		if scratch_window.close_requested {
+			quit = true;
+		}
 	}
 	
 	print("quit safely\n");
