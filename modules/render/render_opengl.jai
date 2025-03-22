@@ -5,7 +5,6 @@
 
 os :: #import "os";
 #import "Basic";
-#import "SDL";
 #import "File";
 #import "Math";
 
@@ -160,21 +159,12 @@ init :: (screen_size : Vector2) {
 	state = push_struct(arena, State);
 	state.arena = arena;
 	
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, xx SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
-	
-	//glEnable(GL_FRAMEBUFFER_SRGB);
-	
-	gl_load(*gl, SDL_GL_GetProcAddress);
-	
 	print ("GL Vendor = %\n", to_string(glGetString(GL_VENDOR)));
 	print ("GL Version = %\n", to_string(glGetString(GL_VERSION)));
 	
 	stupid_fucking_opengl : GLuint;
 	glCreateVertexArrays(1, *stupid_fucking_opengl);
 	glBindVertexArray(stupid_fucking_opengl);
-	
-	SDL_GL_SetSwapInterval(1);
 	
 	state.base_path = path_strip_filename(get_path_of_running_executable());
 	state.shaders_folder = join(state.base_path, "../shaders");
@@ -255,7 +245,7 @@ present :: (target : Framebuffer, win : os.Handle) {
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 	
-	SDL_GL_SwapWindow(xx win.U64[0]);
+	os.swap_buffers(win);
 }
 
 submit :: (delta : float, target : Framebuffer, screen_size : Vector2,
