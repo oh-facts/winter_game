@@ -481,7 +481,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 
 map_editor_window_update :: (events : *os.EventList) {
 	editor_window_begin(map_editor_window, events);
-	editor_push_file_id(map_editor_window, .Map_Editor);
+	editor_push_file_id(.Map_Editor);
 	
 	ui_push_size_node(ui_size_pct(0.9, 0), true);
 	editor_col_begin();
@@ -677,14 +677,14 @@ map_editor_window_update :: (events : *os.EventList) {
 	
 	editor_row_end();
 	
-	editor_pop_file_id(map_editor_window);
+	editor_pop_file_id();
 	editor_window_end(map_editor_window);
 }
 
 entity_tree_window_update :: (events : *os.EventList) {
 	
 	editor_window_begin(entity_tree_window, events);
-	editor_push_file_id(entity_tree_window, .Map_Editor);
+	editor_push_file_id(.Map_Editor);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_col_begin();
@@ -739,6 +739,6 @@ entity_tree_window_update :: (events : *os.EventList) {
 	}
 	editor_row_end();
 	
-	editor_pop_file_id(entity_tree_window);
+	editor_pop_file_id();
 	editor_window_end(entity_tree_window);
 }

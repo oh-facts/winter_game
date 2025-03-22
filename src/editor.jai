@@ -115,29 +115,29 @@ Editor_File_Id_Node :: struct {
 	v : Editor_File_Id;
 }
 
-editor_push_file_id :: (win : *Editor_Window, v : Editor_File_Id) {
-	node := win.file_id_stack.free;
+editor_push_file_id :: (v : Editor_File_Id) {
+	node := active_window().file_id_stack.free;
 	
 	if !node {
-		node = push_struct(win.arena, Editor_File_Id_Node);
+		node = push_struct(active_window().arena, Editor_File_Id_Node);
 	} else {
-		win.file_id_stack.free = win.file_id_stack.free.next;
+		active_window().file_id_stack.free = active_window().file_id_stack.free.next;
 		<< node = .{};
 	}
 	
 	node.v = v;
 	
-	node.next = win.file_id_stack.top;
-	win.file_id_stack.top = node;
+	node.next = active_window().file_id_stack.top;
+	active_window().file_id_stack.top = node;
 }
 
-editor_pop_file_id :: (win : *Editor_Window) {
-	to_free := win.file_id_stack.top;
+editor_pop_file_id :: () {
+	to_free := active_window().file_id_stack.top;
 	
-	win.file_id_stack.top = win.file_id_stack.top.next; 
+	active_window().file_id_stack.top = active_window().file_id_stack.top.next; 
 	
-	to_free.next = win.file_id_stack.free;
-	win.file_id_stack.free = to_free;
+	to_free.next = active_window().file_id_stack.free;
+	active_window().file_id_stack.free = to_free;
 }
 
 Editor_Window_Meta_Node :: struct {
@@ -245,7 +245,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		editor_window_stack.top = node;
 	}
 	
-	editor_push_file_id(window, .Editor);
+	editor_push_file_id(.Editor);
 	
 	ui_push_flags_node(UI_Floating, true);
 	ui_push_size_x_node(ui_size_px(window.size.x), true);
@@ -346,7 +346,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	col_parent.offset[1] = window.scroll_offset;
 	col_parent.flags |= .Bg | .Scissor;
 	col_parent.scissor = col_parent.dst;
-	editor_pop_file_id(window);
+	editor_pop_file_id();
 	
 	mmpos := os.get_global_mouse_pos(win);
 	
@@ -377,7 +377,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 editor_window_end :: (window : *Editor_Window) {
 	assert(window == active_window());
 	
-	editor_push_file_id(window, .Editor);
+	editor_push_file_id(.Editor);
 	
 	editor_row_end();
 	
@@ -408,7 +408,7 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	ui_pop_parent_node();
 	
-	editor_pop_file_id(window);
+	editor_pop_file_id();
 	
 	// pop from editor window stack
 	{

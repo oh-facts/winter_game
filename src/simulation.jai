@@ -1091,7 +1091,7 @@ load_entities :: (es : *Entity_Store) {
 
 editor_dialogue_begin :: (events : *os.EventList) {
 	editor_window_begin(dialogue_window, events);
-	editor_push_file_id(dialogue_window, .Simulation);
+	editor_push_file_id(.Simulation);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
@@ -1114,6 +1114,6 @@ editor_dialogue_end :: () {
 	ui_pop_text_align_node();
 	ui_pop_size_node();
 	
-	editor_pop_file_id(dialogue_window);
+	editor_pop_file_id();
 	editor_window_end(dialogue_window);
 }
