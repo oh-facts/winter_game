@@ -17,10 +17,16 @@
 
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
-editor_ui_cxt : *UI_State;
 
 active_window :: () -> *Editor_Window {
 	return editor_window_stack.top.v;
+}
+
+Editor_Window_Kind :: enum {
+	Engine;
+	Map_Editor;
+	Dialogue;
+	Entity_Editor;
 }
 
 Editor_File_Id :: enum {
@@ -69,33 +75,42 @@ Editor_Panel :: struct {
 }
 
 Editor_Window :: struct {
+	kind : Editor_Window_Kind;
+	
 	arena : *Arena;
 	flags : Editor_Window_Flags;
+	size : Vector2;
 	
-	hide : bool;
 	events : *os.EventList;
 	
 	last_grabbed_tick : int;
 	
-	// titlebar
+	// per frame state ===================
+	ui_cxt : *UI_State;
+	passes : r.Pass_List;
+	// ===================================
+	
+	// titlebar ==========================
 	title : string;
 	grabbed : bool;
+	hide : bool;
 	titlebar_height :: 32;
 	last_mpos : Vector2;
 	id : s32;
 	last_touched : int;
+	close_requested : bool;
 	
 	root : *UI_Widget;
 	tb : *UI_Widget;
 	pos : Vector2;
 	dst : RectF32;
 	tb_dst : RectF32;
+	// ===================================
 	
+	// scrollbar =========================
 	resize_grabbed : bool;
-	size : Vector2;
-	close_requested : bool;
-	
 	scroll_offset : float;
+	// ===================================
 	
 	file_id_stack : struct {
 		top : *Editor_File_Id_Node;
@@ -209,10 +224,11 @@ depth_first_preorder :: (v : *Editor_Panel) -> Editor_Panel_Rec {
 	return out;
 }
 
-editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector2 = .{}, size : Vector2 = .{400, 300}) -> *Editor_Window {
+editor_init_window :: (title : string, flags : Editor_Window_Flags, kind : Editor_Window_Kind, pos : Vector2 = .{}, size : Vector2 = .{400, 300}) -> *Editor_Window {
 	out := *editor_windows[0] + editor_windows_count;
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
+	out.kind = kind;
 	out.title = title;
 	out.size = os.get_window_size(win);
 	out.arena = arena_init();
@@ -221,6 +237,7 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	out.root_panel = push_struct(arena, Editor_Panel);
 	out.root_panel.axis = .X;
 	out.root_panel.pct = 1;
+	out.ui_cxt = ui_init();
 	return out;
 }
 
@@ -244,6 +261,8 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		node.next = editor_window_stack.top;
 		editor_window_stack.top = node;
 	}
+	
+	ui_begin(window.ui_cxt, events, mpos);
 	
 	editor_push_file_id(.Editor);
 	
@@ -337,12 +356,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
 	
-	row_parent := editor_ui_cxt.parent_stack.top.v;
+	row_parent := active_window().ui_cxt.parent_stack.top.v;
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	ui_push_border_color_node(r.COLOR_MAGENTA, true);
 	editor_col_begin();
-	col_parent := editor_ui_cxt.parent_stack.top.v;
+	col_parent := active_window().ui_cxt.parent_stack.top.v;
 	col_parent.offset[1] = window.scroll_offset;
 	col_parent.flags |= .Bg | .Scissor;
 	col_parent.scissor = col_parent.dst;
@@ -388,7 +407,7 @@ editor_window_end :: (window : *Editor_Window) {
 			ui_push_size_y_node(ui_size_pct(1, 1), true);
 			editor_col_begin();
 			
-			col_parent := editor_ui_cxt.parent_stack.top.v;
+			col_parent := active_window().ui_cxt.parent_stack.top.v;
 			col_parent.flags |= .Bg;
 			
 			editor_spacer(ui_size_pct(1, 0));
@@ -409,6 +428,11 @@ editor_window_end :: (window : *Editor_Window) {
 	ui_pop_parent_node();
 	
 	editor_pop_file_id();
+	
+	ui_layout(active_window().ui_cxt.root);
+	draw_children(*active_window().passes, active_window().ui_cxt.root);
+	
+	ui_end();
 	
 	// pop from editor window stack
 	{

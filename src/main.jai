@@ -102,8 +102,6 @@ main :: () {
 	load_all_assets();
 	quit : bool;
 	
-	ui_cxt := ui_init();
-	editor_ui_cxt = ui_cxt;
 	timer : float32;
 	
 	entity_store = entity_store_init();
@@ -126,8 +124,6 @@ main :: () {
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
-		
-		passes : r.Pass_List;
 		
 		mm_event := os.event(*events, .NULL, .MouseMove);
 		scroll_event := os.event(*events, .NULL, .Scroll);
@@ -153,19 +149,7 @@ main :: () {
 			
 		}
 		
-		r.push_scissor(*passes, rectF32(0, 0, win_size.x, win_size.y));
-		ui_begin(ui_cxt, *events, mpos);
-		
-		scratch_update(xx delta, *events, *passes);
-		ui_layout(ui_cxt.root);
-		
-		//print("----\n");
-		
-		draw_children(*passes, ui_cxt.root);
-		
-		//print("----\n");
-		ui_end();
-		r.pop_scissor(*passes);
+		scratch_update(xx delta, *events);
 		
 		r.submit(timer, win_target, win_size, passes, .{});
 		r.present(win_target, win);

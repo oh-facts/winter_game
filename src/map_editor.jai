@@ -104,9 +104,9 @@ editor_update :: (delta : float32, events : *os.EventList,
 	if !ed_initialized {
 		ed_initialized = true;
 		
-		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable);
-		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable, .{800, 0});
-		dialogue_window = editor_init_window("dialogue window", xx 0, .{400, 400}, .{600, 200});
+		//map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable);
+		//entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable, .{800, 0});
+		//dialogue_window = editor_init_window("dialogue window", xx 0, .{400, 400}, .{600, 200});
 		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		
