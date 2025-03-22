@@ -480,7 +480,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 }
 
 map_editor_window_update :: (events : *os.EventList) {
-	editor_window_begin(map_editor_window, events);
+	//editor_window_begin(map_editor_window, events);
 	editor_push_file_id(map_editor_window, .Map_Editor);
 	
 	ui_push_size_node(ui_size_pct(0.9, 0), true);
@@ -683,7 +683,7 @@ map_editor_window_update :: (events : *os.EventList) {
 
 entity_tree_window_update :: (events : *os.EventList) {
 	
-	editor_window_begin(entity_tree_window, events);
+	//editor_window_begin(entity_tree_window, events);
 	editor_push_file_id(entity_tree_window, .Map_Editor);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);

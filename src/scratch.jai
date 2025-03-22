@@ -18,7 +18,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	}
 	timer += xx delta;
 	
-	editor_window_begin(scratch_window, events);
+	editor_window_begin(scratch_window, events, passes);
 	editor_push_file_id(scratch_window, .Scratch);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
@@ -32,7 +32,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		ui_push_size_x_node(ui_size_px(64, 1));
 		ui_push_size_y_node(ui_size_px(32, 1));
 		
-		passes2 : r.Pass_List;
+		passes2 = .{};
 		r.push_scissor(*passes2, rectF32(0, 0, 1920, 1024));
 		
 		active_ids : [Mode.COUNT]UI_ID;
@@ -88,8 +88,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		
 		ui_pop_size_node();
 		
-		r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
-		r.pop_scissor(*passes2);
+		
 		editor_row_end();
 	}
 	

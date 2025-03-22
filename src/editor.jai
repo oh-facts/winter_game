@@ -224,7 +224,7 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	return out;
 }
 
-editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
+editor_window_begin :: (window : *Editor_Window, events : *os.EventList, passes : *r.Pass_List) {
 	window.last_touched = editor_clock;
 	window.events = events;
 	
@@ -246,6 +246,8 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	}
 	
 	editor_push_file_id(window, .Editor);
+	
+	ui_push_passes_node(passes);
 	
 	ui_push_flags_node(UI_Floating, true);
 	ui_push_size_x_node(ui_size_px(window.size.x), true);
@@ -418,6 +420,8 @@ editor_window_end :: (window : *Editor_Window) {
 		to_free.next = editor_window_stack.free;
 		editor_window_stack.free = to_free;
 	}
+	
+	ui_pop_passes_node();
 	
 	/*
 				if point_in_rect(mpos, window.root.dst) {
@@ -801,10 +805,10 @@ editor_color_picker :: (index := 0,
 	return out;
 }
 
-draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
+draw_children :: (root : *UI_Widget) {
 	
 	if root.flags & .Scissor {
-		r.push_scissor(passes, root.scissor);
+		r.push_scissor(root.passes, root.scissor);
 	}
 	
 	color := r.COLOR_WHITE;
@@ -824,7 +828,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 				color *= 1.2;
 			}
 			
-			r.push_rect2(passes, dst, color);
+			r.push_rect2(root.passes, dst, color);
 		}
 		
 		// notch
@@ -836,7 +840,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			
 			dst.min.x -= 8;
 			dst.max.x -= 8;
-			r.push_rect2(passes, dst, .{0.1, 0.4, 0.8, 0.3});
+			r.push_rect2(root.passes, dst, .{0.1, 0.4, 0.8, 0.3});
 		}
 		
 		// slider text value
@@ -847,14 +851,14 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			text_pos.y += 2;
 			text := tprint("%", root.value);
 			
-			//r.push_scissor(passes, root.dst);
-			r.push_text(passes, font, text, text_pos, 1., r.COLOR_WHITE);
-			//r.pop_scissor(passes);
+			//r.push_scissor(root.passes, root.dst);
+			r.push_text(root.passes, font, text, text_pos, 1., r.COLOR_WHITE);
+			//r.pop_scissor(root.passes);
 		}
 	}
 	
 	if root.flags & .Bg {
-		img := r.push_rect2(passes, root.dst, root.bg_color);
+		img := r.push_rect2(root.passes, root.dst, root.bg_color);
 		img.border_color = .{0.545, 0.541, 0.498, 1};
 		img.border_thickness = 3.5;;
 	}
@@ -870,7 +874,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		dst_off.min.y += 1.5;
 		dst_off.max.x += 1.5;
 		dst_off.max.y += 1.5;
-		sh := r.push_rect2(passes, dst_off, .{0, 0, 0, 0.4});
+		sh := r.push_rect2(root.passes, dst_off, .{0, 0, 0, 0.4});
 	}
 	
 	if root.flags & .Offset {
@@ -885,13 +889,13 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Clickable {
 		//font_size = 0.9;
-		bg := r.push_rect2(passes, button_dst, .{0.698, 0.694, 0.651, 1});
+		bg := r.push_rect2(root.passes, button_dst, .{0.698, 0.694, 0.651, 1});
 		bg.border_thickness = 3;
 		bg.border_color = .{0.459, 0.439, 0.402, 1};
 	}
 	
 	if root.flags & .Image {
-		img := r.push_rect2(passes, root.dst, root.image_color);
+		img := r.push_rect2(root.passes, root.dst, root.image_color);
 		img.tex_id = root.image.U64[1];
 		img.src = root.src;
 		img.border_thickness = 3;
@@ -901,12 +905,12 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	if root.flags & .Check_Box {
 		dst := root.dst;
 		
-		cb_bg := r.push_rect2(passes, dst, color);
+		cb_bg := r.push_rect2(root.passes, dst, color);
 		cb_bg.border_color = r.COLOR_BLACK;
 		cb_bg.border_thickness = 3;
 		
 		if root.checked {
-			cb := r.push_rect2(passes, dst, r.COLOR_MAGENTA);
+			cb := r.push_rect2(root.passes, dst, r.COLOR_MAGENTA);
 			cb.border_color = r.COLOR_WHITE;
 			cb.border_thickness = 4;
 			cb.radius = 4;
@@ -938,7 +942,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			
 		}
 		
-		r.push_text(passes, font, root.text, root.pos + text_pos_delta, font_size, .{0.459, 0.439, 0.402, 1});
+		r.push_text(root.passes, font, root.text, root.pos + text_pos_delta, font_size, .{0.459, 0.439, 0.402, 1});
 	}
 	
 	if root.flags & .Text_Edit {
@@ -952,19 +956,19 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 			dst.min.x += text_rect.max.x + text_pos_delta.x;
 			dst.max.x = dst.min.x + 4;
 			
-			r.push_rect2(passes, dst, color);
+			r.push_rect2(root.passes, dst, color);
 		}
 	}
 	
 	{
 		child :=  root.first;
 		while child {
-			draw_children(passes, child);
+			draw_children(child);
 			child = child.next;
 		}
 	}
 	
 	if root.flags & .Scissor {
-		r.pop_scissor(passes);
+		r.pop_scissor(root.passes);
 	}
 }

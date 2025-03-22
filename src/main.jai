@@ -72,6 +72,8 @@ Mode :: enum {
 	COUNT;
 }
 
+passes2 : r.Pass_List;
+
 //current_mode : Mode = .Editor;
 //current_mode : Mode = .Game;
 current_mode : Mode = .Scratch;
@@ -161,11 +163,15 @@ main :: () {
 		
 		//print("----\n");
 		
-		draw_children(*passes, ui_cxt.root);
+		draw_children(ui_cxt.root);
 		
 		//print("----\n");
 		ui_end();
 		r.pop_scissor(*passes);
+		
+		
+		r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
+		r.pop_scissor(*passes2);
 		
 		r.submit(timer, win_target, win_size, passes, .{});
 		r.present(win_target, win);
