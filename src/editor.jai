@@ -18,7 +18,10 @@
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 editor_ui_cxt : *UI_State;
-active_window : *Editor_Window;
+
+active_window :: () -> *Editor_Window {
+	return editor_window_stack.top.v;
+}
 
 Editor_File_Id :: enum {
 	Null;
@@ -43,7 +46,7 @@ widget_key :: (index := 0, depth :*UI_ID = xx 0, loc : Source_Code_Location) -> 
 	out.v[1] = xx depth;
 	out.v[2] = xx loc.line_number;
 	out.v[3] = xx active_window_file_id();
-	out.v[4] = xx active_window.id;
+	out.v[4] = xx active_window().id;
 	
 	return out;
 }
@@ -102,6 +105,11 @@ Editor_Window :: struct {
 	root_panel : *Editor_Panel;
 }
 
+editor_window_stack : struct {
+	top : *Editor_Window_Meta_Node;
+	free : *Editor_Window_Meta_Node;
+};
+
 Editor_File_Id_Node :: struct {
 	next : *Editor_File_Id_Node;
 	v : Editor_File_Id;
@@ -130,6 +138,11 @@ editor_pop_file_id :: (win : *Editor_Window) {
 	
 	to_free.next = win.file_id_stack.free;
 	win.file_id_stack.free = to_free;
+}
+
+Editor_Window_Meta_Node :: struct {
+	next : *Editor_Window_Meta_Node;
+	v : *Editor_Window;
 }
 
 editor_clock : int;
@@ -214,7 +227,23 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	window.last_touched = editor_clock;
 	window.events = events;
-	active_window = window;
+	
+	// push to active window stack
+	{
+		node := editor_window_stack.free;
+		
+		if !node {
+			node = push_struct(arena, Editor_Window_Meta_Node);
+		} else {
+			editor_window_stack.free = editor_window_stack.free.next;
+			<< node = .{};
+		}
+		
+		node.v = window;
+		
+		node.next = editor_window_stack.top;
+		editor_window_stack.top = node;
+	}
 	
 	editor_push_file_id(window, .Editor);
 	
@@ -257,7 +286,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		editor_spacer(ui_size_pct(1, 0));
 		
 		ui_push_size_x_node(ui_size_txt(), true);
-		sig := editor_label(active_window.title);
+		sig := editor_label(active_window().title);
 		sig = ui_signal(sig.widget);
 		
 		if sig.active {
@@ -346,7 +375,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 }
 
 editor_window_end :: (window : *Editor_Window) {
-	assert(window == active_window);
+	assert(window == active_window());
 	
 	editor_push_file_id(window, .Editor);
 	
@@ -381,16 +410,24 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_pop_file_id(window);
 	
-	active_window = xx 0;
-	/*
-	if point_in_rect(mpos, window.root.dst) {
-		os.event(window.events, .LMB, .Pressed);
-		os.event(window.events, .RMB, .Pressed);
+	// pop from editor window stack
+	{
+		to_free := editor_window_stack.top;
+		editor_window_stack.top = editor_window_stack.top.next;
 		
-		os.event(window.events, .LMB, .Released);
-		os.event(window.events, .RMB, .Released);
+		to_free.next = editor_window_stack.free;
+		editor_window_stack.free = to_free;
 	}
-	*/
+	
+	/*
+				if point_in_rect(mpos, window.root.dst) {
+					os.event(window.events, .LMB, .Pressed);
+					os.event(window.events, .RMB, .Pressed);
+					
+					os.event(window.events, .LMB, .Released);
+					os.event(window.events, .RMB, .Released);
+				}
+				*/
 	
 }
 
@@ -445,7 +482,7 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 			w.text_edit_pos = display_text.count;
 		}
 		
-		events := active_window.events;
+		events := active_window().events;
 		event : *os.Event;
 		
 		{
@@ -593,7 +630,7 @@ editor_image_cant_click_lol_bro :: (image : r.Handle, src : RectF32 = .{.{0, 0},
 }
 
 active_window_file_id :: () -> Editor_File_Id {
-	return active_window.file_id_stack.top.v;
+	return active_window().file_id_stack.top.v;
 }
 
 editor_row_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {

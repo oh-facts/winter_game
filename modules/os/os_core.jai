@@ -165,10 +165,6 @@ init :: () {
 	}
 }
 
-set_cursor :: (mode : Cursor_Mode) {
-	SDL_SetCursor(cursors[mode]);
-}
-
 // NOTE(mizu): Will probably fail if string isn't a literal
 
 open_window :: (title : string, w : s32, h : s32) -> Handle {
@@ -369,4 +365,8 @@ minimize_window :: (win : Handle) {
 
 swap_buffers :: (win : Handle) {
 	SDL_GL_SwapWindow(xx win.U64[0]);
+}
+
+set_cursor :: (mode : Cursor_Mode) {
+	SDL_SetCursor(cursors[mode]);
 }
