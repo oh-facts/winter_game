@@ -12,7 +12,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 									 passes : *r.Pass_List) {
 	if !scratch_initialized {
 		scratch_initialized = true;
-		scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable | .Scrollable, .Engine);
+		scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable | .Scrollable);
 		win_target = r.framebuffer(scratch_window.size);
 		game_target = r.framebuffer(.{1920, 1024});
 	}

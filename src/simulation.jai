@@ -1095,7 +1095,7 @@ editor_dialogue_begin :: (events : *os.EventList) {
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
-	row_parent := active_window().ui_cxt.parent_stack.top.v;
+	row_parent := editor_ui_cxt.parent_stack.top.v;
 	row_parent.offset[0] = 10;
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
