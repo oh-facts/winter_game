@@ -1,3 +1,5 @@
+// TODO(mizu): When I come back, I need to make a different ui cxt for the engine window and the game windows. dont couple it with the editor. and remove editor context. make push pop functions for context. better yet, make begin and end push pop ui cxt.
+
 #import "Basic";
 #import "System";
 #import "String";
@@ -103,7 +105,6 @@ main :: () {
 	quit : bool;
 	
 	ui_cxt := ui_init();
-	editor_ui_cxt = ui_cxt;
 	timer : float32;
 	
 	entity_store = entity_store_init();

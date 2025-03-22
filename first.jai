@@ -128,15 +128,15 @@ PUSH_TEMPLATE :: #string DONE
 ui_push_%1_node :: (v : %3, auto : bool = false) {
 	node : *UI_%2_Node = xx tpush_struct(UI_%2_Node);
 	node.v = v;
-	node.next = active_cxt.%1_stack.top;
+	node.next = active_cxt().%1_stack.top;
 	node.auto = auto;
-	active_cxt.%1_stack.top = node;
+	active_cxt().%1_stack.top = node;
 }
 DONE
 
 POP_TEMPLATE :: #string DONE
 ui_pop_%1_node :: () {
-	active_cxt.%1_stack.top = active_cxt.%1_stack.top.next;
+	active_cxt().%1_stack.top = active_cxt().%1_stack.top.next;
 }
 DONE
 
@@ -169,7 +169,7 @@ UI_STACKS_TEMPLATE :: #string DONE
 DONE
 
 AUTO_POP_TEMPLATE :: #string DONE
-if active_cxt.%_stack.top.auto {
+if active_cxt().%_stack.top.auto {
 	ui_pop_%_node();
 }
 DONE

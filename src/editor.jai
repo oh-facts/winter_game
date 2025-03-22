@@ -17,7 +17,6 @@
 
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
-editor_ui_cxt : *UI_State;
 
 active_window :: () -> *Editor_Window {
 	return editor_window_stack.top.v;
@@ -337,12 +336,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
 	
-	row_parent := editor_ui_cxt.parent_stack.top.v;
+	row_parent := active_cxt().parent_stack.top.v;
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	ui_push_border_color_node(r.COLOR_MAGENTA, true);
 	editor_col_begin();
-	col_parent := editor_ui_cxt.parent_stack.top.v;
+	col_parent := active_cxt().parent_stack.top.v;
 	col_parent.offset[1] = window.scroll_offset;
 	col_parent.flags |= .Bg | .Scissor;
 	col_parent.scissor = col_parent.dst;
@@ -388,7 +387,7 @@ editor_window_end :: (window : *Editor_Window) {
 			ui_push_size_y_node(ui_size_pct(1, 1), true);
 			editor_col_begin();
 			
-			col_parent := editor_ui_cxt.parent_stack.top.v;
+			col_parent := active_cxt().parent_stack.top.v;
 			col_parent.flags |= .Bg;
 			
 			editor_spacer(ui_size_pct(1, 0));

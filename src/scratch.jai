@@ -7,6 +7,7 @@ counter : u64;
 win_target : r.Framebuffer;
 game_target : r.Framebuffer;
 timer : float32;
+game_ui_cxt : *UI_State;
 
 scratch_update :: (delta : float32, events : *os.EventList,
 									 passes : *r.Pass_List) {
@@ -15,7 +16,9 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable | .Scrollable);
 		win_target = r.framebuffer(scratch_window.size);
 		game_target = r.framebuffer(.{1920, 1024});
+		game_ui_cxt = ui_init();
 	}
+	
 	timer += xx delta;
 	
 	editor_window_begin(scratch_window, events);
@@ -56,7 +59,12 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 			
 			case .Game;
+			
+			ui_begin(game_ui_cxt, events, mpos);
 			world_update(delta, events, *passes2);
+			ui_layout(game_ui_cxt.root);
+			draw_children(*passes2, game_ui_cxt.root);
+			ui_end();
 			
 			case .Editor;
 			editor_update(delta, events, *passes2);

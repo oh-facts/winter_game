@@ -13,7 +13,6 @@
 // TODO(mizu): Redo interaction system fully
 // I want to interact with girl and see a box
 // that asks what you want to do with her
-// 
 
 World_Cmd_Buffer :: struct {
 	base : *u8;
@@ -1095,7 +1094,7 @@ editor_dialogue_begin :: (events : *os.EventList) {
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_row_begin();
-	row_parent := editor_ui_cxt.parent_stack.top.v;
+	row_parent := active_cxt().parent_stack.top.v;
 	row_parent.offset[0] = 10;
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
