@@ -84,7 +84,7 @@ main :: () {
 	print("Except for you, you can stay\n");
 	
 	os.init();
-	win = os.open_window("The sad debugger and Linker", 960, 540);
+	win = os.open_window("The sad debugger", 960 + 32, 540 + 64);
 	win_size := os.get_window_size(win);
 	r.init(.{1920, 1024});
 	tex.init();

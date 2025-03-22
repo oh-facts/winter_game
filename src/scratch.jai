@@ -12,7 +12,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 									 passes : *r.Pass_List) {
 	if !scratch_initialized {
 		scratch_initialized = true;
-		scratch_window = editor_init_window("The Sad Debugger And Linker", .Draw_Titlebar | .Resizable | .Scrollable);
+		scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable | .Scrollable);
 		win_target = r.framebuffer(scratch_window.size);
 		game_target = r.framebuffer(.{1920, 1024});
 	}
@@ -91,6 +91,17 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
 		r.pop_scissor(*passes2);
 		editor_row_end();
+	}
+	
+	if current_mode == .Home {
+		scope := tex.scope_open();
+		
+		ui_push_size_x_node(ui_size_px(960, 0), true);
+		ui_push_size_y_node(ui_size_px(540, 0), true);
+		hide_img := tex.handle_from_hash(scope, arts[ArtId.Editor_Home_Bg].hash, .Linear);
+		
+		editor_image(hide_img);
+		tex.scope_close(scope);
 	}
 	
 	if current_mode == .Game || current_mode == .Editor {

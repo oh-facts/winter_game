@@ -266,10 +266,23 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		
 		editor_spacer(ui_size_pct(1, 0));
 		
-		ui_push_size_node(ui_size_px(32, 1), true);
+		// minimize
+		ui_push_size_node(ui_size_px(32, 1));
+		if editor_image(hide_img, .{.{0.25, 0}, .{0.5, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			os.minimize_window(win);
+		}
+		
+		if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			//os.set_fullscreen(win);
+			
+			//window.size.y = 1080;
+			//window.size.x = 1920;
+		}
+		
 		if editor_image(hide_img, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 			window.close_requested = true;
 		}
+		ui_pop_size_node();
 		
 		tex.scope_close(scope);
 		
@@ -322,7 +335,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		window.size += mmpos - window.last_mpos;
 		
 		window.size.x = clamp_bot(32., window.size.x);
-		window.size.y = clamp_bot(64., window.size.y);
+		window.size.y = clamp_bot(32 * 3., window.size.y);
 		
 		if os.event(window.events, .LMB, .Released) {
 			window.resize_grabbed = false;

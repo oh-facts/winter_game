@@ -173,7 +173,7 @@ set_cursor :: (mode : Cursor_Mode) {
 open_window :: (title : string, w : s32, h : s32) -> Handle {
 	out : Handle;
 	
-	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS);
+	sdl_win := SDL_CreateWindow(title.data, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_BORDERLESS_WINDOWED_STYLE);
 	//  | SDL_WINDOW_FULLSCREEN_DESKTOP
 	glContext := SDL_GL_CreateContext(sdl_win);
 	out.U64[0] = xx sdl_win;
@@ -344,4 +344,15 @@ get_global_mouse_pos :: (win : Handle) -> Vector2 {
 	SDL_GetGlobalMouseState(*globalX, *globalY);
 	
 	return .{xx globalX, xx globalY};
+}
+
+set_fullscreen :: (win : Handle) {
+	sdl_win : *SDL_Window = xx win.U64[0];
+	
+	SDL_SetWindowFullscreen(sdl_win, xx SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
+
+minimize_window :: (win : Handle) {
+	sdl_win : *SDL_Window = xx win.U64[0];
+	SDL_MinimizeWindow(sdl_win);
 }
