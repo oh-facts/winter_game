@@ -759,7 +759,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				
 				if quest.phase == {
 					case .AoS_Opening_Dialogue;
-					editor_dialogue_begin(events, passes);
+					editor_dialogue_begin(events);
 					
 					editor_label(quest.dialogue_phase.text);
 					
@@ -778,7 +778,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 					}
 					
 					case .AoS_Demo_Dialogue;
-					editor_dialogue_begin(events, passes);
+					editor_dialogue_begin(events);
 					
 					if quest.dialogue_phase.flags & .Text {
 						editor_label(quest.dialogue_phase.text);
@@ -1089,8 +1089,8 @@ load_entities :: (es : *Entity_Store) {
 	}
 }
 
-editor_dialogue_begin :: (events : *os.EventList, passes : *r.Pass_List) {
-	editor_window_begin(dialogue_window, events, passes);
+editor_dialogue_begin :: (events : *os.EventList) {
+	editor_window_begin(dialogue_window, events);
 	editor_push_file_id(dialogue_window, .Simulation);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);

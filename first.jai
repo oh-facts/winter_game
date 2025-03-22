@@ -104,7 +104,7 @@ upper_snake_from_lower_snake :: (name : string) -> string {
 	return out;
 }
 
-styles : [12]Style = .[.{"parent", "*UI_Widget", ""},
+styles : [11]Style = .[.{"parent", "*UI_Widget", ""},
 											 .{"size_x", "UI_Size", ""},
 											 .{"size_y", "UI_Size", ""},
 											 .{"offset", "[2]float32", ""},
@@ -114,8 +114,7 @@ styles : [12]Style = .[.{"parent", "*UI_Widget", ""},
 											 .{"bg_color", "Vector4", ""},
 											 .{"text_align", "UI_Text_Align", ""},
 											 .{"border_color", "Vector4", ""},
-											 .{"hover_color", "Vector4", ""},
-											 .{"passes", "*r.Pass_List", ""}];
+											 .{"hover_color", "Vector4", ""}];
 
 STYLES_TEMPLATE :: #string DONE
 UI_%2_Node :: struct {

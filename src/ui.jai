@@ -94,9 +94,6 @@ UI_Widget :: struct {
 	key : UI_ID;
 	last_frame_touched_index : u64;
 	
-	// draw list =====
-	passes : *r.Pass_List;
-	
 	// styling =========
 	color : Vector4;
 	bg_color : Vector4;
@@ -270,7 +267,6 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.last_frame_touched_index = active_cxt.frame_index;
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
-		out.passes = xx 0;
 		
 		out.computed_pos[0] = 0;
 		out.computed_pos[1] = 0;
@@ -306,6 +302,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		}
 	}
 	
+	
 	// styling
 	{
 		out.bg_color = active_cxt.bg_color_stack.top.v;
@@ -322,7 +319,6 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.text_padding = active_cxt.text_padding_stack.top.v;
 		out.text_align = active_cxt.text_align_stack.top.v;
 		out.hover_color = active_cxt.hover_color_stack.top.v;
-		out.passes = active_cxt.passes_stack.top.v;
 	}
 	
 	// auto pop
