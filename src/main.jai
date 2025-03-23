@@ -1,5 +1,17 @@
 // TODO(mizu): When I come back, I need to make a different ui cxt for the engine window and the game windows. dont couple it with the editor. and remove editor context. make push pop functions for context. better yet, make begin and end push pop ui cxt.
 
+// TODO(mizu): See if you can make them use the same context but different render list
+
+// TODO(mizu): Scissoring
+
+// TODO(mizu): proper pixel -> ui co-ordinates / world co-ordinates
+
+// TODO(mizu): Remove scroll global
+
+// TODO(mizu): take it one at a time, just make sure it works. Maybe start with toggle fullscreen. Then making render submit take a target size. Then work on scissoring and mouse co ords -> ui coords
+
+
+
 #import "Basic";
 #import "System";
 #import "String";
@@ -62,9 +74,6 @@ mpos : Vector2;
 // TODO(mizu): Needs to go.
 rmb_held : bool;
 
-scroll_up : bool;
-scroll_down : bool;
-
 Mode :: enum {
 	Home;
 	Editor;
@@ -112,6 +121,7 @@ main :: () {
 	anim_store = animation_store_init();
 	load_entities(*entity_store);
 	load_tileworld(*tileworld);
+	scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable);
 	
 	while !quit {
 		timer += xx delta;
@@ -124,6 +134,8 @@ main :: () {
 		win_size = os.get_window_size(win);
 		set_camera_size(.{1920, 1024});
 		
+		//print("win size: %\n", win_size);
+		
 		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
@@ -131,45 +143,32 @@ main :: () {
 		passes : r.Pass_List;
 		
 		mm_event := os.event(*events, .NULL, .MouseMove);
-		scroll_event := os.event(*events, .NULL, .Scroll);
 		
 		update_camera();
-		
-		scroll_up = false;
-		scroll_down = false;
 		
 		if mm_event {
 			mpos = mm_event.mpos;
 		}
 		
-		if scroll_event {
-			
-			if scroll_event.wheel > 0 {
-				scroll_up = true;
-			}
-			
-			else if scroll_event.wheel < 0 {
-				scroll_down = true;
-			}
-			
-		}
-		
-		r.push_scissor(*passes, rectF32(0, 0, win_size.x, win_size.y));
+		r.push_scissor(*passes, rectF32(0, 0, scratch_window.win_target.size.x, scratch_window.win_target.size.y));
 		ui_begin(ui_cxt, *events, mpos);
-		
 		scratch_update(xx delta, *events, *passes);
 		ui_layout(ui_cxt.root);
-		
-		//print("----\n");
-		
+		editor_window_update(scratch_window);
 		draw_children(*passes, ui_cxt.root);
+		if game_ui_cxt.root {
+			r.push_scissor(*passes, scratch_window.client_rect.dst);
+			draw_children(*passes, game_ui_cxt.root);
+			r.pop_scissor(*passes);
+		}
+		//print("----\n");
 		
 		//print("----\n");
 		ui_end();
 		r.pop_scissor(*passes);
 		
-		r.submit(timer, win_target, win_size, passes, .{});
-		r.present(win_target, win);
+		r.submit(timer, scratch_window.win_target, win_size, passes, .{});
+		r.present(scratch_window.win_target, win);
 		
 		editor_tick_clock();
 		tex.clock_tick();

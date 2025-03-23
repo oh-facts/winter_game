@@ -104,9 +104,9 @@ editor_update :: (delta : float32, events : *os.EventList,
 	if !ed_initialized {
 		ed_initialized = true;
 		
-		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable);
-		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable, .{800, 0});
-		dialogue_window = editor_init_window("dialogue window", xx 0, .{800, 800}, .{600, 200});
+		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{0, 64});
+		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{800, 64});
+		dialogue_window = editor_init_window("dialogue window", .Dialog, .{400, 400}, .{300, 100});
 		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		
@@ -116,11 +116,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	if map_editor_window.last_grabbed_tick < entity_tree_window.last_grabbed_tick {
-		//map_editor_window_update(events);
-		//entity_tree_window_update(events);
+		map_editor_window_update(events);
+		entity_tree_window_update(events);
 	} else {
-		//entity_tree_window_update(events);
-		//map_editor_window_update(events);
+		entity_tree_window_update(events);
+		map_editor_window_update(events);
 	}
 	
 	//print("%", << test_entity);
@@ -163,14 +163,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	
 	// TODO(mizu): i don't want events to be shared like this.
-	
+	/*
 	if scroll_up {
 		paint_layer += 1;
 	}
 	else if scroll_down {
 		paint_layer -= 1;
 	}
-	
+	*/
 	paint_layer = clamp(paint_layer, 0, 2);
 	
 	// world space coords -> tile pos
@@ -682,7 +682,6 @@ map_editor_window_update :: (events : *os.EventList) {
 }
 
 entity_tree_window_update :: (events : *os.EventList) {
-	
 	editor_window_begin(entity_tree_window, events);
 	editor_push_file_id(.Map_Editor);
 	

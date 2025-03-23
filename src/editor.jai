@@ -54,6 +54,7 @@ Editor_Window_Flags :: enum_flags {
 	Draw_Titlebar;
 	Resizable;
 	Scrollable;
+	Dialog;
 }
 
 Editor_Panel :: struct {
@@ -76,6 +77,12 @@ Editor_Window :: struct {
 	
 	last_grabbed_tick : int;
 	
+	win_target : r.Framebuffer;
+	game_target : r.Framebuffer;
+	
+	client_rect : *UI_Widget;
+	game_target_rect : *UI_Widget;
+	
 	// titlebar
 	title : string;
 	grabbed : bool;
@@ -93,7 +100,7 @@ Editor_Window :: struct {
 	resize_grabbed : bool;
 	size : Vector2;
 	close_requested : bool;
-	
+	fullscreen : bool;
 	scroll_offset : float;
 	
 	file_id_stack : struct {
@@ -213,13 +220,24 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	out.id = editor_windows_count;
 	editor_windows_count += 1;
 	out.title = title;
-	out.size = os.get_window_size(win);
+	
+	if flags & .Dialog {
+		out.size = size;
+		out.pos = pos;
+	} else {
+		out.size = os.get_window_size(win);
+		out.pos = os.get_window_pos(win);
+		out.win_target = r.framebuffer(out.size);
+		out.game_target = r.framebuffer(.{1920, 1024});
+	}
+	
 	out.arena = arena_init();
-	out.pos = os.get_window_pos(win);
 	out.flags = flags;
 	out.root_panel = push_struct(arena, Editor_Panel);
 	out.root_panel.axis = .X;
 	out.root_panel.pct = 1;
+	
+	
 	return out;
 }
 
@@ -256,8 +274,13 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	}
 	
 	root := ui_widget_from_key(widget_key(0, xx 0, .{}));
-	root.scissor = root.dst;
+	//root.scissor = root.dst;
 	root.child_layout_axis = .Y;
+	
+	if window.flags & .Dialog {
+		root.computed_pos = window.pos.component;
+	}
+	
 	window.dst = root.dst;
 	ui_push_parent_node(root);
 	
@@ -294,23 +317,28 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		
 		editor_spacer(ui_size_pct(1, 0));
 		
-		// minimize
-		ui_push_size_node(ui_size_px(32, 1));
-		if editor_image(hide_img, .{.{0.25, 0}, .{0.5, 1}}, .{0.459, 0.439, 0.402, 1}).active {
-			os.minimize_window(win);
-		}
-		
-		if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
-			//os.set_fullscreen(win);
+		if !(window.flags & .Dialog) {
+			// minimize
+			ui_push_size_node(ui_size_px(32, 1));
+			if editor_image(hide_img, .{.{0.25, 0}, .{0.5, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+				os.minimize_window(win);
+			}
 			
-			//window.size.y = 1080;
-			//window.size.x = 1920;
+			// maximize
+			if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+				os.set_fullscreen(win);
+				window.size.x = 1920;
+				window.size.y = 1080;
+				window.win_target = r.framebuffer(scratch_window.size);
+				window.game_target = r.framebuffer(.{1920, 1024});
+			}
+			
+			// close
+			if editor_image(hide_img, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+				window.close_requested = true;
+			}
+			ui_pop_size_node();
 		}
-		
-		if editor_image(hide_img, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
-			window.close_requested = true;
-		}
-		ui_pop_size_node();
 		
 		tex.scope_close(scope);
 		
@@ -323,14 +351,29 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	if point_in_rect(mpos, window.dst) {
 		
-		if scroll_up {
-			window.scroll_offset += 4;
+		if active_window().flags & .Scrollable {
+			scroll_event := os.event(events, .NULL, .Scroll);
+			scroll_up, scroll_down : bool;
+			
+			if scroll_event {
+				
+				if scroll_event.wheel > 0 {
+					scroll_up = true;
+				}
+				
+				else if scroll_event.wheel < 0 {
+					scroll_down = true;
+				}
+			}
+			
+			if scroll_up {
+				window.scroll_offset += 4;
+			}
+			
+			if scroll_down {
+				window.scroll_offset -= 4;
+			}
 		}
-		
-		if scroll_down {
-			window.scroll_offset -= 4;
-		}
-		
 	}
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
@@ -343,9 +386,21 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	editor_col_begin();
 	col_parent := active_cxt().parent_stack.top.v;
 	col_parent.offset[1] = window.scroll_offset;
-	col_parent.flags |= .Bg | .Scissor;
-	col_parent.scissor = col_parent.dst;
+	col_parent.flags |= .Bg;
+	
+	if window.flags & .Dialog {
+		col_parent.flags |= .Scissor;
+	}
+	
+	window.client_rect = col_parent;
+	
+	//col_parent.scissor = col_parent.dst;
 	editor_pop_file_id();
+}
+
+editor_window_update :: (window : *Editor_Window) {
+	
+	window.client_rect.scissor = window.client_rect.dst;
 	
 	mmpos := os.get_global_mouse_pos(win);
 	
@@ -354,7 +409,7 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		window.pos +=  mmpos - window.last_mpos;
 		//print("% % %\n", window.pos, os.get_global_mouse_pos(win), window.last_mpos);
 		
-		if os.event(events, .LMB, .Released) {
+		if os.event(window.events, .LMB, .Released) {
 			window.grabbed = false;
 		}
 	}
@@ -365,8 +420,18 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		window.size.x = clamp_bot(32., window.size.x);
 		window.size.y = clamp_bot(32 * 3., window.size.y);
 		
+		//scratch_window.win_target.size = scratch_window.size;
+		
 		if os.event(window.events, .LMB, .Released) {
 			window.resize_grabbed = false;
+			
+			if window.flags & .Dialog {
+				
+			} else {
+				window.win_target = r.framebuffer(window.size);
+				window.game_target = r.framebuffer(.{1920, 1024});
+			}
+			
 		}
 	}
 	
@@ -380,7 +445,7 @@ editor_window_end :: (window : *Editor_Window) {
 	
 	editor_row_end();
 	
-	if window.flags & .Scrollable {
+	if window.flags & .Resizable {
 		// scroll bar ====
 		if !window.hide {
 			ui_push_size_x_node(ui_size_px(32, 1), true);
@@ -803,7 +868,16 @@ editor_color_picker :: (index := 0,
 draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 	
 	if root.flags & .Scissor {
-		r.push_scissor(passes, root.scissor);
+		
+		scissor1 := passes.last.scissor;
+		scissor2 := root.scissor;
+		
+		scissor2.min.x = max(scissor1.min.x, scissor2.min.x);
+		scissor2.min.y = max(scissor1.min.y, scissor2.min.y);
+		scissor2.max.x = min(scissor1.max.x, scissor2.max.x);
+		scissor2.max.y = min(scissor1.max.y, scissor2.max.y);
+		
+		r.push_scissor(passes, scissor2);
 	}
 	
 	color := r.COLOR_WHITE;

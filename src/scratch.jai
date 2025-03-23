@@ -4,8 +4,7 @@ scratch_initialized : bool;
 scratch_window : *Editor_Window;
 
 counter : u64;
-win_target : r.Framebuffer;
-game_target : r.Framebuffer;
+
 timer : float32;
 game_ui_cxt : *UI_State;
 
@@ -13,19 +12,19 @@ scratch_update :: (delta : float32, events : *os.EventList,
 									 passes : *r.Pass_List) {
 	if !scratch_initialized {
 		scratch_initialized = true;
-		scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable | .Scrollable);
-		win_target = r.framebuffer(scratch_window.size);
-		game_target = r.framebuffer(.{1920, 1024});
+		
 		game_ui_cxt = ui_init();
 	}
 	
 	timer += xx delta;
 	
 	editor_window_begin(scratch_window, events);
+	
 	editor_push_file_id(.Scratch);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_col_begin();
+	game_ui_cxt.root = xx 0;
 	
 	if !scratch_window.hide {
 		ui_push_size_x_node(ui_size_pct(1, 0), true);
@@ -54,20 +53,30 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			}
 		}
 		
+		editor_mpos := mpos;
+		//editor_mpos.x *= 1920. / (1920 - 32);
+		//editor_mpos.x *= scratch_window.game_target.size.x / scratch_window.client_rect.size.x;
+		//editor_mpos.y *= scratch_window.game_target.size.y / (scratch_window.client_rect.size.y);
+		//editor_mpos.y -= 64;
+		
 		if current_mode == {
 			case .Home;
-			
-			
 			case .Game;
-			
-			ui_begin(game_ui_cxt, events, mpos);
+			ui_begin(game_ui_cxt, events, editor_mpos);
 			world_update(delta, events, *passes2);
 			ui_layout(game_ui_cxt.root);
-			draw_children(*passes2, game_ui_cxt.root);
+			
 			ui_end();
 			
 			case .Editor;
+			
+			ui_begin(game_ui_cxt, events, editor_mpos);
 			editor_update(delta, events, *passes2);
+			ui_layout(game_ui_cxt.root);
+			editor_window_update(map_editor_window);
+			editor_window_update(entity_tree_window);
+			
+			ui_end();
 			
 			case .Scratch;
 			r.push_text(passes, font, "hi", .{100, 600}, 32);
@@ -96,7 +105,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		
 		ui_pop_size_node();
 		
-		r.submit(timer, game_target, .{1920, 1024}, passes2, camera.pos);
+		r.submit(timer, scratch_window.game_target, .{1920, 1024}, passes2, camera.pos);
 		r.pop_scissor(*passes2);
 		editor_row_end();
 	}
@@ -115,7 +124,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	if current_mode == .Game || current_mode == .Editor {
 		ui_push_size_x_node(ui_size_px(1920, 0), true);
 		ui_push_size_y_node(ui_size_px(1024, 0), true);
-		editor_image_cant_click_lol_bro(.{U64 = .[0, xx game_target.resident]});
+		editor_image_cant_click_lol_bro(.{U64 = .[0, xx scratch_window.game_target.resident]});
 	}
 	
 	editor_row_end();

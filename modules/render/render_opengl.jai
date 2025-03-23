@@ -254,6 +254,9 @@ submit :: (delta : float, target : Framebuffer, screen_size : Vector2,
 	glBindFramebuffer(GL_FRAMEBUFFER, target.id);
 	
 	glViewport(0, 0, xx target.size.x, xx target.size.y);
+	
+	//print("vp : %\n", target.size);
+	
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClearColor(0.2, 0.2, 0.3, 1.0);
@@ -300,11 +303,16 @@ submit :: (delta : float, target : Framebuffer, screen_size : Vector2,
 				br.x = xx pass.scissor.min.x;
 				br.y = xx (target.size.y - pass.scissor.max.y);
 				
-				//glEnable(GL_SCISSOR_TEST);
+				//br = .{};
+				
+				glEnable(GL_SCISSOR_TEST);
 				
 				if size.x >= 0 && size.y >= 0 {
 					glScissor(xx br.x, xx br.y, xx size.x, xx size.y);
 				}
+				
+				//print("br: % size%\n", br, size);
+				
 				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
 				glUseProgram(shader);
 				
