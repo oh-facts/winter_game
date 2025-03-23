@@ -92,10 +92,6 @@ map_editor_lmb_held : bool;
 
 ed_initialized : bool;
 
-map_editor_window : *Editor_Window;
-entity_tree_window : *Editor_Window;
-dialogue_window : *Editor_Window;
-
 editor_tilemap : *Tilemap;
 
 editor_update :: (delta : float32, events : *os.EventList, 
@@ -103,10 +99,6 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	if !ed_initialized {
 		ed_initialized = true;
-		
-		map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{0, 64});
-		entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{800, 64});
-		dialogue_window = editor_init_window("dialogue window", .Dialog, .{400, 400}, .{300, 100});
 		
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		
@@ -174,12 +166,13 @@ editor_update :: (delta : float32, events : *os.EventList,
 	paint_layer = clamp(paint_layer, 0, 2);
 	
 	// world space coords -> tile pos
+	
 	tile_pos.x = xx ((mpos.x) / Tilemap.tile_size);
-	tile_pos.y = xx ((mpos.y) / Tilemap.tile_size);
+	tile_pos.y = xx ((mpos.y - 64) / Tilemap.tile_size);
 	
-	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos, Tilemap.rect);
+	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos - .{0, 64}, Tilemap.rect);
 	
-	if false {
+	if tilemap_in_focus {
 		
 		// collect input events
 		

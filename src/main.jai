@@ -66,7 +66,7 @@ update_camera :: () {
 	
 	// mouse coords -> world space coords
 	wmpos.x = mpos.x + camera.pos.x - camera.size.x / 2.;
-	wmpos.y = mpos.y + camera.pos.y - camera.size.y / 2.;
+	wmpos.y = mpos.y + camera.pos.y - camera.size.y / 2. - 64;
 }
 
 mpos : Vector2;
@@ -85,10 +85,15 @@ Mode :: enum {
 
 //current_mode : Mode = .Editor;
 //current_mode : Mode = .Game;
-current_mode : Mode = .Scratch;
+//current_mode : Mode = .Scratch;
+current_mode : Mode = .Home;
 
 arena : *Arena;
 win : os.Handle;
+game_ui_cxt : *UI_State;
+map_editor_window : *Editor_Window;
+entity_tree_window : *Editor_Window;
+dialogue_window : *Editor_Window;
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -114,6 +119,8 @@ main :: () {
 	quit : bool;
 	
 	ui_cxt := ui_init();
+	game_ui_cxt = ui_init();
+	
 	timer : float32;
 	
 	entity_store = entity_store_init();
@@ -122,6 +129,10 @@ main :: () {
 	load_entities(*entity_store);
 	load_tileworld(*tileworld);
 	scratch_window = editor_init_window("~~~~ The Sad Debugger 1 Million <3 ~~~~", .Draw_Titlebar | .Resizable);
+	
+	map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{0, 64});
+	entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{800, 64});
+	dialogue_window = editor_init_window("dialogue window", .Dialog, .{400, 400}, .{300, 100});
 	
 	while !quit {
 		timer += xx delta;
@@ -156,10 +167,19 @@ main :: () {
 		ui_layout(ui_cxt.root);
 		editor_window_update(scratch_window);
 		draw_children(*passes, ui_cxt.root);
-		if game_ui_cxt.root {
-			r.push_scissor(*passes, scratch_window.client_rect.dst);
-			draw_children(*passes, game_ui_cxt.root);
-			r.pop_scissor(*passes);
+		
+		
+		
+		if !scratch_window.resize_grabbed {
+			if game_ui_cxt.root {
+				ui_layout(game_ui_cxt.root);
+				editor_window_update(map_editor_window);
+				editor_window_update(entity_tree_window);
+				
+				r.push_scissor(*passes, scratch_window.client_rect.dst);
+				draw_children(*passes, game_ui_cxt.root);
+				r.pop_scissor(*passes);
+			}
 		}
 		//print("----\n");
 		

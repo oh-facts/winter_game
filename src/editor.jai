@@ -171,7 +171,15 @@ editor_in_focus :: (window : Editor_Window) -> bool {
 		return true;
 	}
 	
-	return point_in_rect(mpos, window.dst);
+	out = point_in_rect(mpos, window.dst);
+	
+	if !(window.flags & .Dialog) {
+		if point_in_rect(mpos - .{0, 32}, window.client_rect.dst) {
+			out = false;
+		}
+	}
+	
+	return out;
 }
 
 any_editor_in_focus :: () -> bool {
@@ -328,19 +336,18 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			
 			// maximize
 			if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+				
 				if !window.fullscreen {
 					window.pre_fullscreen_size = window.size;
-					window.fullscreen = true;
-					os.set_fullscreen(win, true);
 					window.size.x = 1920;
 					window.size.y = 1080;
-					window.win_target = r.framebuffer(window.size);
 				} else {
-					os.set_fullscreen(win, false);
-					window.fullscreen = false;
 					window.size = window.pre_fullscreen_size;
-					window.win_target = r.framebuffer(window.size);
 				}
+				window.fullscreen = !window.fullscreen;
+				os.set_fullscreen(win, window.fullscreen);
+				window.flags ^= .Resizable;
+				window.win_target = r.framebuffer(window.size);
 			}
 			
 			// close
@@ -410,7 +417,9 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 
 editor_window_update :: (window : *Editor_Window) {
 	
-	window.client_rect.scissor = window.client_rect.dst;
+	if window.client_rect {
+		window.client_rect.scissor = window.client_rect.dst;
+	}
 	
 	mmpos := os.get_global_mouse_pos(win);
 	
@@ -545,6 +554,8 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_impl(.Bg | .Text_Edit | .Text, id);
+	out.widget.bg_color = .{0.776, 0.776, 0.769, 1};
+	
 	out = ui_signal(out.widget);
 	
 	w := out.widget;
@@ -901,7 +912,7 @@ draw_children :: (passes : *r.Pass_List, root : *UI_Widget) {
 		// bar
 		{
 			dst := root.dst;
-			color := Vector4.{52. / 255, 70. / 255, 97. / 255, 1};
+			color := Vector4.{0.776, 0.776, 0.769, 1};
 			
 			if root.hot {
 				color *= 1.2;

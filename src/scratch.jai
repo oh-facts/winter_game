@@ -6,14 +6,12 @@ scratch_window : *Editor_Window;
 counter : u64;
 
 timer : float32;
-game_ui_cxt : *UI_State;
 
 scratch_update :: (delta : float32, events : *os.EventList,
 									 passes : *r.Pass_List) {
 	if !scratch_initialized {
 		scratch_initialized = true;
 		
-		game_ui_cxt = ui_init();
 	}
 	
 	timer += xx delta;
@@ -72,10 +70,6 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 			ui_begin(game_ui_cxt, events, editor_mpos);
 			editor_update(delta, events, *passes2);
-			ui_layout(game_ui_cxt.root);
-			editor_window_update(map_editor_window);
-			editor_window_update(entity_tree_window);
-			
 			ui_end();
 			
 			case .Scratch;
@@ -91,8 +85,14 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 		}
 		
-		if os.event(events, .TAB, .Pressed) {
-			current_mode = (current_mode + 1) % .COUNT;
+		tab_event := os.event(events, .TAB, .Pressed);
+		
+		if  tab_event {
+			if tab_event.shift_held {
+				current_mode = (current_mode - 1) % .COUNT;
+			} else {
+				current_mode = (current_mode + 1) % .COUNT;
+			}
 		}
 		
 		ui_push_size_x_node(ui_size_txt(1));
