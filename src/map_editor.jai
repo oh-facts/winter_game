@@ -529,9 +529,12 @@ map_editor_window_update :: (events : *os.EventList) {
 		ui_push_size_y_node(ui_size_px(24, 1));
 		
 		for 0 .. ME_Mode.Count - 1 {
+			
 			if me_mode == it {
-				ui_push_border_color_node(r.COLOR_ORANGE, true);
+				ui_push_flags_node(.Offset, true);
+				ui_push_remove_flags_node(.Shadow, true);
 			}
+			
 			text = tprint("%", it); 
 			if editor_button(text, xx it).active {
 				me_mode = it;
@@ -555,7 +558,8 @@ map_editor_window_update :: (events : *os.EventList) {
 				text = tprint("%", it.kind);
 				
 				if it_index == active_tool_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
+					ui_push_flags_node(.Offset, true);
+					ui_push_remove_flags_node(.Shadow, true);
 				}
 				
 				if editor_button(text, it_index).active {
@@ -578,7 +582,8 @@ map_editor_window_update :: (events : *os.EventList) {
 					text = tprint("%", it.name);
 					
 					if it_index == active_paint_index {
-						ui_push_border_color_node(r.COLOR_ORANGE, true);
+						ui_push_flags_node(.Offset, true);
+						ui_push_remove_flags_node(.Shadow, true);
 					}
 					
 					if editor_button(text, it_index).active {
@@ -604,7 +609,8 @@ map_editor_window_update :: (events : *os.EventList) {
 				text = tprint("%", it.kind);
 				
 				if it_index == active_entity_tool_index {
-					ui_push_border_color_node(r.COLOR_ORANGE, true);
+					ui_push_flags_node(.Offset, true);
+					ui_push_remove_flags_node(.Shadow, true);
 				}
 				
 				if editor_button(text, xx it_index).active {
@@ -629,7 +635,8 @@ map_editor_window_update :: (events : *os.EventList) {
 					text = tprint("%", it);
 					
 					if it == xx active_entity_index {
-						ui_push_border_color_node(r.COLOR_ORANGE, true);
+						ui_push_flags_node(.Offset, true);
+						ui_push_remove_flags_node(.Shadow, true);
 					}
 					
 					if editor_button(text, xx it).active {
@@ -700,7 +707,8 @@ entity_tree_window_update :: (events : *os.EventList) {
 			text := tprint("%", e.name);
 			
 			if selected_entity == e {
-				ui_push_border_color_node(r.COLOR_ORANGE, true);
+				ui_push_flags_node(.Offset, true);
+				ui_push_remove_flags_node(.Shadow, true);
 			}
 			
 			if editor_button(text, it).active {

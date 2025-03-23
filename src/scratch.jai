@@ -35,19 +35,16 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		passes2 : r.Pass_List;
 		r.push_scissor(*passes2, rectF32(0, 0, 1920, 1024));
 		
-		active_ids : [Mode.COUNT]UI_ID;
-		
 		for 0 .. Mode.COUNT - 1 {
 			text := tprint("%", it);
 			
 			if current_mode == it {
-				editor_active_button(text, active_ids[it]);
-			} else {
-				sig := editor_button(text, xx it);
-				if sig.active {
-					current_mode = it;
-				}
-				active_ids[it] = sig.widget.key;
+				ui_push_flags_node(.Offset, true);
+				ui_push_remove_flags_node(.Shadow, true);
+			}
+			
+			if editor_button(text, xx it).active {
+				current_mode = it;
 			}
 		}
 		

@@ -535,14 +535,6 @@ editor_button :: (text : string, index := 0, depth : *UI_ID = xx 0, loc := #call
 	return out;
 }
 
-editor_active_button :: (text : string, id : UI_ID) -> UI_Signal {
-	out := ui_widget_impl(.Text | .Clickable | .Offset, id);
-	out = ui_signal(out.widget);
-	
-	out.widget.text = text;
-	return out;
-}
-
 Action_Kind :: enum {
 	Null;
 	Insert;

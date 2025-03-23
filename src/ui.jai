@@ -281,7 +281,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.last_frame_touched_index = active_cxt().frame_index;
 		out.computed_size[0] = 0;
 		out.computed_size[1] = 0;
-		
+		out.flags = 0;
 		out.computed_pos[0] = 0;
 		out.computed_pos[1] = 0;
 		
@@ -330,6 +330,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.offset = active_cxt().offset_stack.top.v;
 		out.scissor = active_cxt().scissor_stack.top.v;
 		out.flags |= active_cxt().flags_stack.top.v;
+		out.flags &= ~active_cxt().remove_flags_stack.top.v;
 		out.text_padding = active_cxt().text_padding_stack.top.v;
 		out.text_align = active_cxt().text_align_stack.top.v;
 		out.hover_color = active_cxt().hover_color_stack.top.v;
@@ -657,6 +658,7 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	ui_push_size_node(ui_size_children_sum());
 	ui_push_scissor_node(.{});
 	ui_push_flags_node(0);
+	ui_push_remove_flags_node(0);
 	ui_push_text_padding_node(0);
 	ui_push_bg_color_node(.{0.678, 0.671, 0.631, 1});
 	ui_push_text_align_node(.Middle);
@@ -697,6 +699,7 @@ ui_end :: () {
 	ui_pop_size_node();
 	ui_pop_scissor_node();
 	ui_pop_flags_node();
+	ui_pop_remove_flags_node();
 	ui_pop_text_padding_node();
 	ui_pop_bg_color_node();
 	ui_pop_text_align_node();
