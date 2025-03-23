@@ -195,6 +195,7 @@ poll_events :: () -> EventList {
 	
 	while SDL_PollEvent(*sdl_event) {
 		if sdl_event.type == {
+			
 			case SDL_QUIT;
 			event := push_event(*out);
 			event.kind = .CloseRequested;
@@ -364,6 +365,8 @@ set_fullscreen :: (win : Handle, flag : bool) {
 
 minimize_window :: (win : Handle) {
 	sdl_win : *SDL_Window = xx win.U64[0];
+	
+	SDL_SetWindowBordered(sdl_win, SDL_TRUE);
 	SDL_MinimizeWindow(sdl_win);
 }
 

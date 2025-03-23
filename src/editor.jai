@@ -68,6 +68,10 @@ Editor_Panel :: struct {
 	pct : float;
 }
 
+Editor_Tab :: struct {
+	
+}
+
 Editor_Window :: struct {
 	arena : *Arena;
 	flags : Editor_Window_Flags;
