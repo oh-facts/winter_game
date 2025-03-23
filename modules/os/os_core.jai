@@ -352,10 +352,14 @@ get_global_mouse_pos :: (win : Handle) -> Vector2 {
 	return .{xx globalX, xx globalY};
 }
 
-set_fullscreen :: (win : Handle) {
+set_fullscreen :: (win : Handle, flag : bool) {
 	sdl_win : *SDL_Window = xx win.U64[0];
 	
-	SDL_SetWindowFullscreen(sdl_win, xx SDL_WINDOW_FULLSCREEN_DESKTOP);
+	if flag {
+		SDL_SetWindowFullscreen(sdl_win, xx SDL_WINDOW_FULLSCREEN_DESKTOP);
+	} else {
+		SDL_SetWindowFullscreen(sdl_win, 0);
+	}
 }
 
 minimize_window :: (win : Handle) {

@@ -72,6 +72,8 @@ Editor_Window :: struct {
 	arena : *Arena;
 	flags : Editor_Window_Flags;
 	
+	pre_fullscreen_size : Vector2;
+	
 	hide : bool;
 	events : *os.EventList;
 	
@@ -326,11 +328,19 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			
 			// maximize
 			if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
-				os.set_fullscreen(win);
-				window.size.x = 1920;
-				window.size.y = 1080;
-				window.win_target = r.framebuffer(scratch_window.size);
-				window.game_target = r.framebuffer(.{1920, 1024});
+				if !window.fullscreen {
+					window.pre_fullscreen_size = window.size;
+					window.fullscreen = true;
+					os.set_fullscreen(win, true);
+					window.size.x = 1920;
+					window.size.y = 1080;
+					window.win_target = r.framebuffer(window.size);
+				} else {
+					os.set_fullscreen(win, false);
+					window.fullscreen = false;
+					window.size = window.pre_fullscreen_size;
+					window.win_target = r.framebuffer(window.size);
+				}
 			}
 			
 			// close
