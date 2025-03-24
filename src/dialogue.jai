@@ -72,6 +72,27 @@ Anyways, I am sure you will be able to figure this out
 Good Luck!
 DONE
 
+Combat_Intro :: #string DONE
+A wild Pyschology Man has appeared!
+Are you willing to sacrifice your life?
+DONE
+
+Combat_Attack :: #string DONE
+The Protagonist attacks!
+His feeble punch misses.
+It wouldn't have done any damage if it hit
+DONE
+
+Enemy_Combat_Attack :: #string DONE
+Pyschology man morphs into your loved ones!
+...
+You love no one.
+...
+No one loves you.
+...
+Pyschology man morphs into nothing and dies!
+DONE
+
 /*
 I am writing game stuff here
 

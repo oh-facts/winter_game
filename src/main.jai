@@ -94,6 +94,7 @@ game_ui_cxt : *UI_State;
 map_editor_window : *Editor_Window;
 entity_tree_window : *Editor_Window;
 dialogue_window : *Editor_Window;
+combat_window : *Editor_Window;
 
 main :: () {
 	print("Do not enter is written on the doorway, why can't everyone just go away\n");
@@ -132,7 +133,8 @@ main :: () {
 	
 	map_editor_window = editor_init_window("map editor", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{0, 64});
 	entity_tree_window = editor_init_window("entity tree", .Draw_Titlebar | .Scrollable | .Resizable | .Dialog, .{800, 64});
-	dialogue_window = editor_init_window("dialogue window", .Dialog, .{400, 400}, .{300, 100});
+	dialogue_window = editor_init_window("dialogue window", .Dialog, .{400, 400}, .{600, 200});
+	combat_window = editor_init_window("combat window", .Dialog, .{0, 64}, .{600, 200});
 	
 	while !quit {
 		timer += xx delta;
@@ -168,13 +170,13 @@ main :: () {
 		editor_window_update(scratch_window);
 		draw_children(*passes, ui_cxt.root);
 		
-		
-		
 		if !scratch_window.resize_grabbed {
 			if game_ui_cxt.root {
 				ui_layout(game_ui_cxt.root);
 				editor_window_update(map_editor_window);
 				editor_window_update(entity_tree_window);
+				editor_window_update(dialogue_window);
+				editor_window_update(combat_window);
 				
 				r.push_scissor(*passes, scratch_window.client_rect.dst);
 				draw_children(*passes, game_ui_cxt.root);

@@ -60,13 +60,13 @@ void main()
 		center.y = 1 - center.y;
 		
 		float threshold = 0.25;
-		vec4 lightColor = vec4(1.0, 0, 1.0, 1.0);
+		vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 		
 		float edgeSoftness = 0.55;
 		float edgeBlur = 0.05;
 		
 		float distanceFromCenter = length(uv - center);
-		float ambient = 0.1;
+		float ambient = 0.3;
 		float brightness = smoothstep(threshold - edgeSoftness, threshold + edgeBlur, distanceFromCenter);
 		
 		FragColor += texture(sampler2D(draw_id), a_uv) * (1 + ambient - brightness) * 1.5 * lightColor;

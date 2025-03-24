@@ -46,6 +46,11 @@ World_Complete_Interaction_Cmd :: struct {
 	e : *Entity;
 }
 
+World_Battle_Start_Cmd :: struct {
+	header : World_Cmd_Header;
+	e : *Entity;
+}
+
 world_cmds : World_Cmd_Buffer;
 
 push_world_impl :: ($T : Type) -> *T {
@@ -76,6 +81,11 @@ push_world_start_interaction :: (e : *Entity) {
 
 push_world_complete_interaction :: (e : *Entity) {
 	data := push_world_impl(World_Complete_Interaction_Cmd);
+	data.e = e;
+}
+
+push_world_battle_start_interaction :: (e : *Entity) {
+	data := push_world_impl(World_Battle_Start_Cmd);
 	data.e = e;
 }
 
@@ -259,6 +269,9 @@ Entity :: struct {
 	editor_hover : bool;
 	
 	quest : *Quest;
+	
+	// how many tiles in each direction
+	hostile_range : float;
 };
 
 Color :: Vector4;
@@ -455,12 +468,104 @@ world_update :: (delta : float32, events : *os.EventList,
 		tick(events, passes, delta);
 		
 		case .Combat;
-		combat_stage(events, passes, delta);
+		combat_stage_update(events, passes, delta);
 	}
 }
 
-combat_stage :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
+Combat_Stage :: enum {
+	Intro;
+	Player_Turn;
+	Player_Turn_End;
+	Enemy_Turn;
+	Enemy_Turn_End;
+	Outro;
+}
+
+Combat_Move_Kind :: enum {
+	Attack;
+	Defend;
+	Item;
+	Count;
+}
+
+current_combat_stage : Combat_Stage = .Intro;
+player_combat_move : Combat_Move_Kind;
+combat_enemy : *Entity;
+
+combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
+	combat_window.size = scratch_window.client_rect.size;
+	combat_window.size.y -= 32;
+	
+	editor_window_begin(combat_window, events);
+	editor_push_file_id(.Simulation);
+	
+	ui_push_size_x_node(ui_size_pct(1, 0));
+	ui_push_size_y_node(ui_size_pct(0.666, 1));
+	
+	if current_combat_stage == {
+		case .Intro;
+		ui_push_text_align_node(.Left, true);
+		editor_label(Combat_Intro);
+		
+		if os.event(events, .E, .Pressed) {
+			current_combat_stage += 1;
+		}
+		
+		case .Player_Turn;
+		editor_image(r.get_white_square());
+		
+		ui_push_size_y_node(ui_size_pct(0.333, 1));
+		editor_row_begin();
+		ui_push_size_node(ui_size_pct(1, 0));
+		
+		for 0 .. Combat_Move_Kind.Count - 1 {
+			text := tprint("%", it);
+			if editor_button(text, xx it).active {
+				player_combat_move = it;
+				current_combat_stage += 1;
+			}
+		}
+		
+		ui_pop_size_node();
+		editor_row_end();
+		
+		ui_pop_size_y_node();
+		
+		case .Player_Turn_End;
+		ui_push_text_align_node(.Left, true);
+		editor_label(Combat_Attack);
+		
+		if os.event(events, .E, .Pressed) {
+			current_combat_stage += 1;
+		}
+		
+		case .Enemy_Turn;
+		editor_image(r.get_white_square(), color = r.COLOR_YELLOW);
+		
+		if os.event(events, .E, .Pressed) {
+			current_combat_stage += 1;
+		}
+		
+		case .Enemy_Turn_End;
+		ui_push_text_align_node(.Left, true);
+		editor_label(Enemy_Combat_Attack);
+		
+		if os.event(events, .E, .Pressed) {
+			current_combat_stage += 1;
+		}
+		
+		case .Outro;
+		stage = .Sim;
+		combat_enemy.flags &= ~.Hostile;
+		combat_enemy.flags &= ~.Dead;
+		
+	}
+	
+	ui_pop_size_y_node();
+	
+	editor_pop_file_id();
+	editor_window_end(combat_window);
 	
 }
 
@@ -657,6 +762,39 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			entity.anim_counter += xx delta;
 			entity.frame_n = (cast(s32)(entity.anim_counter * anim.speed)) % xx frame_x;
+		}
+	}
+	
+	// entity hostile
+	for 0 .. entity_store.count - 1 {
+		entity := entity_store.first + it;
+		if entity.flags & .Inactive continue;
+		
+		if entity.flags & .Hostile {
+			
+			// draw range, debug
+			dst : RectF32;
+			{
+				dst = tile_rect_from_index(xx ((entity.tile_pos.x)), xx ((entity.tile_pos.y)));
+				dst.min.x -= entity.hostile_range * Tilemap.tile_size;
+				dst.min.y -= entity.hostile_range * Tilemap.tile_size;
+				
+				dst.max.x += entity.hostile_range * Tilemap.tile_size;
+				dst.max.y += entity.hostile_range * Tilemap.tile_size;
+				
+				r.push_sprite(passes, dst, .{1, 1, 0, 0.4});
+			}
+			
+			{
+				
+				if point_in_rect(py.pos, dst) {
+					r.push_sprite(passes, dst, .{1, 1, 1, 0.4});
+					
+					push_world_battle_start_interaction(entity);
+					
+				}
+				
+			}
 		}
 	}
 	
@@ -865,6 +1003,12 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				cmd.e.interaction_state = .Hot;
 				
 				py.flags |= .Control;
+				
+				case World_Battle_Start_Cmd;
+				cmd : *World_Battle_Start_Cmd = xx base;
+				stage = .Combat;
+				combat_enemy = cmd.e;
+				//py.flags &= ~.Control;
 			}
 			
 			base += header.size;
@@ -904,10 +1048,11 @@ entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
 		e.color = r.COLOR_WHITE;
 		
 		case .Husk;
-		e.art_id = .Impolo;
-		e.flags |= .Chase_Entity;
+		e.art_id = .Tree;
+		e.flags |= .Hostile;
 		e.color = r.COLOR_BLACK;
 		e.submerged = 0.08;
+		e.hostile_range = 4;
 		
 		case .Aos;
 		e.art_id = .Aos;
@@ -1013,8 +1158,96 @@ draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass :
 	tex.scope_close(scope);
 }
 
+Entity_Save :: struct {
+	name : string;
+	kind : Entity_Kind;
+	pos : Vector2;
+}
+
 save_entities :: (es : Entity_Store) {
 	filename := tprint("%/%", data_folder, "entity_data");
+	save_arena := arena_init();
+	data := push_array(save_arena, u8, 0);
+	
+	count : *int = xx push_struct(save_arena, int);
+	
+	// entities
+	entities : *Entity_Save = xx push_array(save_arena, Entity_Save, 0);
+	
+	for 0 .. es.count - 1 {
+		src := es.first + it;
+		dst : *Entity_Save = push_struct(save_arena, Entity_Save);
+		
+		if src.flags & .Inactive then continue;
+		
+		<< count += 1;
+		
+		dst.kind = src.kind;
+		dst.pos = src.pos;
+	}
+	
+	for 0 .. es.count - 1 {
+		src := es.first + it;
+		dst := entities + it;
+		
+		if src.flags & .Inactive then continue;
+		
+		push_array(save_arena, u8, xx 0);
+		dst.name.data = xx (save_arena.used - ARENA_HEADER_SIZE);;
+		name : *u8 = push_array(save_arena, u8, xx src.name.count);
+		memcpy(name, src.name.data, src.name.count);
+		dst.name.count = src.name.count;
+		
+	}
+	
+	write_entire_file(filename, data, xx save_arena.used - ARENA_HEADER_SIZE);
+	
+	print("ended saving\n");
+}
+
+load_entities :: (es : *Entity_Store) {
+	filename := tprint("%/%", data_folder, "entity_data");
+	file_data := read_entire_file(filename);
+	
+	if file_data {
+		es.arena.used = ARENA_HEADER_SIZE;
+		es.first = push_array(es.arena, Entity, 0);
+		es.count = 0;
+		es.inactive_count = 0;
+		es.free = xx 0;
+		
+		array_reset_keeping_memory(*es.sort_list);
+		
+		head := file_data.data;
+		
+		count : int = << cast(*int) head;
+		head += size_of(int);
+		
+		entities : *Entity_Save = xx head;
+		head += size_of(Entity_Save) * count;
+		
+		es.first = push_array(es.arena, Entity, xx count);
+		
+		for 0 .. count - 1{
+			src := entities + it;
+			dst := es.first + it;
+			
+			entity_init_from_kind(dst, src.kind, src.pos);
+			
+			name := alloc_string(src.name.count);
+			offset : int = xx src.name.data;
+			memcpy(name.data, file_data.data + offset, src.name.count);
+			dst.name = name;
+		}
+		
+		es.count = count;
+		
+		free (file_data);
+	}
+}
+
+save_game_entities :: (es : Entity_Store) {
+	filename := tprint("%/%", data_folder, "entity_game_data");
 	
 	save_arena := arena_init();
 	data := push_array(save_arena, u8, 0);
@@ -1046,8 +1279,8 @@ save_entities :: (es : Entity_Store) {
 
 // TODO(mizu): I am thinking, this just creates a new one and returns and then you free the old one
 
-load_entities :: (es : *Entity_Store) {
-	filename := tprint("%/%", data_folder, "entity_data");
+load_game_entities :: (es : *Entity_Store) {
+	filename := tprint("%/%", data_folder, "entity_game_data");
 	
 	file_data := read_entire_file(filename);
 	

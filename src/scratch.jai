@@ -59,8 +59,6 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			case .Game;
 			ui_begin(game_ui_cxt, events, editor_mpos);
 			world_update(delta, events, *passes2);
-			ui_layout(game_ui_cxt.root);
-			
 			ui_end();
 			
 			case .Editor;
@@ -70,7 +68,6 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			ui_end();
 			
 			case .Scratch;
-			r.push_text(passes, font, "hi", .{100, 600}, 32);
 			
 			case .Profiler;
 			

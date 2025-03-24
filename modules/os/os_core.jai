@@ -357,6 +357,7 @@ set_fullscreen :: (win : Handle, flag : bool) {
 	sdl_win : *SDL_Window = xx win.U64[0];
 	
 	if flag {
+		//SDL_MaximizeWindow(sdl_win);
 		SDL_SetWindowFullscreen(sdl_win, xx SDL_WINDOW_FULLSCREEN_DESKTOP);
 	} else {
 		SDL_SetWindowFullscreen(sdl_win, 0);

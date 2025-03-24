@@ -69,7 +69,7 @@ Editor_Panel :: struct {
 }
 
 Editor_Tab :: struct {
-	
+	kind : Mode;
 }
 
 Editor_Window :: struct {
@@ -77,6 +77,8 @@ Editor_Window :: struct {
 	flags : Editor_Window_Flags;
 	
 	pre_fullscreen_size : Vector2;
+	
+	tabs : [Mode.COUNT]Editor_Tab;
 	
 	hide : bool;
 	events : *os.EventList;

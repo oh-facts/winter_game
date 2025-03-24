@@ -91,6 +91,7 @@ active_tilemap_index : Vector2i;
 map_editor_lmb_held : bool;
 
 ed_initialized : bool;
+entity_filter : [Entity_Kind.Count]bool;
 
 editor_tilemap : *Tilemap;
 
@@ -99,7 +100,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 	
 	if !ed_initialized {
 		ed_initialized = true;
-		
+		entity_filter[xx Entity_Kind.Tree] = true;
 		//editor_set_window_pos(map_editor_window, .{800, 0});
 		
 		//active_tilemap_index = Vector2i.{0, 10};
@@ -693,10 +694,33 @@ entity_tree_window_update :: (events : *os.EventList) {
 		ui_push_size_y_node(ui_size_px(24, 1));
 		ui_push_text_align_node(.Left);
 		
+		ui_push_size_y_node(ui_size_px(32, 1), true);
+		ui_push_size_x_node(ui_size_pct(1), true);
+		editor_row_begin();
+		ui_push_size_node(ui_size_pct(1, 0));
+		for 0 .. Entity_Kind.Count - 1 {
+			text := tprint("%", xx it);
+			
+			if entity_filter[xx it] {
+				ui_push_flags_node(.Offset, true);
+				ui_push_remove_flags_node(.Shadow, true);
+			}
+			
+			if editor_button(text, xx it).active {
+				entity_filter[xx it] = !entity_filter[xx it];
+			}
+		}
+		ui_pop_size_node();
+		editor_row_end();
+		
 		for 0 .. entity_store.count - 1 {
 			e := entity_store.first + it;
 			
 			if e.flags & .Inactive {
+				continue;
+			}
+			
+			if entity_filter[xx e.kind] {
 				continue;
 			}
 			
@@ -724,6 +748,11 @@ entity_tree_window_update :: (events : *os.EventList) {
 			text = tprint("reset\n");
 			if editor_button(text, it).active {
 				entity_init_from_kind(e, e.kind, e.pos);
+			}
+			
+			text = tprint("delete\n");
+			if editor_button(text, it).active {
+				entity_free(*entity_store, e);
 			}
 			
 			editor_row_end();
