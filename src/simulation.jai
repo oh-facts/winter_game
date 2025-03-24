@@ -1,3 +1,5 @@
+// TODO(mizu): Work on panels and get rid of all todos. For real for real, clean everything up.
+
 // main editor window
 // option to edit levels
 // option to play scenes
@@ -1008,6 +1010,11 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 				cmd : *World_Battle_Start_Cmd = xx base;
 				stage = .Combat;
 				combat_enemy = cmd.e;
+				cam_wheld = false;
+				cam_aheld = false;
+				cam_sheld = false;
+				cam_dheld = false;
+				
 				//py.flags &= ~.Control;
 			}
 			
