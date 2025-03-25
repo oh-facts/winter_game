@@ -10,8 +10,6 @@
 
 // Need to do serious refactor at some point
 
-
-
 text_size := 1.;
 
 ME_Mode :: enum {

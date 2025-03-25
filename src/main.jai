@@ -84,9 +84,9 @@ Mode :: enum {
 }
 
 //current_mode : Mode = .Editor;
-//current_mode : Mode = .Game;
+current_mode : Mode = .Game;
 //current_mode : Mode = .Scratch;
-current_mode : Mode = .Home;
+//current_mode : Mode = .Home;
 
 arena : *Arena;
 win : os.Handle;

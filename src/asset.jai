@@ -19,6 +19,8 @@ ArtId :: enum {
 	Editor_Window_Notch;
 	Aos;
 	Editor_Home_Bg;
+	Psy_Man_Dead;
+	Psy_Man;
 	COUNT;
 }
 
@@ -31,7 +33,7 @@ Art :: struct {
 	origin : Vector2;
 }
 
-arts : [16]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
+arts : [18]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .TerrainGrass, path = "art/terrain_grass2.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
 									 .{id = .TilesForest, path = "art/forest_tileset.png"},
@@ -46,7 +48,9 @@ arts : [16]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Fat, path = "art/fat/1.png"},
 									 .{id = .Editor_Window_Notch, path = "editor/window_notch.png"},
 									 .{id = .Aos, path = "art/aos.png"},
-									 .{id = .Editor_Home_Bg, path = "editor/home.png"}];
+									 .{id = .Editor_Home_Bg, path = "editor/home.png"}, 
+									 .{id = .Psy_Man_Dead, path = "art/psy_man_dead.png"},
+									 .{id = .Psy_Man, path = "art/psy_man.png"}];
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
@@ -87,11 +91,22 @@ load_all_assets :: () {
 			case .Impolo_East;
 			it.frame_x = 8;
 			it.frame_y = 1;
+			it.origin = .{64, 96};
 			
 			case .Aos;
 			it.frame_x = 2;
 			it.frame_y = 1;
 			it.origin = .{65, 110};
+			
+			case .Psy_Man_Dead;
+			it.frame_x = 1;
+			it.frame_y = 1;
+			it.origin = .{90, 110};
+			
+			case .Psy_Man;
+			it.frame_x = 1;
+			it.frame_y = 1;
+			it.origin = .{32, 110};
 		}
 		
 	}

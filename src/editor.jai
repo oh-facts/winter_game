@@ -15,6 +15,22 @@
 // window is fine. Winter_Window maybe?
 // 
 
+// TODO(mizu): Do panels first, then do tabs. Make floating panels instead of floating tabs.
+
+// For combat I am thinking, first it opens with tthe tree mortphing into psyvhologoy man.
+
+// Maybe the window changes with every turn?
+
+// So when its player's turn, you see him
+
+// when you do the attack, you see him do the attack
+
+// during enemy turn, you see the enemy 
+
+// after every and during every attack, you see the reactions on people's faces?
+
+// "I am sorry, demons can't go to heaven. I can kill him for you if you want. But I will do it later because I am tired. Still, I wouldnt worry because I sense nothing can hurt you."
+
 editor_windows : [5]Editor_Window;
 editor_windows_count : s32;
 
@@ -68,8 +84,15 @@ Editor_Panel :: struct {
 	pct : float;
 }
 
+Editor_Tab_Flags :: enum {
+	Menu_Tab;
+}
+
 Editor_Tab :: struct {
 	kind : Mode;
+	flags : Editor_Tab_Flags;
+	pos : Vector2;
+	size : Vector2;
 }
 
 Editor_Window :: struct {

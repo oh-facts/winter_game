@@ -104,7 +104,7 @@ Entity_Kind :: enum {
 	Player;
 	Tree;
 	Siren;
-	Husk;
+	Psy;
 	Ball;
 	Tower;
 	Aos;
@@ -132,6 +132,7 @@ Interaction_State :: enum {
 Animation_State :: enum {
 	Idle;
 	Move;
+	Dead;
 }
 
 Animation :: struct {
@@ -368,7 +369,6 @@ register_animation :: (as : *Animation_Store, art_id : ArtId, state : Animation_
 		slot.last.next = node;
 		slot.last = node;
 	}
-	
 }
 
 get_animation :: (as : *Animation_Store, state : Animation_State, kind : Entity_Kind) -> Animation {
@@ -398,6 +398,8 @@ animation_store_init :: () -> Animation_Store {
 	
 	register_animation(*out, .Impolo, .Idle, .Player);
 	register_animation(*out, .Impolo_East, .Move, .Player, 7);
+	register_animation(*out, .Psy_Man_Dead, .Dead, .Psy);
+	register_animation(*out, .Psy_Man, .Idle, .Psy);
 	
 	return out;
 }
@@ -562,6 +564,10 @@ combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : f
 		combat_enemy.flags &= ~.Hostile;
 		combat_enemy.flags &= ~.Dead;
 		
+		anim := get_animation(*anim_store, combat_enemy.anim_state, combat_enemy.kind);
+		
+		combat_enemy.flags |= .Animated;
+		combat_enemy.anim_state = .Dead;
 	}
 	
 	ui_pop_size_y_node();
@@ -1054,7 +1060,7 @@ entity_init_from_kind :: (e : *Entity, kind : Entity_Kind, pos : Vector2) {
 		e.submerged = 0.08;
 		e.color = r.COLOR_WHITE;
 		
-		case .Husk;
+		case .Psy;
 		e.art_id = .Tree;
 		e.flags |= .Hostile;
 		e.color = r.COLOR_BLACK;
@@ -1103,13 +1109,12 @@ draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass :
 	
 	for sort_list {
 		
-		origin := arts[it.art_id].origin;
-		
 		art_id : int;
+		origin := arts[it.art_id].origin;
 		
 		if it.flags & .Animated {
 			anim := get_animation(*anim_store, it.anim_state, it.kind);
-			
+			origin = arts[anim.art_id].origin;
 			art_id = xx anim.art_id;
 		} else {
 			art_id = xx it.art_id;
