@@ -335,12 +335,9 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		ui_push_size_y_node(ui_size_pct(1, 0));
 		ui_push_hover_color_node(r.COLOR_BLACK);
 		
-		scope := tex.scope_open();
-		
 		ui_push_size_node(ui_size_px(32, 1), true);
-		hide_img := tex.handle_from_hash(scope, arts[ArtId.Editor_Titlebar].hash, .Linear);
 		
-		if editor_image(hide_img, .{.{0, 0}, .{0.25, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+		if editor_image(editor_titlebar_art, .{.{0, 0}, .{0.25, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 			window.hide = !window.hide;
 		}
 		
@@ -359,12 +356,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		if !(window.flags & .Dialog) {
 			// minimize
 			ui_push_size_node(ui_size_px(32, 1));
-			if editor_image(hide_img, .{.{0.25, 0}, .{0.5, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			if editor_image(editor_titlebar_art, .{.{0.25, 0}, .{0.5, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 				os.minimize_window(win);
 			}
 			
 			// maximize
-			if editor_image(hide_img, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			if editor_image(editor_titlebar_art, .{.{0.5, 0}, .{0.75, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 				
 				if !window.fullscreen {
 					window.pre_fullscreen_size = window.size;
@@ -380,13 +377,11 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			}
 			
 			// close
-			if editor_image(hide_img, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
+			if editor_image(editor_titlebar_art, .{.{0.75, 0}, .{1, 1}}, .{0.459, 0.439, 0.402, 1}).active {
 				window.close_requested = true;
 			}
 			ui_pop_size_node();
 		}
-		
-		tex.scope_close(scope);
 		
 		ui_pop_hover_color_node();
 		

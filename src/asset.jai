@@ -14,11 +14,8 @@ ArtId :: enum {
 	Tree;
 	Ball;
 	Siren;
-	Editor_Titlebar;
 	Fat;
-	Editor_Window_Notch;
 	Aos;
-	Editor_Home_Bg;
 	Psy_Man_Dead;
 	Psy_Man;
 	COUNT;
@@ -37,6 +34,48 @@ Art :: struct {
 	hash : u128;
 }
 
+arts : []Art;
+editor_titlebar_art : r.Handle;
+editor_home_art : r.Handle;
+editor_data_folder : string;
+
+load_editor_assets :: () {
+	
+	load_editor_asset :: (path : string) -> r.Handle {
+		filename := tprint("%/%", editor_data_folder, path);
+		data := read_entire_file(filename);
+		bmp := bitmap(data);
+		
+		out := r.image(bmp, .Linear);
+		
+		bitmap_free(*bmp);
+		free(data);
+		
+		return out;
+	}
+	
+	base_path := path_strip_filename(get_path_of_running_executable());
+	data_folder = join(base_path, "../data");
+	editor_data_folder = join(base_path, "../data/editor");
+	
+	editor_titlebar_art = load_editor_asset("titlebar.png");
+	editor_home_art = load_editor_asset("home.png");
+}
+
+load_font :: () {
+	filename := tprint("%/%", data_folder, "fonts/font.data");
+	data := read_entire_file(filename);
+	font = xx data.data;
+	filename = tprint("%/%", data_folder, "fonts/font.png");
+	
+	temp_file_data := read_entire_file(filename);
+	defer free(temp_file_data);
+	
+	font.bmp = bitmap(temp_file_data);
+	font.img = r.image(font.bmp, .Linear);
+}
+
+/*
 arts : [18]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .TerrainGrass, path = "art/terrain_grass2.png"},
 									 .{id = .PropsForest, path = "art/forest_props.png"},
@@ -55,6 +94,7 @@ arts : [18]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
 									 .{id = .Editor_Home_Bg, path = "editor/home.png"}, 
 									 .{id = .Psy_Man_Dead, path = "art/psy_man_dead.png"},
 									 .{id = .Psy_Man, path = "art/psy_man.png"}];
+*/
 
 load_all_assets :: () {
 	base_path := path_strip_filename(get_path_of_running_executable());
@@ -113,20 +153,6 @@ load_all_assets :: () {
 			it.origin = .{32, 110};
 		}
 		
-	}
-	
-	// load font
-	{
-		filename := tprint("%/%", data_folder, "fonts/font.data");
-		data := read_entire_file(filename);
-		font = xx data.data;
-		filename = tprint("%/%", data_folder, "fonts/font.png");
-		
-		temp_file_data := read_entire_file(filename);
-		defer free(temp_file_data);
-		
-		font.bmp = bitmap(temp_file_data);
-		font.img = r.image(font.bmp, .Linear);
 	}
 }
 

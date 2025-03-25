@@ -159,9 +159,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		
 		ui_push_size_x_node(ui_size_px(960, 0), true);
 		ui_push_size_y_node(ui_size_px(540, 0), true);
-		hide_img := tex.handle_from_hash(scope, arts[ArtId.Editor_Home_Bg].hash, .Linear);
-		
-		editor_image(hide_img);
+		editor_image(editor_home_art);
 		tex.scope_close(scope);
 	}
 	

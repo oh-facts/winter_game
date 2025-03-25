@@ -118,7 +118,9 @@ main :: () {
 	
 	arena = arena_init(ARENA_COMMIT_SIZE, MB(128));
 	
-	load_all_assets();
+	//load_all_assets();
+	load_editor_assets();
+	load_font();
 	quit : bool;
 	
 	ui_cxt := ui_init();
