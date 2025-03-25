@@ -24,13 +24,17 @@ ArtId :: enum {
 	COUNT;
 }
 
-Art :: struct {
+Art_Save :: struct {
 	id : ArtId;
 	frame_x : int;
 	frame_y : int;
-	hash : u128;
 	path : string;
 	origin : Vector2;
+}
+
+Art :: struct {
+	using base : Art_Save;
+	hash : u128;
 }
 
 arts : [18]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
@@ -124,4 +128,12 @@ load_all_assets :: () {
 		font.bmp = bitmap(temp_file_data);
 		font.img = r.image(font.bmp, .Linear);
 	}
+}
+
+save_assets :: () {
+	
+}
+
+load_assets :: () {
+	
 }

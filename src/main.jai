@@ -80,13 +80,15 @@ Mode :: enum {
 	Game;
 	Scratch;
 	Profiler;
+	Asset;
 	COUNT;
 }
 
 //current_mode : Mode = .Editor;
-current_mode : Mode = .Game;
+//current_mode : Mode = .Game;
 //current_mode : Mode = .Scratch;
 //current_mode : Mode = .Home;
+current_mode : Mode = .Asset;
 
 arena : *Arena;
 win : os.Handle;

@@ -4,6 +4,7 @@ scratch_initialized : bool;
 scratch_window : *Editor_Window;
 
 counter : u64;
+current_art : ArtId;
 
 timer : float32;
 
@@ -77,6 +78,8 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			editor_label(text);
 			ui_pop_size_x_node();
 			
+			case .Asset;
+			
 		}
 		
 		tab_event := os.event(events, .TAB, .Pressed);
@@ -101,7 +104,54 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		
 		r.submit(timer, scratch_window.game_target, .{1920, 1024}, passes2, camera.pos);
 		r.pop_scissor(*passes2);
+		
 		editor_row_end();
+		
+		if current_mode == {
+			case .Asset;
+			
+			ui_push_size_x_node(ui_size_pct(1, 0), true);
+			ui_push_size_y_node(ui_size_children_sum(1), true);
+			editor_row_begin();
+			
+			ui_push_size_x_node(ui_size_txt(1));
+			ui_push_size_y_node(ui_size_px(32, 1));
+			
+			for 0 .. ArtId.COUNT - 1 {
+				if current_art == it {
+					ui_push_flags_node(.Offset, true);
+					ui_push_remove_flags_node(.Shadow, true);
+				}
+				
+				text := tprint("  %  ", it);
+				if editor_button(text, xx it).active {
+					current_art = it;
+				}
+			}
+			editor_row_end();
+			
+			ui_push_size_node(ui_size_pct(1, 0), true);
+			editor_col_begin();
+			
+			text := tprint(" Save ");
+			if editor_button(text).active {
+				save_assets();
+			}
+			text = tprint(" Load ");
+			if editor_button(text).active {
+				load_assets();
+			}
+			editor_row_end();
+			
+			ui_pop_size_node();
+			// save / load
+			// draw the art
+			// path
+			// other art related data
+			// "save this"
+			
+			
+		}
 	}
 	
 	if current_mode == .Home {
