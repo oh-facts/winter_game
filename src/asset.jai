@@ -22,7 +22,6 @@ ArtId :: enum {
 }
 
 Art_Save :: struct {
-	id : ArtId;
 	frame_x : int;
 	frame_y : int;
 	path : string;
@@ -34,10 +33,12 @@ Art :: struct {
 	hash : u128;
 }
 
-arts : []Art;
+arts : [ArtId.COUNT]Art;
+
 editor_titlebar_art : r.Handle;
 editor_home_art : r.Handle;
 editor_data_folder : string;
+art_folder : string;
 
 load_editor_assets :: () {
 	
@@ -53,10 +54,6 @@ load_editor_assets :: () {
 		
 		return out;
 	}
-	
-	base_path := path_strip_filename(get_path_of_running_executable());
-	data_folder = join(base_path, "../data");
-	editor_data_folder = join(base_path, "../data/editor");
 	
 	editor_titlebar_art = load_editor_asset("titlebar.png");
 	editor_home_art = load_editor_asset("home.png");
@@ -106,8 +103,9 @@ load_all_assets :: () {
 		
 		data := read_entire_file(filename);
 		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
+		kind : ArtId = xx it_index;
 		
-		if it.id == {
+		if kind == {
 			case .Impolo;
 			it.frame_x = 1;
 			it.frame_y = 1;
@@ -157,9 +155,96 @@ load_all_assets :: () {
 }
 
 save_assets :: () {
+	path := tprint("%/art.data", data_folder);
 	
+	save_arena := arena_init();
+	data := push_array(save_arena, u8, 0);
+	
+	count : *int = xx push_struct(save_arena, int);
+	<< count = xx ArtId.COUNT;
+	// arts
+	art_saves : *Art_Save = xx push_array(save_arena, Art_Save, xx ArtId.COUNT);
+	
+	for arts {
+		src := it;
+		dst := art_saves + it_index;
+		<< dst = src.base;
+	}
+	
+	for arts {
+		src := it;
+		dst := art_saves + it_index;
+		
+		push_array(save_arena, u8, xx 0);
+		
+		dst.path.data = xx (save_arena.used - ARENA_HEADER_SIZE);
+		
+		name : *u8 = push_array(save_arena, u8, xx src.path.count);
+		
+		memcpy(name, src.path.data, src.path.count);
+		dst.path.count = src.path.count;
+	}
+	
+	write_entire_file(path, data, xx save_arena.used - ARENA_HEADER_SIZE);
 }
 
 load_assets :: () {
+	path := tprint("%/art.data", data_folder);
+	file_data := read_entire_file(path);
 	
+	if file_data {
+		head := file_data.data;
+		
+		count : int = << cast(*int) head;
+		head += size_of(int);
+		
+		art_saves : *Art_Save = xx head;
+		head += size_of(Art_Save) * count;
+		
+		for 0 .. count - 1{
+			src := art_saves + it;
+			dst := *arts[it];
+			
+			name := alloc_string(src.path.count);
+			offset : int = xx src.path.data;
+			
+			dst.base = src;
+			
+			memcpy(name.data, file_data.data + offset, src.path.count);
+			dst.path = name;
+		}
+	}
+	
+	free(file_data);
+}
+
+load_data :: () {
+	base_path := path_strip_filename(get_path_of_running_executable());
+	data_folder = join(base_path, "../data");
+	art_folder = join(data_folder, "/art");
+	editor_data_folder = join(data_folder, "/editor");
+	
+	/*
+		files := file_list(art_folder);
+		//print("%", files);
+		
+		art_count : int;
+		
+		for files {
+			ext := path_extension(it);
+			
+			if ext == {
+				case "png"; #through;
+				case "jpg"; #through;
+				case "jpeg";
+				
+				data := read_entire_file(it);
+				
+				arts[art_count].hash =  tex.hash_from_key_data(it, .{.[xx art_count]}, data);
+				
+				art_count += 1;
+			}
+		}
+		ooogoegegeege :int;
+	*/
 }

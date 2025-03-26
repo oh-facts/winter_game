@@ -1205,7 +1205,7 @@ save_entities :: (es : Entity_Store) {
 		if src.flags & .Inactive then continue;
 		
 		push_array(save_arena, u8, xx 0);
-		dst.name.data = xx (save_arena.used - ARENA_HEADER_SIZE);;
+		dst.name.data = xx (save_arena.used - ARENA_HEADER_SIZE);
 		name : *u8 = push_array(save_arena, u8, xx src.name.count);
 		memcpy(name, src.name.data, src.name.count);
 		dst.name.count = src.name.count;

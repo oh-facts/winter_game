@@ -4,7 +4,7 @@ scratch_initialized : bool;
 scratch_window : *Editor_Window;
 
 counter : u64;
-current_art : ArtId;
+current_art : *Art;
 
 timer : float32;
 
@@ -118,20 +118,29 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			ui_push_size_y_node(ui_size_px(32, 1));
 			
 			for 0 .. ArtId.COUNT - 1 {
-				if current_art == it {
+				
+				art := *arts[xx it];
+				
+				if current_art == art {
 					ui_push_flags_node(.Offset, true);
 					ui_push_remove_flags_node(.Shadow, true);
 				}
 				
 				text := tprint("  %  ", it);
 				if editor_button(text, xx it).active {
-					current_art = it;
+					current_art = art;
 				}
 			}
 			editor_row_end();
 			
 			ui_push_size_node(ui_size_pct(1, 0), true);
 			editor_col_begin();
+			
+			{
+				if current_art {
+					editor_struct_edit(current_art.base);
+				}
+			}
 			
 			text := tprint(" Save ");
 			if editor_button(text).active {
@@ -141,8 +150,10 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			if editor_button(text).active {
 				load_assets();
 			}
+			
 			editor_row_end();
 			
+			// for button
 			ui_pop_size_node();
 			// save / load
 			// draw the art

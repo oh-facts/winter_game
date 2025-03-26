@@ -10,13 +10,12 @@
 
 // TODO(mizu): take it one at a time, just make sure it works. Maybe start with toggle fullscreen. Then making render submit take a target size. Then work on scissoring and mouse co ords -> ui coords
 
-
-
 #import "Basic";
 #import "System";
 #import "String";
 #import "Math";
 #import "File";
+#import "File_Utilities";
 #import "IntroSort";
 #import "Random";
 #import "Thread";
@@ -119,6 +118,7 @@ main :: () {
 	arena = arena_init(ARENA_COMMIT_SIZE, MB(128));
 	
 	//load_all_assets();
+	load_data();
 	load_editor_assets();
 	load_font();
 	quit : bool;

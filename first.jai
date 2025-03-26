@@ -294,9 +294,9 @@ init_font :: (path : string, font_size : u32) -> r.Font {
 	FT_Done_FreeType(library);
 	
 	out.data = talloc(out.w * out.h * out.n); 
+	//src_row := temp_buffer + out.w * (out.h - 1);
 	
 	dest_row :*u8= out.data;
-	//src_row := temp_buffer + out.w * (out.h - 1);
 	src_row := temp_buffer + out.w * (out.h - 1);
 	
 	for y : 0 .. out.h - 1 {
