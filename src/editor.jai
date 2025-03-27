@@ -910,11 +910,7 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 	id := widget_key(index, depth, loc);
 	
 	ui_push_size_x_node(ui_size_px(164, 1), true);
-	ui_push_size_y_node(ui_size_children_sum(), true);
-	editor_col_begin();
-	
-	ui_push_size_x_node(ui_size_pct(1));
-	
+	ui_push_size_y_node(ui_size_px(24), true);
 	out := ui_widget_impl(.Clickable | .Text, id);
 	out = ui_signal(out.widget);
 	
@@ -922,6 +918,13 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 	out.widget.text = right;
 	
 	if out.toggle {
+		
+		ui_push_size_y_node(ui_size_px(128), true);
+		ui_push_size_x_node(ui_size_px(164), true);
+		editor_col_begin();
+		
+		row_parent := active_cxt().parent_stack.top.v;
+		row_parent.flags |= .FloatingY;
 		
 		for files {
 			
@@ -942,11 +945,8 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 			}
 		}
 		
-		//ui_pop_parent_node();
-		
+		editor_row_end();
 	}
-	ui_pop_size_x_node();
-	editor_row_end();
 	
 	return out;
 }
