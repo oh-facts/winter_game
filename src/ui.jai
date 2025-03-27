@@ -568,8 +568,10 @@ ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 		
 		while cur {
 			if cur.pref_size[axis].kind == .PercentOfParent {
-				cur.computed_size[axis] = root.computed_size[axis] * cur.pref_size[axis].val
+				cur.computed_size[axis] = root.computed_size[axis] * cur.pref_size[axis].value;
 			}
+			
+			cur = cur.next;
 		}
 		
 	}
