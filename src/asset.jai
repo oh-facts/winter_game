@@ -21,10 +21,14 @@ ArtId :: enum {
 	COUNT;
 }
 
+Pather :: struct {
+	path : string;
+} 
+
 Art_Save :: struct {
 	frame_x : int;
 	frame_y : int;
-	path : string;
+	using pather : Pather;
 	origin : Vector2;
 }
 
@@ -224,27 +228,4 @@ load_data :: () {
 	art_folder = join(data_folder, "/art");
 	editor_data_folder = join(data_folder, "/editor");
 	
-	/*
-		files := file_list(art_folder);
-		//print("%", files);
-		
-		art_count : int;
-		
-		for files {
-			ext := path_extension(it);
-			
-			if ext == {
-				case "png"; #through;
-				case "jpg"; #through;
-				case "jpeg";
-				
-				data := read_entire_file(it);
-				
-				arts[art_count].hash =  tex.hash_from_key_data(it, .{.[xx art_count]}, data);
-				
-				art_count += 1;
-			}
-		}
-		ooogoegegeege :int;
-	*/
 }

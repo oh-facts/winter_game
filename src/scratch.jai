@@ -5,6 +5,7 @@ scratch_window : *Editor_Window;
 
 counter : u64;
 current_art : *Art;
+files : []string;
 
 timer : float32;
 
@@ -13,6 +14,29 @@ scratch_update :: (delta : float32, events : *os.EventList,
 	if !scratch_initialized {
 		scratch_initialized = true;
 		
+		files = file_list(art_folder);
+		/*
+		//print("%", files);
+		
+		art_count : int;
+		
+		for files {
+			ext := path_extension(it);
+			
+			if ext == {
+				case "png"; #through;
+				case "jpg"; #through;
+				case "jpeg";
+				
+				data := read_entire_file(it);
+				
+				arts[art_count].hash =  tex.hash_from_key_data(it, .{.[xx art_count]}, data);
+				
+				art_count += 1;
+			}
+		}*/
+		
+		//ooogoegegeege :int;
 	}
 	
 	timer += xx delta;
@@ -138,7 +162,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 			{
 				if current_art {
-					editor_struct_edit(current_art.base);
+					editor_struct_edit(current_art.base, xx 0, xx current_art);
 				}
 			}
 			

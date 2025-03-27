@@ -773,7 +773,7 @@ editor_spacer :: (size : UI_Size, index := 0, depth : *UI_ID = xx 0, loc := #cal
 // Depth isnt nearly enough. Member was stupid. Its basically array index lol. I am thinking instead of depth, I do recursion parent?
 // here's another hit, barry bonds??
 
-editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
+editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0, index : int = 0) {
 	text : string;
 	
 	ui_push_size_node(ui_size_children_sum(1), true);
@@ -860,6 +860,20 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 				
 				if m_tis == type_info(Color) {
 					editor_color_picker(0, *label_sig.widget.key);
+				} else if m_tis == xx type_info(Pather) {
+					action : Action_Kind;
+					pather_var := cast(*Pather) data;
+					
+					sig := editor_filepath_picker(pather_var, *action, index, *label_sig.widget.key);
+					if action == {
+						case .Insert;
+						
+						free(pather_var.path);
+						
+						pather_var.path = copy_string(files[sig.widget.file_index]);
+						//<< string_var = ;
+						
+					}
 				} else {
 					
 					address := (cast(*u8) any.value_pointer) + member.offset_in_bytes;
@@ -889,6 +903,58 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0) {
 	}
 	
 	editor_row_end();
+}
+
+editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
+													 depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+	id := widget_key(index, depth, loc);
+	
+	ui_push_size_node(ui_size_children_sum(), true);
+	editor_col_begin();
+	ui_push_size_x_node(ui_size_txt());
+	
+	out := ui_widget_impl(.Clickable | .Text, id);
+	out = ui_signal(out.widget);
+	
+	//out := editor_button("");
+	
+	if pather.path.count == 0 {
+		out.widget.text = "bleh bleh bleh";
+	} else {
+		out.widget.text = pather.path;
+	}
+	
+	if out.toggle {
+		
+		id := widget_key(index, depth, loc);
+		
+		//out := ui_widget_impl(UI_Floating, id);
+		
+		//ui_push_size_y_node(ui_size_px(64), true);
+		//ui_push_parent_node(out.widget);
+		
+		for files {
+			
+			ext := path_extension(it);
+			
+			if ext == {
+				case "png"; #through;
+				case "jpg"; #through;
+				case "jpeg";
+				if editor_button(it, it_index, depth).active {
+					out.widget.file_index = it_index;
+					<< action = .Insert;
+				}
+			}
+		}
+		
+		//ui_pop_parent_node();
+		
+	}
+	ui_pop_size_x_node();
+	editor_row_end();
+	
+	return out;
 }
 
 editor_color_picker :: (index := 0,

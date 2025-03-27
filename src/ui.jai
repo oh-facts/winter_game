@@ -139,6 +139,10 @@ UI_Widget :: struct {
 	
 	// text edit
 	text_edit_pos : int;
+	
+	// file index
+	file_index : int;
+	
 	// =========================
 	
 	// calculated during hierearchy pass
