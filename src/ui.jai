@@ -65,6 +65,8 @@ UI_Flags :: enum_flags u32 {
 	Color_Picker;
 	Shadow;
 	Offset;
+	OverflowX;
+	OverflowY;
 }
 
 UI_Floating :: UI_Flags.FloatingX | UI_Flags.FloatingY;
@@ -482,7 +484,7 @@ ui_layout_downward_dependent :: (root : *UI_Widget, axis : UI_Axis) {
 
 ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 	
-	if axis != root.child_layout_axis {
+	if axis != root.child_layout_axis && !(root.flags & (UI_Flags.OverflowX << axis)){
 		allowed_size := root.computed_size[axis];
 		
 		child := root.first;
@@ -502,7 +504,7 @@ ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 		}
 	}
 	
-	if axis == root.child_layout_axis {
+	if axis == root.child_layout_axis && !(root.flags & (UI_Flags.OverflowX << axis)) {
 		total_allowed_size := root.computed_size[axis];
 		total_size := 0.;
 		total_weighted_size := 0.;
@@ -560,6 +562,20 @@ ui_enforce_constraints :: (root : *UI_Widget, axis : UI_Axis) {
 			}
 		}
 	}
+	
+	if root.flags & (UI_Flags.OverflowX << axis) {
+		cur := root.first;
+		
+		while cur {
+			if cur.pref_size[axis].kind == .PercentOfParent {
+				cur.computed_size[axis] = root.computed_size[axis] * cur.pref_size[axis].value;
+			}
+			
+			cur = cur.next;
+		}
+		
+	}
+	
 	
 	{
 		child := root.first;

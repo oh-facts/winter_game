@@ -909,29 +909,19 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 													 depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
 	id := widget_key(index, depth, loc);
 	
-	ui_push_size_node(ui_size_children_sum(), true);
+	ui_push_size_x_node(ui_size_px(164, 1), true);
+	ui_push_size_y_node(ui_size_children_sum(), true);
 	editor_col_begin();
-	ui_push_size_x_node(ui_size_txt());
+	
+	ui_push_size_x_node(ui_size_pct(1));
 	
 	out := ui_widget_impl(.Clickable | .Text, id);
 	out = ui_signal(out.widget);
 	
-	//out := editor_button("");
-	
-	if pather.path.count == 0 {
-		out.widget.text = "bleh bleh bleh";
-	} else {
-		out.widget.text = pather.path;
-	}
+	found, left, right := split_from_right(pather.path, #char "/");
+	out.widget.text = right;
 	
 	if out.toggle {
-		
-		id := widget_key(index, depth, loc);
-		
-		//out := ui_widget_impl(UI_Floating, id);
-		
-		//ui_push_size_y_node(ui_size_px(64), true);
-		//ui_push_parent_node(out.widget);
 		
 		for files {
 			
@@ -941,9 +931,13 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 				case "png"; #through;
 				case "jpg"; #through;
 				case "jpeg";
-				if editor_button(it, it_index, depth).active {
+				
+				found, left, right := split_from_right(it, #char "/");
+				
+				if editor_button(right, it_index, depth).active {
 					out.widget.file_index = it_index;
 					<< action = .Insert;
+					out.widget.toggle = false;
 				}
 			}
 		}
