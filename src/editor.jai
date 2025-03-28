@@ -773,6 +773,25 @@ editor_spacer :: (size : UI_Size, index := 0, depth : *UI_ID = xx 0, loc := #cal
 // Depth isnt nearly enough. Member was stupid. Its basically array index lol. I am thinking instead of depth, I do recursion parent?
 // here's another hit, barry bonds??
 
+// TODO(mizu): So, make this two pass.
+// Pass 1 uses Editor_Variables to set up stuff
+// Pass 2 can do pather.parent to get the image path. Pass 1 also sets up stuff like "read only"
+
+// But this has the same problems as before in that I can't automatically resolve stuff to use specific codepaths.
+// Maybe I have a push_config?
+
+// TODO(mizu): Come back to this later, make
+// specifc struct editors for entities and 
+// assets for now. I still think struct edit
+// is a good idea but I can't decide how to work this out
+
+// the struct edit could have stuff like
+// read_only: 1,0,0,0,1,0
+// order: 3,2,1,4,5,6
+// ignore : 1,0,1,1,0
+// But what if you want to have some extra data between elements?
+// I mean I could do it with fn ptrs
+
 editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0, index : int = 0) {
 	text : string;
 	
@@ -910,7 +929,7 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 	id := widget_key(index, depth, loc);
 	
 	ui_push_size_x_node(ui_size_px(164, 1), true);
-	ui_push_size_y_node(ui_size_children_sum(), true);
+	ui_push_size_y_node(ui_size_px(120), true);
 	editor_col_begin();
 	
 	ui_push_size_x_node(ui_size_pct(1));
@@ -922,6 +941,36 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 	out.widget.text = right;
 	
 	if out.toggle {
+		ui_push_size_x_node(ui_size_pct(1), true);
+		ui_push_size_y_node(ui_size_pct(1, 0), true);
+		editor_col_begin();
+		parent := active_cxt().parent_stack.top.v;
+		parent.flags |= .Scissor;
+		parent.scissor = parent.dst;
+		
+		if point_in_rect(mpos, parent.dst) {
+			scroll_event := os.event(active_window().events, .NULL, .Scroll);
+			scroll_up, scroll_down : bool;
+			
+			if scroll_event {
+				
+				if scroll_event.wheel > 0 {
+					scroll_up = true;
+				}
+				
+				else if scroll_event.wheel < 0 {
+					scroll_down = true;
+				}
+			}
+			
+			if scroll_up {
+				parent.offset[1] += 4;
+			}
+			
+			if scroll_down {
+				parent.offset[1] -= 4;
+			}
+		}
 		
 		for files {
 			
@@ -941,7 +990,7 @@ editor_filepath_picker :: (pather : *Pather, action : *Action_Kind, index := 0,
 				}
 			}
 		}
-		
+		editor_row_end();
 		//ui_pop_parent_node();
 		
 	}

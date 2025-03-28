@@ -162,7 +162,21 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 			{
 				if current_art {
-					editor_struct_edit(current_art.base, xx 0, xx current_art);
+					
+					scope := tex.scope_open();
+					img := tex.handle_from_hash(scope, current_art.hash);
+					
+					w := img.U32[0];
+					h := img.U32[1];
+					
+					ui_push_size_x_node(ui_size_px(xx w), true);
+					ui_push_size_y_node(ui_size_px(xx h), true);
+					
+					editor_image(img);
+					
+					tex.scope_close(scope);
+					
+					editor_struct_edit(<< current_art, xx 0, xx current_art);
 				}
 			}
 			

@@ -144,7 +144,7 @@ UI_Widget :: struct {
 	
 	// file index
 	file_index : int;
-	
+	scroll_offset : int;
 	// =========================
 	
 	// calculated during hierearchy pass
@@ -333,7 +333,7 @@ ui_widget_from_key :: (key : UI_ID) -> *UI_Widget {
 		out.pref_size[0] = active_cxt().size_x_stack.top.v;
 		out.pref_size[1] = active_cxt().size_y_stack.top.v;
 		
-		out.offset = active_cxt().offset_stack.top.v;
+		//out.offset = active_cxt().offset_stack.top.v;
 		out.scissor = active_cxt().scissor_stack.top.v;
 		out.flags |= active_cxt().flags_stack.top.v;
 		out.flags &= ~active_cxt().remove_flags_stack.top.v;
@@ -674,7 +674,7 @@ ui_begin :: (state : *UI_State, events : *os.EventList, mpos : Vector2) {
 	
 	state.root.child_count = 0;
 	
-	ui_push_offset_node(.[0, 0]);
+	//ui_push_offset_node(.[0, 0]);
 	ui_push_size_node(ui_size_children_sum());
 	ui_push_scissor_node(.{});
 	ui_push_flags_node(0);
@@ -715,7 +715,7 @@ ui_size_children_sum :: (strictness := 1.) -> UI_Size {
 
 ui_end :: () {
 	ui_pop_parent_node();
-	ui_pop_offset_node();
+	//ui_pop_offset_node();
 	ui_pop_size_node();
 	ui_pop_scissor_node();
 	ui_pop_flags_node();

@@ -1,6 +1,8 @@
 data_folder : string;
 ell : r.Handle;
 font : *r.Font;
+// TODO(mizu): For now, make an art store that stores the arts. Make it a hashmap that uses art id as key. Maybe put art data inside of animation?
+// This way I can trivially deal with animated tiles, among other things.
 
 ArtId :: enum {
 	TerrainTemplate;
@@ -76,87 +78,7 @@ load_font :: () {
 	font.img = r.image(font.bmp, .Linear);
 }
 
-/*
-arts : [18]Art = .[.{id = .TerrainTemplate, path = "art/terrain_template.png"},
-									 .{id = .TerrainGrass, path = "art/terrain_grass2.png"},
-									 .{id = .PropsForest, path = "art/forest_props.png"},
-									 .{id = .TilesForest, path = "art/forest_tileset.png"},
-									 .{id = .Impolo, path = "art/impolo-idle.png"},
-									 .{id = .Impolo_East, path = "art/impolo-east.png"},
-									 .{id = .Impolo_Sword, path = "art/impolo-sword.png"},
-									 .{id = .Ell, path = "art/ell.png"},
-									 .{id = .Tree, path = "art/tree.png"},
-									 .{id = .Ball, path = "art/ball.png"},
-									 .{id = .Siren, path = "art/siren.png"},
-									 .{id = .Editor_Titlebar, path = "editor/titlebar.png"},
-									 .{id = .Fat, path = "art/fat/1.png"},
-									 .{id = .Editor_Window_Notch, path = "editor/window_notch.png"},
-									 .{id = .Aos, path = "art/aos.png"},
-									 .{id = .Editor_Home_Bg, path = "editor/home.png"}, 
-									 .{id = .Psy_Man_Dead, path = "art/psy_man_dead.png"},
-									 .{id = .Psy_Man, path = "art/psy_man.png"}];
-*/
-
-load_all_assets :: () {
-	base_path := path_strip_filename(get_path_of_running_executable());
-	data_folder = join(base_path, "../data");
-	
-	// load sprites
-	for *arts {
-		filename := tprint("%/%", data_folder, it.path);
-		
-		data := read_entire_file(filename);
-		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
-		kind : ArtId = xx it_index;
-		
-		if kind == {
-			case .Impolo;
-			it.frame_x = 1;
-			it.frame_y = 1;
-			it.origin = .{64, 96};
-			
-			case .TilesForest;
-			it.frame_x = 8;
-			it.frame_y = 15;
-			
-			case .Tree;
-			it.frame_x = 3;
-			it.frame_y = 1;
-			it.origin = .{256, 380};
-			
-			case .Ball;
-			it.frame_x = 1;
-			it.frame_y = 1;
-			it.origin  = .{16, 32};
-			
-			case .Siren;
-			it.frame_x = 1;
-			it.frame_y = 1;
-			it.origin = .{250, 500};
-			
-			case .Impolo_East;
-			it.frame_x = 8;
-			it.frame_y = 1;
-			it.origin = .{64, 96};
-			
-			case .Aos;
-			it.frame_x = 2;
-			it.frame_y = 1;
-			it.origin = .{65, 110};
-			
-			case .Psy_Man_Dead;
-			it.frame_x = 1;
-			it.frame_y = 1;
-			it.origin = .{90, 110};
-			
-			case .Psy_Man;
-			it.frame_x = 1;
-			it.frame_y = 1;
-			it.origin = .{32, 110};
-		}
-		
-	}
-}
+// TODO(mizu): save file should be with relative paths. Convert to active when loading assets
 
 save_assets :: () {
 	path := tprint("%/art.data", data_folder);
@@ -193,6 +115,11 @@ save_assets :: () {
 }
 
 load_assets :: () {
+	base_path := path_strip_filename(get_path_of_running_executable());
+	data_folder = join(base_path, "../data");
+	art_folder = join(data_folder, "/art");
+	editor_data_folder = join(data_folder, "/editor");
+	
 	path := tprint("%/art.data", data_folder);
 	file_data := read_entire_file(path);
 	
@@ -220,12 +147,13 @@ load_assets :: () {
 	}
 	
 	free(file_data);
-}
-
-load_data :: () {
-	base_path := path_strip_filename(get_path_of_running_executable());
-	data_folder = join(base_path, "../data");
-	art_folder = join(data_folder, "/art");
-	editor_data_folder = join(data_folder, "/editor");
 	
+	// load sprites
+	for *arts {
+		filename := tprint("%/%", data_folder, it.path);
+		
+		data := read_entire_file(it.path);
+		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
+		
+	}
 }
