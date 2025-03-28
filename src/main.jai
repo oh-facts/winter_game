@@ -116,7 +116,7 @@ main :: () {
 	frames : u64;
 	
 	arena = arena_init(ARENA_COMMIT_SIZE, MB(128));
-	
+	art_store = art_store_init();
 	load_assets();
 	load_editor_assets();
 	load_font();
@@ -129,6 +129,7 @@ main :: () {
 	
 	entity_store = entity_store_init();
 	tileworld = init_tileworld();
+	
 	anim_store = animation_store_init();
 	load_entities(*entity_store);
 	load_tileworld(*tileworld);

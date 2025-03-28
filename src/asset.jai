@@ -9,9 +9,9 @@ ArtId :: enum {
 	TerrainGrass;
 	PropsForest;
 	TilesForest;
-	Impolo;
-	Impolo_East;
 	Impolo_Sword;
+	Impolo_East;
+	Impolo;
 	Ell;
 	Tree;
 	Ball;
@@ -37,9 +37,89 @@ Art_Save :: struct {
 Art :: struct {
 	using base : Art_Save;
 	hash : u128;
+	art_id : ArtId;
 }
 
-arts : [ArtId.COUNT]Art;
+Art_Node :: struct {
+	using v : Art;
+	next : *Art_Node;
+}
+
+Art_Slot :: struct {
+	first : *Art_Node;
+	last : *Art_Node;
+}
+
+Art_Store :: struct {
+	slots : []Art_Slot;
+}
+
+hash_from_art :: (art_id : ArtId) -> int {
+	hash := 5381;
+	
+	hash = ((hash << 5) + hash) + xx art_id;
+	
+	return hash;
+}
+
+get_art :: (as : *Art_Store, art_id : ArtId) -> *Art {
+	out : *Art;
+	hash := hash_from_art(art_id);
+	slot_index := hash % xx as.slots.count;
+	slot := as.slots.data + slot_index;
+	
+	node : *Art_Node;
+	{
+		cur := slot.first;
+		
+		while cur {
+			if cur.art_id == art_id {
+				node = cur;
+			}
+			cur = cur.next;
+		}
+	}
+	
+	if !node {
+		node = xx push_struct(arena, Art_Node);
+		node.art_id = art_id;
+		
+		if !slot.last {
+			slot.first = node;
+			slot.last = node;
+		} else {
+			slot.last.next = node;
+			slot.last = node;
+		}
+	}
+	
+	out = *node.v;
+	
+	return out;
+}
+
+art_store_init :: () -> Art_Store {
+	out : Art_Store;
+	out.slots.count = 256;
+	out.slots.data = push_array(arena, Art_Slot, xx out.slots.count);
+	
+	return out;
+}
+
+art_store : Art_Store;
+
+tex_from_art :: (scope : *tex.Scope, art_id : ArtId) -> r.Handle {
+	out : r.Handle;
+	
+	art := get_art(*art_store, art_id);
+	
+	out = tex.handle_from_hash(scope, art.hash);
+	return out;
+}
+
+tex_id_from_art :: (scope : *tex.Scope, art_id : ArtId) -> u64 {
+	return tex_from_art(scope, art_id).U64[1];
+}
 
 editor_titlebar_art : r.Handle;
 editor_home_art : r.Handle;
@@ -91,15 +171,15 @@ save_assets :: () {
 	// arts
 	art_saves : *Art_Save = xx push_array(save_arena, Art_Save, xx ArtId.COUNT);
 	
-	for arts {
-		src := it;
-		dst := art_saves + it_index;
+	for 0 .. ArtId.COUNT - 1 {
+		src := get_art(*art_store, it);
+		dst := art_saves + cast(int) it;
 		<< dst = src.base;
 	}
 	
-	for arts {
-		src := it;
-		dst := art_saves + it_index;
+	for 0 .. ArtId.COUNT - 1 {
+		src := get_art(*art_store, it);
+		dst := art_saves + cast(int) it;
 		
 		push_array(save_arena, u8, xx 0);
 		
@@ -122,11 +202,11 @@ load_assets :: () {
 	
 	path := tprint("%/art.data", data_folder);
 	file_data := read_entire_file(path);
-	
+	count : int;
 	if file_data {
 		head := file_data.data;
 		
-		count : int = << cast(*int) head;
+		count = << cast(*int) head;
 		head += size_of(int);
 		
 		art_saves : *Art_Save = xx head;
@@ -134,7 +214,7 @@ load_assets :: () {
 		
 		for 0 .. count - 1{
 			src := art_saves + it;
-			dst := *arts[it];
+			dst := get_art(*art_store, xx it);
 			
 			name := alloc_string(src.path.count);
 			offset : int = xx src.path.data;
@@ -149,11 +229,15 @@ load_assets :: () {
 	free(file_data);
 	
 	// load sprites
-	for *arts {
-		filename := tprint("%/%", data_folder, it.path);
+	
+	for 0 .. count - 1 {
+		art := get_art(*art_store, xx it);
 		
-		data := read_entire_file(it.path);
-		it.hash =  tex.hash_from_key_data(it.path, .{.[xx it_index]}, data);
+		filename := tprint("%/%", data_folder, art.path);
+		
+		data := read_entire_file(art.path);
+		
+		art.hash =  tex.hash_from_key_data(art.path, .{.[xx it]}, data);
 		
 	}
 }

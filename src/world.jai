@@ -463,9 +463,11 @@ draw_tilemap :: (tw : Tileworld, tm : *Tilemap, passes : *r.Pass_List) {
 						
 						src : RectF32;
 						
-						tex_id := tex.handle_from_hash(scope, arts[paint.art_id].hash).U64[1];
-						frame_x := arts[paint.art_id].frame_x;
-						frame_y := arts[paint.art_id].frame_y;
+						art := get_art(*art_store, paint.art_id);
+						
+						tex_id := tex.handle_from_hash(scope, art.hash).U64[1];
+						frame_x := art.frame_x;
+						frame_y := art.frame_y;
 						
 						// if its a terrain (auto), the src rect are calculated based on the ruleset, if not, it is based on whats in the paint info
 						if paint.auto {

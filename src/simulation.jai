@@ -766,7 +766,9 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			anim := get_animation(*anim_store, entity.anim_state, entity.kind);
 			
-			frame_x := arts[anim.art_id].frame_x;
+			art := get_art(*art_store, anim.art_id);
+			
+			frame_x := art.frame_x;
 			
 			entity.anim_counter += xx delta;
 			entity.frame_n = (cast(s32)(entity.anim_counter * anim.speed)) % xx frame_x;
@@ -1110,17 +1112,21 @@ draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass :
 	for sort_list {
 		
 		art_id : int;
-		origin := arts[it.art_id].origin;
+		art := get_art(*art_store, it.art_id);
+		origin := art.origin;
 		
 		if it.flags & .Animated {
 			anim := get_animation(*anim_store, it.anim_state, it.kind);
-			origin = arts[anim.art_id].origin;
+			
+			art = get_art(*art_store, anim.art_id);
+			
+			origin = art.origin;
 			art_id = xx anim.art_id;
 		} else {
 			art_id = xx it.art_id;
 		}
 		
-		bmp := tex.handle_from_hash(scope, arts[art_id].hash);
+		bmp := tex.handle_from_hash(scope, art.hash);
 		
 		size : Vector2;
 		size.x = xx bmp.U32[0];
@@ -1131,7 +1137,7 @@ draw_submerged_entities :: (sort_list : []*Entity, passes : *r.Pass_List, pass :
 			//size.y /= 2;
 		}
 		
-		frame_x := arts[art_id].frame_x;
+		frame_x := art.frame_x;
 		
 		width := 1. / frame_x;
 		

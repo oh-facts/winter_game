@@ -143,7 +143,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			
 			for 0 .. ArtId.COUNT - 1 {
 				
-				art := *arts[xx it];
+				art := get_art(*art_store, it);
 				
 				if current_art == art {
 					ui_push_flags_node(.Offset, true);
