@@ -163,6 +163,8 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			{
 				if current_art {
 					
+					// art editor
+					
 					scope := tex.scope_open();
 					img := tex.handle_from_hash(scope, current_art.hash);
 					
@@ -177,6 +179,7 @@ scratch_update :: (delta : float32, events : *os.EventList,
 					tex.scope_close(scope);
 					
 					editor_struct_edit(<< current_art, xx 0, xx current_art);
+					
 				}
 			}
 			

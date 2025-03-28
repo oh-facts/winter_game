@@ -1,26 +1,34 @@
 data_folder : string;
 ell : r.Handle;
 font : *r.Font;
-// TODO(mizu): For now, make an art store that stores the arts. Make it a hashmap that uses art id as key. Maybe put art data inside of animation?
-// This way I can trivially deal with animated tiles, among other things.
 
-ArtId :: enum {
-	TerrainTemplate;
-	TerrainGrass;
-	PropsForest;
-	TilesForest;
-	Impolo_Sword;
-	Impolo_East;
-	Impolo;
-	Ell;
-	Tree;
-	Ball;
-	Siren;
-	Fat;
-	Aos;
-	Psy_Man_Dead;
-	Psy_Man;
-	COUNT;
+// NOTE(mizu): Merge animation and art store?
+
+// TODO(mizu): It don't make sense, why does changing order affe
+
+// oh its because I am reading the data in order of the art id enum instead of reading it in order of 
+// what art id it actually is
+
+// I will have to save art id too
+// this will ruin save files :(
+
+ArtId :: enum #specified {
+	TerrainTemplate :: 0;
+	TerrainGrass :: 1;
+	PropsForest :: 2;
+	TilesForest :: 3;
+	Impolo :: 4;
+	Impolo_East :: 5;
+	Impolo_Sword :: 6;
+	Ell :: 7;
+	Tree :: 8;
+	Ball :: 9;
+	Siren :: 10;
+	Fat :: 11;
+	Aos :: 12;
+	Psy_Man_Dead :: 13;
+	Psy_Man :: 14;
+	COUNT :: 15;
 }
 
 Pather :: struct {
@@ -32,12 +40,12 @@ Art_Save :: struct {
 	frame_y : int;
 	using pather : Pather;
 	origin : Vector2;
+	art_id : ArtId;
 }
 
 Art :: struct {
 	using base : Art_Save;
 	hash : u128;
-	art_id : ArtId;
 }
 
 Art_Node :: struct {
@@ -179,7 +187,8 @@ save_assets :: () {
 	
 	for 0 .. ArtId.COUNT - 1 {
 		src := get_art(*art_store, it);
-		dst := art_saves + cast(int) it;
+		
+		dst := art_saves + cast(int)it;
 		
 		push_array(save_arena, u8, xx 0);
 		
@@ -212,9 +221,9 @@ load_assets :: () {
 		art_saves : *Art_Save = xx head;
 		head += size_of(Art_Save) * count;
 		
-		for 0 .. count - 1{
+		for 0 .. count - 1 {
 			src := art_saves + it;
-			dst := get_art(*art_store, xx it);
+			dst := get_art(*art_store, src.art_id);
 			
 			name := alloc_string(src.path.count);
 			offset : int = xx src.path.data;
@@ -233,9 +242,9 @@ load_assets :: () {
 	for 0 .. count - 1 {
 		art := get_art(*art_store, xx it);
 		
-		filename := tprint("%/%", data_folder, art.path);
+		filename := tprint("%/%", art_folder, art.path);
 		
-		data := read_entire_file(art.path);
+		data := read_entire_file(filename);
 		
 		art.hash =  tex.hash_from_key_data(art.path, .{.[xx it]}, data);
 		

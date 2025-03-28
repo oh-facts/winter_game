@@ -802,6 +802,10 @@ editor_struct_edit :: (any : Any, depth : *UI_ID = xx 0, index : int = 0) {
 	
 	for member: ti.members {
 		
+		if member.name == "component" {
+			continue;
+		}
+		
 		ui_push_size_node(ui_size_children_sum(1), true);
 		editor_row_begin();
 		
