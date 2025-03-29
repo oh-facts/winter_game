@@ -274,7 +274,6 @@ editor_init_window :: (title : string, flags : Editor_Window_Flags, pos : Vector
 	out.root_panel.axis = .X;
 	out.root_panel.pct = 1;
 	
-	
 	return out;
 }
 
@@ -357,11 +356,10 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			}
 			
 			ui_pop_size_node();
-			
 		}
 		
 		editor_spacer(ui_size_pct(1, 0));
-		ui_push_size_x_node(ui_size_txt(), true);
+		ui_push_size_x_node(ui_size_txt(1), true);
 		sig := editor_label(active_window().title);
 		sig = ui_signal(sig.widget);
 		
@@ -408,42 +406,12 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 		editor_row_end();
 	}
 	
-	if point_in_rect(mpos, window.dst) {
-		
-		if active_window().flags & .Scrollable {
-			scroll_event := os.event(events, .NULL, .Scroll);
-			scroll_up, scroll_down : bool;
-			
-			if scroll_event {
-				
-				if scroll_event.wheel > 0 {
-					scroll_up = true;
-				}
-				
-				else if scroll_event.wheel < 0 {
-					scroll_down = true;
-				}
-			}
-			
-			if scroll_up {
-				window.scroll_offset += 4;
-			}
-			
-			if scroll_down {
-				window.scroll_offset -= 4;
-			}
-		}
-	}
-	
 	ui_push_size_node(ui_size_pct(1, 0), true);
-	editor_row_begin();
-	
-	row_parent := active_cxt().parent_stack.top.v;
+	row_parent := editor_row_begin();
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	ui_push_border_color_node(r.COLOR_MAGENTA, true);
-	editor_col_begin();
-	col_parent := active_cxt().parent_stack.top.v;
+	col_parent := editor_col_begin();
 	col_parent.offset[1] = window.scroll_offset;
 	col_parent.flags |= .Bg;
 	
@@ -453,14 +421,22 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 	
 	window.client_rect = col_parent;
 	
-	//col_parent.scissor = col_parent.dst;
 	editor_pop_file_id();
 }
 
-editor_window_update :: (window : *Editor_Window) {
+editor_window_end :: (window : *Editor_Window) {
 	
-	if window.client_rect {
-		window.client_rect.scissor = window.client_rect.dst;
+	window.client_rect.scissor = window.client_rect.dst;
+	
+	// scroll if mouse is inside client rect
+	if point_in_rect(mpos, window.client_rect.dst) {
+		if window.flags & .Scrollable {
+			scroll_event := os.event(window.events, .NULL, .Scroll);
+			
+			if scroll_event {
+				window.scroll_offset += scroll_event.wheel * 10;
+			}
+		}
 	}
 	
 	mmpos := os.get_global_mouse_pos(win);
@@ -497,13 +473,8 @@ editor_window_update :: (window : *Editor_Window) {
 	}
 	
 	window.last_mpos = mmpos;
-}
-
-editor_window_end :: (window : *Editor_Window) {
-	assert(window == active_window());
 	
 	editor_push_file_id(.Editor);
-	
 	editor_row_end();
 	
 	if window.flags & .Resizable {
@@ -543,16 +514,6 @@ editor_window_end :: (window : *Editor_Window) {
 		to_free.next = editor_window_stack.free;
 		editor_window_stack.free = to_free;
 	}
-	
-	/*
-				if point_in_rect(mpos, window.root.dst) {
-					os.event(window.events, .LMB, .Pressed);
-					os.event(window.events, .RMB, .Pressed);
-					
-					os.event(window.events, .LMB, .Released);
-					os.event(window.events, .RMB, .Released);
-				}
-				*/
 	
 }
 
@@ -752,24 +713,24 @@ active_window_file_id :: () -> Editor_File_Id {
 	return active_window().file_id_stack.top.v;
 }
 
-editor_row_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+editor_row_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> *UI_Widget {
 	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
 	out.child_layout_axis = .X;
 	
-	return .{};
+	return out;
 }
 
-editor_col_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> UI_Signal {
+editor_col_begin :: (index := 0, depth : *UI_ID = xx 0, loc := #caller_location) -> *UI_Widget {
 	id := widget_key(index, depth, loc);
 	
 	out := ui_widget_from_key(id);
 	ui_push_parent_node(out);
 	out.child_layout_axis = .Y;
 	
-	return .{};
+	return out;
 }
 
 editor_row_end :: () {

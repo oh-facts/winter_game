@@ -86,7 +86,9 @@ move_end : Vector2i;
 moving_started := false;
 moving_yes := false;
 active_tilemap_index : Vector2i;
+
 map_editor_lmb_held : bool;
+map_editor_rmb_held : bool;
 
 ed_initialized : bool;
 entity_filter : [Entity_Kind.Count]bool;
@@ -162,6 +164,17 @@ editor_update :: (delta : float32, events : *os.EventList,
 		paint_layer -= 1;
 	}
 	*/
+	
+	scroll_event := os.event(events, .NULL, .Scroll);
+	
+	if scroll_event {
+		if scroll_event.wheel > 0 {
+			paint_layer += 1;
+		} else if scroll_event.wheel < 0 {
+			paint_layer -= 1;
+		}
+	}
+	
 	paint_layer = clamp(paint_layer, 0, 2);
 	
 	// world space coords -> tile pos
@@ -192,11 +205,11 @@ editor_update :: (delta : float32, events : *os.EventList,
 		
 		if rmbdown_event {
 			rmb_click = true; 
-			rmb_held = true;
+			map_editor_rmb_held = true;
 		}
 		
 		if rmbup_event {
-			rmb_held = false;
+			map_editor_rmb_held = false;
 		}
 		
 		if me_mode == .Tile {
@@ -210,14 +223,14 @@ editor_update :: (delta : float32, events : *os.EventList,
 					
 				}
 				// erase
-				else if rmb_held{
+				else if map_editor_rmb_held{
 					tile_from_local_index(editor_tilemap, tile_pos, .Gfx).v[paint_layer] = 0;
 				}
 			}
 			else if tool.kind == .Fill {
 				
 				// selection started
-				if (map_editor_lmb_held || rmb_held) && !selection_started {
+				if (map_editor_lmb_held || map_editor_rmb_held) && !selection_started {
 					selection_started = true;
 					selection_tile_start = tile_pos;
 				}
@@ -233,7 +246,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 					tile_select_range.max.y = max(selection_tile_start.y, selection_tile_end.y);
 					
 					// selection in progress
-					if (map_editor_lmb_held || rmb_held) {
+					if (map_editor_lmb_held || map_editor_rmb_held) {
 						//print("selectioning ...\n");
 						
 						selection_tile_end = tile_pos;
@@ -494,8 +507,11 @@ map_editor_window_update :: (events : *os.EventList) {
 		
 		text = tprint("tilemap %", active_tilemap_index);
 		editor_label(text);
-		ui_pop_text_align_node();
 		
+		text = tprint("layer: %", paint_layer);
+		editor_label(text);
+		
+		ui_pop_text_align_node();
 		editor_spacer(ui_size_px(8));
 		
 		if editor_button("reload shaders").active {
@@ -503,20 +519,15 @@ map_editor_window_update :: (events : *os.EventList) {
 			r.compile_shaders();
 		}
 		
-		editor_spacer(ui_size_px(8, 1));
-		
 		if editor_button("save").active {
 			save_tileworld(tileworld);
 			save_entities(entity_store);
 		}
-		editor_spacer(ui_size_px(8, 1));
 		
 		if editor_button("load").active {
 			load_tileworld(*tileworld);
 			load_entities(*entity_store);
 		}
-		
-		editor_spacer(ui_size_px(8));
 		
 		ui_push_size_x_node(ui_size_pct(1, 0));
 		ui_push_size_y_node(ui_size_px(24, 1));

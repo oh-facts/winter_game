@@ -498,8 +498,7 @@ combat_enemy : *Entity;
 
 combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 	
-	combat_window.size = scratch_window.client_rect.size;
-	combat_window.size.y -= 32;
+	combat_window.size = main_window.client_rect.size;
 	
 	editor_window_begin(combat_window, events);
 	editor_push_file_id(.Simulation);
