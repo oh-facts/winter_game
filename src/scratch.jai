@@ -54,24 +54,8 @@ scratch_update :: (delta : float32, events : *os.EventList,
 		ui_push_size_y_node(ui_size_children_sum(1), true);
 		editor_row_begin();
 		
-		ui_push_size_x_node(ui_size_px(64, 1));
-		ui_push_size_y_node(ui_size_px(32, 1));
-		
 		passes2 : r.Pass_List;
 		r.push_scissor(*passes2, rectF32(0, 0, 1920, 1024));
-		
-		for 0 .. Mode.COUNT - 1 {
-			text := tprint("%", it);
-			
-			if current_mode == it {
-				ui_push_flags_node(.Offset, true);
-				ui_push_remove_flags_node(.Shadow, true);
-			}
-			
-			if editor_button(text, xx it).active {
-				current_mode = it;
-			}
-		}
 		
 		editor_mpos := mpos;
 		//editor_mpos.x *= 1920. / (1920 - 32);
@@ -91,19 +75,6 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			ui_begin(game_ui_cxt, events, editor_mpos);
 			editor_update(delta, events, *passes2);
 			ui_end();
-			
-			case .Scratch;
-			
-			case .Profiler;
-			
-			ui_push_size_x_node(ui_size_txt(1));
-			editor_spacer(ui_size_px(4));
-			text := tprint("cmt: %\n res %", os.cmt, os.res);
-			editor_label(text);
-			ui_pop_size_x_node();
-			
-			case .Asset;
-			
 		}
 		
 		tab_event := os.event(events, .TAB, .Pressed);
@@ -115,16 +86,6 @@ scratch_update :: (delta : float32, events : *os.EventList,
 				current_mode = (current_mode + 1) % .COUNT;
 			}
 		}
-		
-		ui_push_size_x_node(ui_size_txt(1));
-		editor_spacer(ui_size_px(4));
-		editor_label("Please enjoy each mode equally.");
-		//editor_spacer(ui_size_px(4));
-		//text := tprint("%", 1. / delta);
-		//editor_label(text);
-		ui_pop_size_x_node();
-		
-		ui_pop_size_node();
 		
 		r.submit(timer, scratch_window.game_target, .{1920, 1024}, passes2, camera.pos);
 		r.pop_scissor(*passes2);

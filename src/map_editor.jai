@@ -167,9 +167,9 @@ editor_update :: (delta : float32, events : *os.EventList,
 	// world space coords -> tile pos
 	
 	tile_pos.x = xx ((mpos.x) / Tilemap.tile_size);
-	tile_pos.y = xx ((mpos.y - 64) / Tilemap.tile_size);
+	tile_pos.y = xx ((mpos.y - 32) / Tilemap.tile_size);
 	
-	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos - .{0, 64}, Tilemap.rect);
+	tilemap_in_focus := !any_editor_in_focus() && point_in_rect(mpos - .{0, 32}, Tilemap.rect);
 	
 	if tilemap_in_focus {
 		

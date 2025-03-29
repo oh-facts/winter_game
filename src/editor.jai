@@ -101,8 +101,6 @@ Editor_Window :: struct {
 	
 	pre_fullscreen_size : Vector2;
 	
-	tabs : [Mode.COUNT]Editor_Tab;
-	
 	hide : bool;
 	events : *os.EventList;
 	
@@ -203,7 +201,7 @@ editor_in_focus :: (window : Editor_Window) -> bool {
 	out = point_in_rect(mpos, window.dst);
 	
 	if !(window.flags & .Dialog) {
-		if point_in_rect(mpos - .{0, 32}, window.client_rect.dst) {
+		if point_in_rect(mpos , window.client_rect.dst) {
 			out = false;
 		}
 	}
@@ -341,8 +339,28 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 			window.hide = !window.hide;
 		}
 		
-		editor_spacer(ui_size_pct(1, 0));
+		if !(window.flags & .Dialog) {
+			ui_push_size_x_node(ui_size_px(64, 1));
+			ui_push_size_y_node(ui_size_px(32, 1));
+			
+			for 0 .. Mode.COUNT - 1 {
+				text := tprint("%", it);
+				
+				if current_mode == it {
+					ui_push_flags_node(.Offset, true);
+					ui_push_remove_flags_node(.Shadow, true);
+				}
+				
+				if editor_button(text, xx it).active {
+					current_mode = it;
+				}
+			}
+			
+			ui_pop_size_node();
+			
+		}
 		
+		editor_spacer(ui_size_pct(1, 0));
 		ui_push_size_x_node(ui_size_txt(), true);
 		sig := editor_label(active_window().title);
 		sig = ui_signal(sig.widget);
