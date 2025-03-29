@@ -191,6 +191,10 @@ scratch_update :: (delta : float32, events : *os.EventList,
 			if editor_button(text).active {
 				load_assets();
 			}
+			text = tprint(" Submit ");
+			if editor_button(text).active {
+				submit_assets();
+			}
 			
 			editor_row_end();
 			

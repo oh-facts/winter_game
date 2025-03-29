@@ -116,10 +116,8 @@ main :: () {
 	frames : u64;
 	
 	arena = arena_init(ARENA_COMMIT_SIZE, MB(128));
-	art_store = art_store_init();
-	load_assets();
-	load_editor_assets();
-	load_font();
+	asset_init();
+	
 	quit : bool;
 	
 	ui_cxt := ui_init();

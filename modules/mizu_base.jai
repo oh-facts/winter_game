@@ -207,7 +207,7 @@ arena_push_impl :: (arena : *Arena, size : u64) -> *void {
 }
 
 arena_free :: (arena : *Arena) {
-	
+	os.release(arena, arena.res);
 }
 
 push_struct :: (arena : *Arena, type : Type) -> *void #expand{
