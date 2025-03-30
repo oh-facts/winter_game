@@ -432,9 +432,11 @@ editor_window_end :: (window : *Editor_Window) {
 	// scroll if mouse is inside client rect
 	if point_in_rect(mpos, window.client_rect.dst) {
 		if window.flags & .Scrollable {
+			scroll_event := os.event(window.events, .NULL, .Scroll);
 			
-			window.scroll_offset += os.scroll(window.events);
-			
+			if scroll_event {
+				window.scroll_offset += scroll_event.wheel * 10;
+			}
 		}
 	}
 	
@@ -445,7 +447,7 @@ editor_window_end :: (window : *Editor_Window) {
 		window.pos +=  mmpos - window.last_mpos;
 		//print("% % %\n", window.pos, os.get_global_mouse_pos(win), window.last_mpos);
 		
-		if os.key_released(window.events, .MOUSE_BUTTON_LEFT) {
+		if os.event(window.events, .LMB, .Released) {
 			window.grabbed = false;
 		}
 	}
@@ -458,7 +460,7 @@ editor_window_end :: (window : *Editor_Window) {
 		
 		//scratch_window.win_target.size = scratch_window.size;
 		
-		if os.key_released(window.events, .MOUSE_BUTTON_LEFT) {
+		if os.event(window.events, .LMB, .Released) {
 			window.resize_grabbed = false;
 			
 			if window.flags & .Dialog {
@@ -564,7 +566,7 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 		events := active_window().events;
 		event : *os.Event;
 		
-		/*{
+		{
 			// TODO(mizu): Technically, I should walk through each event instead of taking one and dipping because many events can come per frame
 			cur := events.first;
 			while cur {
@@ -649,9 +651,8 @@ editor_text_edit :: (display_text : string, action : *Action_Kind, index := 0,
 				}
 			}
 		}
-	*/
-		
 	}
+	
 	w.text_edit_pos = clamp_bot(w.text_edit_pos, 0);
 	
 	w.text_edit_pos = clamp_top(w.text_edit_pos, w.text.count);
@@ -935,7 +936,27 @@ editor_filepath_picker :: (pather : *Asset_Filepath, action : *Action_Kind, inde
 		parent.scissor = parent.dst;
 		
 		if point_in_rect(mpos, parent.dst) {
-			parent.offset[1] += os.scroll(active_window().events);
+			scroll_event := os.event(active_window().events, .NULL, .Scroll);
+			scroll_up, scroll_down : bool;
+			
+			if scroll_event {
+				
+				if scroll_event.wheel > 0 {
+					scroll_up = true;
+				}
+				
+				else if scroll_event.wheel < 0 {
+					scroll_down = true;
+				}
+			}
+			
+			if scroll_up {
+				parent.offset[1] += 4;
+			}
+			
+			if scroll_down {
+				parent.offset[1] -= 4;
+			}
 		}
 		
 		for files {

@@ -56,7 +56,3 @@ load_function :: (handle : Handle, name : *u8) -> *void {
 sleep :: (ms : s32) {
 	Sleep(ms);
 }
-
-init :: () {
-	SetProcessDPIAware();
-}

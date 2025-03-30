@@ -147,14 +147,19 @@ main :: () {
 		
 		//print("win size: %\n", win_size);
 		
-		if os.quit_event(*events) || os.key_pressed(*events, .ESCAPE){
+		if os.event(*events, .NULL, .CloseRequested) || os.event(*events, .ESC, .Pressed){
 			quit = true;
 		}
 		
 		passes : r.Pass_List;
 		
-		//mpos = ;//
+		mm_event := os.event(*events, .NULL, .MouseMove);
+		
 		update_camera();
+		
+		if mm_event {
+			mpos = mm_event.mpos;
+		}
 		
 		r.push_scissor(*passes, rectF32(0, 0, main_window.win_target.size.x, main_window.win_target.size.y));
 		ui_begin(ui_cxt, *events, mpos);
@@ -260,9 +265,9 @@ main_window_update :: (delta : float32, events : *os.EventList) {
 			scratch_update(xx delta, events, *passes2);
 		}
 		
-		tab_event := os.key_pressed(events, .TAB);
+		tab_event := os.event(events, .TAB, .Pressed);
 		
-		if tab_event {
+		if  tab_event {
 			if tab_event.shift_held {
 				current_mode = (current_mode - 1) % .COUNT;
 			} else {

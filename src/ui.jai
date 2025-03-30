@@ -357,7 +357,7 @@ ui_signal :: (widget : *UI_Widget) -> UI_Signal {
 	if point_in_rect(active_cxt().mpos, widget.dst) {
 		widget.hot = true;
 		
-		if os.key_pressed(active_cxt().events, .MOUSE_BUTTON_LEFT) {
+		if os.event(active_cxt().events, .LMB, .Pressed) {
 			widget.active = true;
 			widget.toggle = !widget.toggle;
 			widget.focus = true;
