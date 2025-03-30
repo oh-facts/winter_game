@@ -511,7 +511,7 @@ combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : f
 		ui_push_text_align_node(.Left, true);
 		editor_label(Combat_Intro);
 		
-		if os.event(events, .E, .Pressed) {
+		if os.key_pressed(events, #char "E") {
 			current_combat_stage += 1;
 		}
 		
@@ -539,14 +539,14 @@ combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : f
 		ui_push_text_align_node(.Left, true);
 		editor_label(Combat_Attack);
 		
-		if os.event(events, .E, .Pressed) {
+		if os.key_pressed(events, #char "E") {
 			current_combat_stage += 1;
 		}
 		
 		case .Enemy_Turn;
 		editor_image(r.get_white_square(), color = r.COLOR_YELLOW);
 		
-		if os.event(events, .E, .Pressed) {
+		if os.key_pressed(events, #char "E") {
 			current_combat_stage += 1;
 		}
 		
@@ -554,7 +554,7 @@ combat_stage_update :: (events : *os.EventList, passes : *r.Pass_List, delta : f
 		ui_push_text_align_node(.Left, true);
 		editor_label(Enemy_Combat_Attack);
 		
-		if os.event(events, .E, .Pressed) {
+		if os.key_pressed(events, #char "E") {
 			current_combat_stage += 1;
 		}
 		
@@ -605,39 +605,27 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 		
 		if entity.flags & .Control {
 			mv : Vector2;
-			if(os.event(events, .W, .Pressed))
-			{
+			if(os.key_pressed(events, #char "W")) {
 				cam_wheld = true;
-			}
-			else if(os.event(events, .W, .Released))
-			{
+			} else if(os.key_released(events, #char "W")) {
 				cam_wheld = false;
 			}
 			
-			if(os.event(events, .A, .Pressed))
-			{
+			if(os.key_pressed(events, #char "A")) {
 				cam_aheld = true;
-			}
-			else if(os.event(events, .A, .Released))
-			{
+			} else if(os.key_released(events, #char "A")) {
 				cam_aheld = false;
 			}
 			
-			if(os.event(events, .D, .Pressed))
-			{
+			if(os.key_pressed(events, #char "D")) {
 				cam_dheld = true;
-			}
-			else if(os.event(events, .D, .Released))
-			{
+			} else if(os.key_released(events, #char "D")) {
 				cam_dheld = false;
 			}
 			
-			if(os.event(events, .S, .Pressed))
-			{
+			if(os.key_pressed(events, #char "S")) {
 				cam_sheld = true;
-			}
-			else if(os.event(events, .S, .Released))
-			{
+			} else if(os.key_released(events, #char "S")) {
 				cam_sheld = false;
 			}
 			
@@ -686,7 +674,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 			
 			push_world_test_interaction(entity.tile_pos + entity.dir);
 			
-			if os.event(events, .E, .Pressed) {
+			if (os.key_pressed(events, #char "E")) {
 				push_world_input_interact(entity.tile_pos + entity.dir);
 			}
 			
@@ -911,7 +899,7 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 					
 					editor_dialogue_end();
 					
-					if os.event(events, .E, .Pressed) {
+					if os.key_pressed(events, #char "E") {
 						quest.dialogue_phase = quest.dialogue_phase.next;
 						quest.dialogue_phase_index += 1;
 					}
@@ -936,7 +924,8 @@ tick :: (events : *os.EventList, passes : *r.Pass_List, delta : float32) {
 							quest.dialogue_phase_index += 1;
 						}
 					}
-					else if os.event(events, .E, .Pressed) {
+					
+					else if os.key_pressed(events, #char "E") {
 						quest.dialogue_phase = quest.dialogue_phase.next;
 						quest.dialogue_phase_index += 1;
 					}

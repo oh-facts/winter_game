@@ -119,22 +119,19 @@ editor_update :: (delta : float32, events : *os.EventList,
 	//print("%", << test_entity);
 	
 	mv : Vector2i;
-	if(os.event(events, .W, .Pressed))
-	{
+	if(os.key_pressed(events, #char "W")) {
 		mv.y -= 1;
 	}
 	
-	if(os.event(events, .A, .Pressed))
-	{
+	if(os.key_pressed(events, #char "A")) {
 		mv.x -= 1;
 	}
-	if(os.event(events, .D, .Pressed))
-	{
+	
+	if(os.key_pressed(events, #char "D")) {
 		mv.x += 1;
 	}
 	
-	if(os.event(events, .S, .Pressed))
-	{
+	if(os.key_pressed(events, #char "S")) {
 		mv.y += 1;
 	}
 	
@@ -165,14 +162,12 @@ editor_update :: (delta : float32, events : *os.EventList,
 	}
 	*/
 	
-	scroll_event := os.event(events, .NULL, .Scroll);
+	scroll_value := os.scroll(events);
 	
-	if scroll_event {
-		if scroll_event.wheel > 0 {
-			paint_layer += 1;
-		} else if scroll_event.wheel < 0 {
-			paint_layer -= 1;
-		}
+	if scroll_value > 0 {
+		paint_layer += 1;
+	} else if scroll_value < 0 {
+		paint_layer -= 1;
 	}
 	
 	paint_layer = clamp(paint_layer, 0, 1);
@@ -188,8 +183,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 		
 		// collect input events
 		
-		lmbup_event := os.event(events, .LMB, .Released);
-		lmbdown_event := os.event(events, .LMB, .Pressed);
+		lmbup_event := os.key_released(events, .MOUSE_BUTTON_LEFT);
+		lmbdown_event := os.key_pressed(events, .MOUSE_BUTTON_LEFT);
 		
 		if lmbdown_event {
 			map_editor_lmb_held = true;
@@ -199,8 +194,10 @@ editor_update :: (delta : float32, events : *os.EventList,
 			map_editor_lmb_held = false;
 		}
 		
-		rmbup_event := os.event(events, .RMB, .Released);
-		rmbdown_event := os.event(events, .RMB, .Pressed);
+		
+		rmbup_event := os.key_released(events, .MOUSE_BUTTON_RIGHT);
+		rmbdown_event := os.key_pressed(events, .MOUSE_BUTTON_RIGHT);
+		
 		rmb_click : bool;
 		
 		if rmbdown_event {
@@ -390,7 +387,8 @@ editor_update :: (delta : float32, events : *os.EventList,
 					}
 					
 					// delete selection
-					if os.event(events, .DEL, .Pressed) {
+					
+					if os.key_pressed(events, .DELETE) {
 						// empty buffer
 						for selection_buffer {
 							tile := tile_from_local_index(editor_tilemap, it.pos, .Gfx);
