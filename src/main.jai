@@ -2,13 +2,9 @@
 
 // TODO(mizu): See if you can make them use the same context but different render list
 
-// TODO(mizu): Scissoring
-
-// TODO(mizu): proper pixel -> ui co-ordinates / world co-ordinates
-
-// TODO(mizu): Remove scroll global
-
 // TODO(mizu): take it one at a time, just make sure it works. Maybe start with toggle fullscreen. Then making render submit take a target size. Then work on scissoring and mouse co ords -> ui coords
+
+// TODO(mizu): Consider making monofunctions
 
 #import "Basic";
 #import "System";
@@ -232,7 +228,7 @@ main_window_update :: (delta : float32, events : *os.EventList) {
 	
 	editor_window_begin(main_window, events);
 	
-	editor_push_file_id(.Scratch);
+	editor_push_file_id(.Main);
 	
 	ui_push_size_node(ui_size_pct(1, 0), true);
 	editor_col_begin();

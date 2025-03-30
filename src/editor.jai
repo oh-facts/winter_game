@@ -40,6 +40,7 @@ active_window :: () -> *Editor_Window {
 
 Editor_File_Id :: enum {
 	Null;
+	Main;
 	Scratch;
 	Editor;
 	Map_Editor;

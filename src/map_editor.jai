@@ -175,7 +175,7 @@ editor_update :: (delta : float32, events : *os.EventList,
 		}
 	}
 	
-	paint_layer = clamp(paint_layer, 0, 2);
+	paint_layer = clamp(paint_layer, 0, 1);
 	
 	// world space coords -> tile pos
 	
