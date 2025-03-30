@@ -153,13 +153,9 @@ main :: () {
 		
 		passes : r.Pass_List;
 		
-		mm_event := os.event(*events, .NULL, .MouseMove);
+		mpos = os.get_mouse_pos(win);
 		
 		update_camera();
-		
-		if mm_event {
-			mpos = mm_event.mpos;
-		}
 		
 		r.push_scissor(*passes, rectF32(0, 0, main_window.win_target.size.x, main_window.win_target.size.y));
 		ui_begin(ui_cxt, *events, mpos);

@@ -101,6 +101,7 @@ Editor_Window :: struct {
 	flags : Editor_Window_Flags;
 	
 	pre_fullscreen_size : Vector2;
+	pre_fullscreen_pos : Vector2;
 	
 	hide : bool;
 	events : *os.EventList;
@@ -382,13 +383,20 @@ editor_window_begin :: (window : *Editor_Window, events : *os.EventList) {
 				
 				if !window.fullscreen {
 					window.pre_fullscreen_size = window.size;
+					window.pre_fullscreen_pos = window.pos;
+					
 					window.size.x = 1920;
 					window.size.y = 1080;
+					window.pos = .{};
 				} else {
 					window.size = window.pre_fullscreen_size;
+					window.pos = window.pre_fullscreen_pos;
 				}
+				
 				window.fullscreen = !window.fullscreen;
-				os.set_fullscreen(win, window.fullscreen);
+				
+				os.set_maximized(win, window.fullscreen);
+				os.set_window_pos(win, window.pos);
 				window.flags ^= .Resizable;
 				window.win_target = r.framebuffer(window.size);
 			}
