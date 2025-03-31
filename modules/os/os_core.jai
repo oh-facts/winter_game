@@ -1,4 +1,6 @@
 // TODO(mizu): Get resizing to work properly, then continue with refactors
+// first figure out why window size is wrong
+// before that add the input module
 
 #import "mizu_base";
 #import "Math";

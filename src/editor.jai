@@ -464,7 +464,7 @@ editor_window_end :: (window : *Editor_Window) {
 		window.size += mmpos - window.last_mpos;
 		
 		window.size.x = clamp_bot(32., window.size.x);
-		window.size.y = clamp_bot(32 * 3., window.size.y);
+		window.size.y = clamp_bot(32. * 2, window.size.y);
 		
 		//scratch_window.win_target.size = scratch_window.size;
 		
